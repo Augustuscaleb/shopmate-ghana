@@ -1,8 +1,8 @@
 # Implementation status
 
 **Baseline:** product specification revision 5.1 and PLAN v7.1 (approved 11 November 2026).
-**Current stage:** Stage 1B, login, onboarding and cloud verification tooling. **Awaiting owner review.**
-Stage 1A: ✅ approved by the owner (11 November 2026).
+**Current stage:** Stage 1C **plan** awaiting owner approval ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md)). No Stage 1C code has been written.
+Stage 1A: ✅ approved (11 Nov 2026). Stage 1B: ✅ approved (11 Nov 2026), subject to the outstanding release requirements in [RELEASE-READINESS.md](RELEASE-READINESS.md): cloud verification, physical-device journey, backup/restore gate, password investigation decision, Dependabot PRs.
 
 Test status is tracked in [product-specification/10-test-plan.md](product-specification/10-test-plan.md) (§0 and §0a). This page summarises it.
 

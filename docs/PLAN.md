@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v7.1. **Approved as the implementation baseline** (11 November 2026), with product specification revision 5.1. Implementation progress: [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md)
+**Status:** v7.1. **Approved as the implementation baseline** (11 November 2026), with product specification revision 5.1. Implementation progress: [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). **Outstanding release requirements:** [RELEASE-READINESS.md](RELEASE-READINESS.md)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -375,8 +375,10 @@ Timelines are estimates for part-time work.
 | Sub-stage | Scope | Status |
 |---|---|---|
 | **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Approved by owner (11 Nov 2026) |
-| 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ Built; **awaiting owner review**. Cloud verification **not yet run**: needs the cloud project |
-| 1C onwards | Business features in agreed slices (inventory and purchases, sales and sync, credit, expenses, closing, reports, backup) | Not started |
+| 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ **Approved by owner** (11 Nov 2026), subject to release requirements R-1 – R-6 ([RELEASE-READINESS.md](RELEASE-READINESS.md)) |
+| 1C | Inventory foundations: categories, products, purchases, supplier credit, weighted-average (value-pool) costing, adjustments; within the approved specification only | 📋 **Plan prepared, awaiting owner approval** ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md)). Implementation **not started**; by default waits for the device journey (R-2) |
+| Ops-1 | Backup and restore implementation and first restore drill (mandatory gate, R-3) | Designed ([operations/BACKUP-AND-RESTORE.md](operations/BACKUP-AND-RESTORE.md)); starts after the cloud project exists, with owner approval |
+| 1D onwards | Sales and offline sync, credit, expenses, closing, reports | Not started |
 
 Original Stage 1 scope:
 
@@ -551,6 +553,11 @@ Original Stage 1 scope:
 | 42 | **Cloud verification is required**: after the cloud project is created and after every migration, TC-CLOUD-01–03 must pass on the actual cloud database before it counts as deployed; part of gate G2 | Approved (Stage 1A review) |
 | 43 | Sessions stored only in Android Keystore-backed secure storage; no passwords or sensitive keys in the repository or app bundle (scans in CI) | Approved (Stage 1A review) |
 | 44 | Moderate npm advisories documented and monitored (docs/security/DEPENDENCY-ADVISORIES.md); no forced incompatible upgrades; CI fails on high/critical | Approved (Stage 1A review) |
+| 45 | Release requirements R-1 – R-6 (cloud verification, physical device journey, backup/restore gate, server-side password investigation, Dependabot PRs untouched, accurate tracker) must be met before release to real users | Approved (Stage 1B approval) |
+| 46 | Test evidence levels: Documented, Implemented, Local passed, CI passed, Cloud passed, Device verified, Failed | Approved (Stage 1B approval) |
+| 47 | Device journey issues must be fixed before work moves beyond the authentication foundation | Approved (Stage 1B approval) |
+| 48 | Stage 1C limited to inventory foundations within the approved specification; no new features or accounting changes without asking | Approved (Stage 1B approval) |
+| 49 | Server-side common-password enforcement: options A–D in [security/PASSWORD-POLICY-SERVER-SIDE.md](security/PASSWORD-POLICY-SERVER-SIDE.md) | Awaiting owner decision (Claude recommends A now + C at Pro) |
 
 ### References
 
