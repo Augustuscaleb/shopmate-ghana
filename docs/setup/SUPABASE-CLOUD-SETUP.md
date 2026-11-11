@@ -21,7 +21,8 @@
 | Minimum password length | **8** | SEC-01 (matches `supabase/config.toml`) |
 | Confirm email | On, unless the built-in email limit blocks pilot sign-ups; then assisted setup (SEC-04) | |
 | Phone, anonymous and social providers | **Off** | Not in the MVP |
-| Site URL | leave default for now | Set when the app has deep links |
+| Site URL | leave default | |
+| **Redirect URLs** (Authentication → URL Configuration) | add `shopmate://auth-callback` and `shopmate://reset-password` | Email confirmation and password-reset links open the app (Stage 1B) |
 
 ## 3. Apply the database (from your own computer)
 ```bash
@@ -48,5 +49,32 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 - **No downloadable backups** on Free. Our own backup and restore drill (PLAN §10) must pass before real data.
 - Built-in auth emails are rate-limited. That's fine for development and a small pilot.
 
-## 6. Tell Claude when it's done
-Share only the **project ref** (not keys or passwords). Claude can then add a CI step that checks the cloud schema matches the migrations. That step needs a GitHub Actions secret, which **you** add in GitHub Settings → Secrets, never in the repository.
+## 6. REQUIRED: cloud verification (do not skip)
+
+The local tests prove the design. This step proves the **actual cloud database** has the same protections. It's required after creating the project, and again after **every** migration is applied (decision 42).
+
+**One-time setup, in GitHub** (Settings → Environments → New environment → `cloud-dev`):
+1. Under "Deployment protection rules", tick **Required reviewers** and add yourself, so the workflow can't run without your approval.
+2. Add these four **environment secrets**. They live in GitHub's encrypted secret store, never in the repository:
+
+| Secret | Where to find it |
+|---|---|
+| `SUPABASE_DEV_PROJECT_REF` | The project ref (from the project URL) |
+| `SUPABASE_DEV_DB_URL` | Project Settings → Database → Connection string (URI, **session pooler**, which works over IPv4), with your database password filled in |
+| `SUPABASE_DEV_ANON_KEY` | Project Settings → API → anon / publishable key |
+| `SUPABASE_DEV_SERVICE_ROLE_KEY` | Project Settings → API → service_role / secret key. Used only to create the two fictitious test owners. **Never** put it in the app or repository |
+
+**Each time:** GitHub → Actions → "Cloud verification (development project)" → Run workflow, type `fictitious-data-only`, then approve the run. It checks:
+
+| Test | What it proves |
+|---|---|
+| TC-CLOUD-01 | Every repository migration is applied in the cloud, and nothing unexpected is there |
+| TC-CLOUD-02 | The database tests pass **on the cloud database**: 30 tables, RLS on every table, no anonymous access, write restrictions, append-only protection, isolation between two businesses. Each test file runs in a transaction that is rolled back |
+| TC-CLOUD-03 | Business-data isolation **through the cloud API**: two fictitious owners can't read or change each other's data |
+
+The cloud tests create two fictitious owners (`shopmate.cloudtest.a@example.test`, `...b@...`) with one test shop each. They are reused on every run, so data doesn't pile up.
+
+**Known risk:** on Supabase cloud, the database role used by TC-CLOUD-02 may not be allowed to insert test rows into the `auth.users` table (needed by one test file). If TC-CLOUD-02 fails for that reason only, report the error to Claude: the test will be adapted, and the step is **not** treated as passed in the meantime.
+
+## 7. Tell Claude when it's done
+Share only the **project ref** and the result of the cloud verification run. Never share keys or passwords in chat.

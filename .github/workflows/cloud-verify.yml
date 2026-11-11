@@ -1,0 +1,72 @@
+name: Cloud verification (development project)
+
+# REQUIRED step after the Supabase cloud project is created, and after every
+# migration is applied to it (owner decision, Stage 1A review). It verifies the
+# ACTUAL cloud database: migrations, RLS and privileges structure, and
+# business-data isolation through the cloud API.
+#
+# Runs only when started manually, against the GitHub environment "cloud-dev",
+# whose secrets the owner adds in GitHub → Settings → Environments (never in the repository):
+#   SUPABASE_DEV_PROJECT_REF       project ref (e.g. abcdefghijklmnop)
+#   SUPABASE_DEV_DB_URL            Postgres connection string, including the database password
+#   SUPABASE_DEV_ANON_KEY          public anon/publishable key
+#   SUPABASE_DEV_SERVICE_ROLE_KEY  service-role/secret key, used ONLY to create the two fictitious test owners
+# Use the DEVELOPMENT project only. It must contain fictitious data only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type "fictitious-data-only" to confirm this is the development project
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: cloud-dev
+    timeout-minutes: 20
+    steps:
+      - name: Confirmation check
+        if: ${{ inputs.confirm != 'fictitious-data-only' }}
+        run: |
+          echo "Confirmation text did not match; refusing to run."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: |
+          npm ci
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: TC-CLOUD-01 Migrations in cloud match the repository
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DEV_DB_URL }}
+        run: node scripts/verify-cloud-migrations.mjs
+
+      - name: TC-CLOUD-02 Database tests against the cloud database (structure, RLS, privileges, isolation; each file rolls back)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DEV_DB_URL }}
+        run: npx supabase test db --db-url "$SUPABASE_DB_URL"
+
+      - name: TC-CLOUD-03 Business-data isolation through the cloud API
+        env:
+          SHOPMATE_TEST_TARGET: cloud
+          SHOPMATE_CONFIRM_DEV_PROJECT: ${{ inputs.confirm }}
+          SHOPMATE_DEV_PROJECT_REF: ${{ secrets.SUPABASE_DEV_PROJECT_REF }}
+          SUPABASE_TEST_API_URL: https://${{ secrets.SUPABASE_DEV_PROJECT_REF }}.supabase.co
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_DEV_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEV_SERVICE_ROLE_KEY }}
+        run: npx vitest run --config tests/vitest.config.ts tests/security.api.test.ts tests/target.test.ts

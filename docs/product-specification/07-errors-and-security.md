@@ -48,10 +48,12 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | ID | Requirement |
 |---|---|
 | SEC-01 | Email + password via Supabase Auth; minimum 8 characters; reject the 1,000 most common passwords [A: list source to be chosen] |
+| | *Implementation (Stage 1B):* minimum 8 is enforced by the server (Supabase Auth) and the app. The common-password check uses 2,087 entries (all 8+ character passwords from the SecLists "10k most common" list, MIT licence) and runs **in the app only**: Supabase's free plan has no server-side common-password check, so a person calling the API directly could bypass it. Optional server-side hardening (Supabase "password requirements", e.g. letters and digits) would be a requirement change and needs owner approval |
 | SEC-02 | Login and reset attempts are rate-limited (Supabase defaults, reviewed before the pilot) |
 | SEC-03 | Login errors never reveal whether an email exists |
 | SEC-04 | Email confirmation is **on** if Supabase's built-in email limits allow it for the pilot. If not, accounts are created through assisted setup, and confirmation is switched on before launch. **Decision recorded in the pilot log** |
 | SEC-05 | Session tokens are stored in the phone's secure storage (Android Keystore-backed), not plain files |
+| | *Implementation (Stage 1B):* `expo-secure-store` (Android Keystore-backed encryption), split into ≤1,800-character chunks because a session can exceed the ~2 KB per-value limit; a missing chunk means "logged out", never a corrupted session. Secure-store entries are excluded from Android auto-backup by the `expo-secure-store` config plugin |
 | SEC-06 | "Log out other devices" in Settings revokes other sessions |
 | SEC-07 | Optional **app lock** uses the phone's own PIN, pattern or fingerprint when the app opens or resumes after 5 minutes |
 | SEC-08 | Device-count limit per plan is enforced server-side at login (after paid launch) |

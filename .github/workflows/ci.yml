@@ -32,6 +32,11 @@ jobs:
       - name: Secret scan (TC-SEC-05)
         run: npm run check:secrets
 
+      - name: Dependency audit (fails on high or critical; moderate tracked in docs/security/DEPENDENCY-ADVISORIES.md)
+        run: |
+          npm audit --audit-level=high
+          npm audit --audit-level=high --prefix app
+
       - name: Typecheck (tests and app)
         run: npm run typecheck
 
@@ -41,8 +46,22 @@ jobs:
       - name: Database tests (pgTAP)
         run: npm run test:db
 
-      - name: API security tests
+      - name: API security and integration tests
         run: npm run test:security
+
+      - name: App unit tests
+        run: npm run test:app
+
+      - name: Build Android bundle and scan it for secrets (TC-SEC-05 bundle part)
+        env:
+          EXPO_OFFLINE: '1'
+          EXPO_PUBLIC_SUPABASE_URL: https://bundle-check.example.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: bundle-check-public-key
+        run: |
+          (cd app && npx expo export --platform android --output-dir "$RUNNER_TEMP/bundle")
+          STATUS=$(npx supabase status -o json | sed -n '/{/,$p')
+          export BUNDLE_DENY_VALUES="$(echo "$STATUS" | jq -r '.SERVICE_ROLE_KEY'),$(echo "$STATUS" | jq -r '.SECRET_KEY')"
+          node scripts/check-bundle-secrets.mjs "$RUNNER_TEMP/bundle" https://bundle-check.example.invalid
 
       - name: Stop Supabase
         if: always()

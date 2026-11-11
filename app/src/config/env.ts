@@ -14,7 +14,19 @@ export type ConfigResult =
 
 const SERVICE_ROLE_HINTS = ['service_role', 'sb_secret_'];
 
-export function readConfig(env: Record<string, string | undefined> = process.env): ConfigResult {
+/**
+ * Expo inlines EXPO_PUBLIC_* values at build time ONLY when they are written as the
+ * literal expression `process.env.EXPO_PUBLIC_NAME`. Reading them any other way
+ * (e.g. through a variable) leaves them empty in the built app, so keep this form.
+ */
+export function bundledEnv(): Record<string, string | undefined> {
+  return {
+    EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
+export function readConfig(env: Record<string, string | undefined> = bundledEnv()): ConfigResult {
   const problems: string[] = [];
   const supabaseUrl = env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
   const supabaseAnonKey = env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';

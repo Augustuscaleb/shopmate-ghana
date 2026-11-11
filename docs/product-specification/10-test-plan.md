@@ -11,10 +11,10 @@
 | ✅ **Passed** | The test ran and passed | Date, commit ID and CI run link or log, recorded in the Status column. "(local)" = local Supabase stack; "(CI)" = GitHub Actions; "(cloud)" = Supabase cloud project |
 | ❌ **Failed** | The test ran and failed | Date, commit, link; issue opened |
 
-**Current status (11 November 2026, end of Stage 1):**
-- **Planned tests:** 3 ✅ passed on the **local** Supabase stack, 5 🛠 partly implemented, 133 📝 documented only.
-- **Stage 1 foundation tests (§0a):** 91 ✅ passed (local).
-- **CI:** passed on GitHub Actions (§0a). "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), not the cloud project, which doesn't exist yet.
+**Current status (11 November 2026, end of Stage 1B, awaiting owner review):**
+- **Planned tests:** 4 ✅ passed on the **local** Supabase stack and in CI; 7 🛠 implemented but not complete or not yet run (including **all 3 cloud verification tests, which have never been run**: no cloud project exists yet); 133 📝 documented only.
+- **Stage 1 foundation and Stage 1B tests (§0a, §0b):** 112 ✅ passed (local); CI results in §0b.
+- "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), **not** the cloud project.
 
 | Area | Tests | 📝 Documented | 🛠 Implemented | ✅ Passed |
 |---|---|---|---|---|
@@ -29,11 +29,13 @@
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 |
 | Cancellation (TC-CANCEL) | 9 | 9 | 0 | 0 |
 | Concurrency (TC-CONC) | 7 | 6 | 1 | 0 |
-| Security (TC-SEC) | 9 | 3 | 4 | 2 |
+| Security (TC-SEC) | 9 | 3 | 3 | 3 |
 | Backup (TC-BAK) | 5 | 5 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 |
-| **Total (planned)** | **141** | **133** | **5** | **3** |
-| Stage 1 foundation (TC-DB, TC-FN, TC-API, §0a) | 91 | 0 | 0 | 91 |
+| **Cloud verification (TC-CLOUD), required** | 3 | 0 | 3 (not run) | 0 |
+| **Total (planned)** | **144** | **133** | **7** | **4** |
+| Stage 1A foundation (TC-DB, TC-FN, TC-API, §0a) | 91 | 0 | 0 | 91 |
+| Stage 1B (TC-AUTH, TC-CLOUD-00, §0b) | 21 | 0 | 0 | 21 |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
 
@@ -55,6 +57,34 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 - With a fake key planted, the secret scan **failed**.
 
 **CI:** `.github/workflows/ci.yml` runs the secret scan, typecheck, all database tests and API tests on every push, using a local Supabase stack inside the GitHub runner. First CI run, 11 November 2026, commit `634206b`: **✅ 77/77 database and 14/14 API tests passed** ([run 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)). The 91 Stage 1 tests therefore have both local and CI evidence.
+
+## 0b. Stage 1B tests (login, onboarding, secure storage, cloud tooling)
+
+| Group | IDs | Count | Where | Status |
+|---|---|---|---|---|
+| Password rules: minimum 8, 2,087 common passwords, repeated characters, email, 72-byte maximum | TC-AUTH-01 – 03 | 3 | `app/src/auth/passwordPolicy.test.ts` | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1b-local.log) |
+| Validation (Ghana phone formats matching the database, shop name/type, email) | TC-AUTH-04 – 05 | 2 | `app/src/auth/validation.test.ts` | ✅ Passed (local) |
+| Error messages (no account enumeration; network, rate-limit) | TC-AUTH-06 – 07 | 2 | `app/src/auth/messages.test.ts` | ✅ Passed (local) |
+| Deep links (confirmation and reset; rejects foreign and malformed links) | TC-AUTH-08 | 1 | `app/src/auth/deepLinks.test.ts` | ✅ Passed (local) |
+| Chunked secure session storage (over 2 KB, cleanup, missing chunk → logged out, safe keys) | TC-AUTH-09 – 12 | 4 | `app/src/lib/chunkedSecureStorage.test.ts` | ✅ Passed (local) |
+| **Real login against local Supabase: session only in secure storage, restored after restart, cleared on sign-out** | TC-AUTH-13 | 1 | `tests/session.storage.test.ts` | ✅ Passed (local) |
+| Onboarding: create shop; lost reply → no second shop; device registered once, survives lost reply | TC-AUTH-14 – 16 | 3 | `tests/onboarding.test.ts` | ✅ Passed (local) |
+| App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ Passed (local) |
+| Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ✅ Passed (local) |
+| **Total** | | **21** | | **21 ✅ (local)** |
+
+**Not tested yet (needs a phone):** the screens themselves (layout, flow, Android Keystore on a real device, email links opening the app). These are manual device checks in §0c, 📝 documented.
+
+## 0c. Cloud verification and device checks
+
+| ID | Test | How | Status |
+|---|---|---|---|
+| TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` | 🛠 Implemented, **not run**: no cloud project yet |
+| TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --db-url` | 🛠 Implemented, **not run**. Known risk: cloud may not allow test rows in `auth.users`; if so, the test is adapted, not skipped |
+| TC-CLOUD-03 | Business-data isolation **through the cloud API** (two fictitious owners) | `cloud-verify.yml` → `tests/security.api.test.ts` in cloud mode | 🛠 Implemented, **not run** |
+| TC-DEV-01 | On the owner's Android phone: sign up, log in, shop setup, log out, log back in (session restored), wrong password message | Manual, Expo Go or development build | 📝 Documented |
+| TC-DEV-02 | Email confirmation and password-reset links open the app (needs a development build; Expo Go can't receive `shopmate://` links) | Manual | 📝 Documented |
+| TC-DEV-03 | Readability at 130% font size; ₵ renders (TC-UX-04, partial) | Manual | 📝 Documented |
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
@@ -251,7 +281,7 @@ Run with several parallel database connections, repeated at least 100 times to e
 | TC-SEC-02 | Every function: another business's IDs rejected | 🛠 Implemented, partial: covers the 2 Stage 1 functions; extend with each new function |
 | TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1-local.log) |
 | TC-SEC-04 | Invalid inputs rejected server-side | 🛠 Implemented, partial: table constraints done (TC-DB-10–34); function inputs in later stages |
-| TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | 🛠 Implemented, partial: repository scan ✅ ([log](../test-evidence/2026-11-11-stage1-local.log)); app bundle scan when the first build exists |
+| TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1b-local.log): repository scan, plus Android bundle scan (exact-match deny list + decoded service-role check; 2 negative controls failed as expected) |
 | TC-SEC-06 | Crash reports contain no personal or business data | 📝 |
 | TC-SEC-07 | "Log out other devices" revokes sessions; outboxes kept | 📝 |
 | TC-SEC-08 | Audit entries for every SEC-21 action | 🛠 Implemented, partial: create_business and register_device audit entries only |
@@ -285,5 +315,5 @@ A gate is passed only when **every** listed test is ✅ Passed with evidence.
 | Gate | Required before | Tests | Status |
 |---|---|---|---|
 | **G1 — Internal build** | Owner testing with fake data | TC-FIN, TC-COST, TC-TIME, TC-CLOSE, TC-PUR, TC-ATTN, TC-LOSS, TC-CRED, TC-CASH | Not reached |
-| **G2 — Real data allowed** | Any pilot shop enters real data | G1 + all TC-SYNC, TC-CANCEL, TC-CONC, TC-SEC, TC-BAK | Not reached |
+| **G2 — Real data allowed** | Any pilot shop enters real data | G1 + all TC-SYNC, TC-CANCEL, TC-CONC, TC-SEC, TC-BAK, **TC-CLOUD (required, decision 42)** | Not reached |
 | **G3 — Pilot expansion** | Beyond the first 2–3 shops | G2 + TC-SYNC-20 on pilot devices + no open critical bugs | Not reached |

@@ -13,3 +13,5 @@ supabase/.branches/
 # Test output
 coverage/
 *.log
+# ...except the test evidence logs referenced by the test tracker
+!docs/test-evidence/*.log

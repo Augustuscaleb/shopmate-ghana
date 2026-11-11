@@ -1,0 +1,48 @@
+ShopMate Ghana — Stage 1 test run (LOCAL Supabase stack, fictitious data only)
+Date (UTC): 2026-11-11T18:19:28Z
+Supabase CLI: 3.1.0   Node: v22.23.4
+Database: PostgreSQL 17.11 on x86_64-pc-linux-gnu,
+Base commit: 06a5e4c + uncommitted Stage 1 files (committed together with this log)
+
+== 1. Reset database: apply all migrations from scratch ==
+Seeding globals from roles.sql...
+Applying migration 20261111000100_foundation.sql...
+Applying migration 20261111000200_business_access.sql...
+Applying migration 20261111000300_core_tables.sql...
+Applying migration 20261111000400_triggers_rls_privileges.sql...
+Applying migration 20261111000500_foundation_functions.sql...
+Seeding data from supabase/seed.sql...
+Finished supabase db reset on branch claude/elegant-babbage-a2rfd2.
+
+== 2. Secret scan ==
+Secret scan passed: 53 files checked, no keys, tokens or passwords found.
+
+== 3. Typecheck ==
+typecheck: OK
+
+== 4. Database tests (pgTAP) ==
+/home/user/shopmate-ghana/supabase/tests/database/01_structure_and_constraints.test.sql .... ok
+/home/user/shopmate-ghana/supabase/tests/database/02_rls_isolation_and_functions.test.sql .. ok
+All tests successful.
+Files=2, Tests=77,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: PASS
+
+== 5. API security tests (vitest) ==
+ ✓ tests/security.api.test.ts > Authentication (SEC-01) > TC-API-01: rejects passwords shorter than 8 characters 4ms
+ ✓ tests/security.api.test.ts > Authentication (SEC-01) > TC-API-02: creates a profile for each new owner 5ms
+ ✓ tests/security.api.test.ts > Business-data isolation through the API (TC-SEC-01) > TC-API-03: owner A reads zero rows of business B in every business table 74ms
+ ✓ tests/security.api.test.ts > Business-data isolation through the API (TC-SEC-01) > TC-API-04: owner A sees their own business, expense categories and pilot subscription 10ms
+ ✓ tests/security.api.test.ts > Business-data isolation through the API (TC-SEC-01) > TC-API-05: owner A cannot add a customer to business B 5ms
+ ✓ tests/security.api.test.ts > Business-data isolation through the API (TC-SEC-01) > TC-API-06: owner A cannot change business B customers 6ms
+ ✓ tests/security.api.test.ts > Business-data isolation through the API (TC-SEC-01) > TC-API-07: owner A cannot register a device on business B 3ms
+ ✓ tests/security.api.test.ts > Server-function-only writes (TC-SEC-03) > TC-API-08: sales cannot be inserted directly, even into your own business 3ms
+ ✓ tests/security.api.test.ts > Server-function-only writes (TC-SEC-03) > TC-API-09: subscriptions cannot be changed by the owner 3ms
+ ✓ tests/security.api.test.ts > Server-function-only writes (TC-SEC-03) > TC-API-10: customers cannot be deleted (archive only) 3ms
+ ✓ tests/security.api.test.ts > Idempotency (SEC-24) > TC-API-11: the same create_business request twice returns the same business 7ms
+ ✓ tests/security.api.test.ts > Idempotency (SEC-24) > TC-API-12: concurrent duplicate register_device requests create one device 50ms
+ ✓ tests/security.api.test.ts > Anonymous access (not signed in) > TC-API-13: anonymous users cannot read business data 3ms
+ ✓ tests/security.api.test.ts > Anonymous access (not signed in) > TC-API-14: anonymous users cannot call create_business 4ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  18:19:42
+   Duration  1.47s (import 68%, tests 30%, transform 2%)

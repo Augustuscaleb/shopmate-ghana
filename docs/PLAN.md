@@ -374,8 +374,8 @@ Timelines are estimates for part-time work.
 
 | Sub-stage | Scope | Status |
 |---|---|---|
-| **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Built; **awaiting owner review** |
-| 1B | App login and onboarding (secure session storage), business setup, cloud project connection | Proposed next |
+| **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Approved by owner (11 Nov 2026) |
+| 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ Built; **awaiting owner review**. Cloud verification **not yet run**: needs the cloud project |
 | 1C onwards | Business features in agreed slices (inventory and purchases, sales and sync, credit, expenses, closing, reports, backup) | Not started |
 
 Original Stage 1 scope:
@@ -548,6 +548,9 @@ Original Stage 1 scope:
 | 39 | **Goods taken for own use are not a business cost:** shown below estimated net profit, inventory reduced at cost (changes the earlier rule that counted own use as a stock loss) | Approved |
 | 40 | Partial supplier payments against a purchase, any number of times; never stock value, never expenses | Approved |
 | 41 | Purchase-cost corrections split proportionally (already sold / losses / own use / remaining stock) from movement history; dated on the correction day; no restatement; approximate corrections flagged with reasons and audited | Approved |
+| 42 | **Cloud verification is required**: after the cloud project is created and after every migration, TC-CLOUD-01–03 must pass on the actual cloud database before it counts as deployed; part of gate G2 | Approved (Stage 1A review) |
+| 43 | Sessions stored only in Android Keystore-backed secure storage; no passwords or sensitive keys in the repository or app bundle (scans in CI) | Approved (Stage 1A review) |
+| 44 | Moderate npm advisories documented and monitored (docs/security/DEPENDENCY-ADVISORIES.md); no forced incompatible upgrades; CI fails on high/critical | Approved (Stage 1A review) |
 
 ### References
 

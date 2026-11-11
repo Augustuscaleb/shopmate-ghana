@@ -1,19 +1,20 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AppConfig } from '../config/env';
+import type { AuthStorage } from './chunkedSecureStorage';
 
 /**
- * Supabase client factory.
- *
- * Stage 1: sessions are kept in memory only (persistSession: false).
- * Stage 2 (login screens) will add an Android Keystore-backed storage adapter
- * (expo-secure-store) as required by SEC-05, before any real login is used.
+ * Supabase client. Sessions are persisted ONLY through the provided secure
+ * storage (SEC-05), never AsyncStorage or plain files. PKCE flow is used for
+ * email links (confirmation, password reset).
  */
-export function createSupabaseClient(config: AppConfig): SupabaseClient {
+export function createSupabaseClient(config: AppConfig, storage: AuthStorage): SupabaseClient {
   return createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
-      persistSession: false,
+      storage,
+      persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
+      flowType: 'pkce',
     },
   });
 }
