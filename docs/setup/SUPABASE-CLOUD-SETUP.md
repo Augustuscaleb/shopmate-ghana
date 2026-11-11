@@ -24,17 +24,60 @@
 | Site URL | leave default | |
 | **Redirect URLs** (Authentication → URL Configuration) | add `shopmate://auth-callback` and `shopmate://reset-password` | Email confirmation and password-reset links open the app (Stage 1B) |
 
-## 3. Apply the database (from your own computer)
-```bash
-npx supabase login                         # opens a browser; uses your account
-npx supabase link --project-ref <ref>      # <ref> is in the project URL
-npx supabase db push                       # applies supabase/migrations/*
-```
-`link` asks for the database password: type it, don't save it in a file in this repository.
+## 3. Apply the database migrations safely (from your own computer)
 
-Then **verify**:
-- Dashboard → Table Editor shows the 30 tables.
-- Each table shows "RLS enabled".
+**Never do these against the cloud project:**
+- `supabase config push`: it would copy the *local* auth settings (email confirmation **off**) over your cloud settings
+- `supabase db reset --linked`: it erases the cloud database
+- editing tables by hand in the dashboard
+
+### 3.1 Prepare (5 minutes)
+1. Install Node.js 20+ and Git (Docker is **not** needed for these steps).
+2. Get the code on the default branch and check that you have exactly the 5 migrations:
+   ```
+   git clone https://github.com/Augustuscaleb/shopmate-ghana.git
+   cd shopmate-ghana
+   git checkout claude/elegant-babbage-a2rfd2
+   npm ci
+   ls supabase/migrations
+   ```
+   Expected: `20261111000100_foundation.sql`, `..._200_business_access.sql`, `..._300_core_tables.sql`, `..._400_triggers_rls_privileges.sql`, `..._500_foundation_functions.sql`.
+
+### 3.2 Link to the project (nothing is changed yet)
+```
+npx supabase login
+npx supabase link --project-ref <your-project-ref>
+```
+- `login` opens your browser. The access token is stored on your computer, not in the repository.
+- `link` asks for the **database password**. Type it; don't put it in any file.
+- If `link` offers to change or update **config**, answer **No**.
+
+Check nothing private was added to the repository: `git status` should show **no new files**. Supabase's link data goes into `supabase/.temp/`, which is git-ignored.
+
+### 3.3 Preview, then apply
+```
+npx supabase migration list
+npx supabase db push --dry-run
+```
+- `migration list`: **Local** column shows the 5 versions; **Remote** column is empty.
+- `--dry-run`: lists exactly those 5 migrations and **applies nothing**.
+
+If both look right:
+```
+npx supabase db push
+```
+Confirm when asked. **If any error appears, stop:** don't retry, edit files or run other commands. Copy the error text (it contains no secrets) and send it to Claude.
+
+**If the connection fails with an IPv6 / "network is unreachable" error:** use the IPv4 **session pooler** connection string instead. Dashboard → **Connect** → "Session pooler" → URI. To keep the password out of your shell history:
+- macOS/Linux: `read -s DB_URL` (paste the URI with your password filled in, press Enter), then `npx supabase db push --db-url "$DB_URL" --dry-run`, then the same without `--dry-run`
+- Windows PowerShell 7: `$env:DB_URL = Read-Host -MaskInput`, then `npx supabase db push --db-url $env:DB_URL --dry-run`
+
+### 3.4 Verify (required: don't assume the push worked)
+1. `npx supabase migration list`: **Local and Remote both show all 5 versions**.
+2. Dashboard → **SQL Editor** → New query → paste the whole of [`scripts/sql/verify-cloud-schema.sql`](../../scripts/sql/verify-cloud-schema.sql) → Run. It is **read-only**. **All 12 rows must say PASS.**
+3. Send Claude the `migration list` output and the 12-row result table. Neither contains secrets.
+
+Only after this is verified is the database considered applied. That is still **not** cloud verification (R-1): that needs §6.
 
 ## 4. Connect the app
 Dashboard → Project Settings → API. Copy the **Project URL** and the **anon / publishable** key into `app/.env` (git-ignored):
@@ -53,18 +96,29 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 
 The local tests prove the design. This step proves the **actual cloud database** has the same protections. It's required after creating the project, and again after **every** migration is applied (decision 42).
 
-**One-time setup, in GitHub** (Settings → Environments → New environment → `cloud-dev`):
-1. Under "Deployment protection rules", tick **Required reviewers** and add yourself, so the workflow can't run without your approval.
-2. Add these four **environment secrets**. They live in GitHub's encrypted secret store, never in the repository:
+**Why this works on GitHub's free plan:** the repository is **public**, and GitHub Free supports environment secrets and required reviewers for public repositories only. If the repository is ever made private on GitHub Free, these stop working and this section must be redesigned first.
 
-| Secret | Where to find it |
-|---|---|
-| `SUPABASE_DEV_PROJECT_REF` | The project ref (from the project URL) |
-| `SUPABASE_DEV_DB_URL` | Project Settings → Database → Connection string (URI, **session pooler**, which works over IPv4), with your database password filled in |
-| `SUPABASE_DEV_ANON_KEY` | Project Settings → API → anon / publishable key |
-| `SUPABASE_DEV_SERVICE_ROLE_KEY` | Project Settings → API → service_role / secret key. Used only to create the two fictitious test owners. **Never** put it in the app or repository |
+### 6.1 Create the environment (GitHub → repository → Settings → Environments → New environment)
+1. Name: `cloud-dev` (exactly).
+2. **Deployment protection rules** → tick **Required reviewers** → add yourself → **Save protection rules**.
+3. **Deployment branches and tags**: choose **Selected branches and tags** → add `claude/elegant-babbage-a2rfd2`, so no other branch can use these secrets.
 
-**Each time:** GitHub → Actions → "Cloud verification (development project)" → Run workflow, type `fictitious-data-only`, then approve the run. It checks:
+### 6.2 Add the four environment secrets (same page → **Environment secrets** → Add environment secret)
+Use **environment secrets**, not "Environment variables" (those are visible to anyone) and not repository secrets.
+
+| Secret name (exact) | Value | Where to find it |
+|---|---|---|
+| `SUPABASE_DEV_PROJECT_REF` | The project ref, e.g. `abcdefghijklmnopqrst` | Project Settings → General → Project ID (also in the project URL) |
+| `SUPABASE_DEV_DB_URL` | Full **session pooler** URI with your database password inserted | Dashboard → **Connect** → Session pooler → URI. Replace `[YOUR-PASSWORD]`. **If the password contains** `@ : / ? # [ ] %` **or spaces, it must be URL-encoded** (e.g. `@` → `%40`), or reset the database password to letters and digits only |
+| `SUPABASE_DEV_ANON_KEY` | The **publishable** key (`sb_publishable_…`) or the legacy **anon** key | Project Settings → API Keys |
+| `SUPABASE_DEV_SERVICE_ROLE_KEY` | The **secret** key (`sb_secret_…`) or the legacy **service_role** key | Project Settings → API Keys. Used only by the cloud test to create the two fictitious test owners. **Never** paste it into the app, the repository, chat or email |
+
+Claude tested both key styles (new and legacy) with the code path the cloud test uses (11 Nov 2026).
+
+**After saving:** the environment page should list exactly these 4 secret names. GitHub never shows secret values again; that's expected. Tell Claude the names you see, not the values.
+
+### 6.3 Run it
+GitHub → **Actions** → "Cloud verification (development project)" → **Run workflow** (branch `claude/elegant-babbage-a2rfd2`) → type `fictitious-data-only` → Run. Then open the run and **approve** it (required reviewer). It checks:
 
 | Test | What it proves |
 |---|---|
