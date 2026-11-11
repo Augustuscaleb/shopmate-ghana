@@ -73,7 +73,7 @@ For a `cancelled_unsent` sale, `sale_items` are stored **for the record only**. 
 | `subscriptions` | plan (`starter`/`standard`/`plus`/`pilot`), status, paid_until |
 | `subscription_payments` | amount, momo_transaction_id (unique), payer_number, confirmed_by, paid_at |
 | `audit_log` | user_id, device_id, action, entity, entity_id, before, after, reason, created_at |
-| `request_log` | business_id, **request_id** (unique per business), function_name, result (JSON), created_at — idempotency for all online writes (§4.3) |
+| `request_log` | **request_id** (unique), business_id (nullable until known), user_id, function_name, result (JSON), created_at. Idempotency for all online writes (§4.3). *Implementation note (Stage 1): request_id is unique on its own, which is stricter than unique per business, so `create_business` (which runs before any business exists) is covered. A stored result is returned only to the same user and function.* |
 
 ## 3. Server functions (the only way to change money, stock and ledgers)
 
@@ -146,7 +146,7 @@ All functions run in **one database transaction**, take a client-generated **ide
 | `sales.id` primary key | Duplicate sales |
 | Unique `(business_id, receipt_no)` | Duplicate receipt numbers |
 | Unique `(business_id, device_code)` | Two devices sharing a code |
-| Unique `(business_id, request_id)` | Duplicate online writes |
+| Unique `request_id` (stricter than per business; see `request_log`) | Duplicate online writes |
 | Unique `(business_id, day)` on `day_closings`; unique `(business_id, count_date)` on `cash_counts` | A second "original" closing |
 | No UPDATE/DELETE privileges on `day_closings`, `day_adjustments` (enforced by policy) | Rewriting closed days |
 | CHECK `0 ≤ paid_now ≤ purchase_cost` | Overpaid purchases |

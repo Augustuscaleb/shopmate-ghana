@@ -1,0 +1,2 @@
+-- Local development seed. Intentionally empty: no real shop or customer data is
+-- ever stored in this repository. Tests create their own fictitious data.

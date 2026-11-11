@@ -1,0 +1,49 @@
+name: CI
+
+# Runs on every push and pull request. Uses only GitHub-hosted runners and the
+# LOCAL Supabase stack inside the runner: no cloud project, no secrets needed.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix app
+
+      - name: Secret scan (TC-SEC-05)
+        run: npm run check:secrets
+
+      - name: Typecheck (tests and app)
+        run: npm run typecheck
+
+      - name: Start local Supabase (database, auth, API only)
+        run: npm run db:start
+
+      - name: Database tests (pgTAP)
+        run: npm run test:db
+
+      - name: API security tests
+        run: npm run test:security
+
+      - name: Stop Supabase
+        if: always()
+        run: npm run db:stop

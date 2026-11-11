@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 5.1.**
+**Revision 5.1** · test status updated for Stage 1 (11 November 2026).
 
 ## 0. Test status (read this first)
 
@@ -8,28 +8,53 @@
 |---|---|---|
 | 📝 **Documented** | The test is described in this plan. **No test code exists** | This document |
 | 🛠 **Implemented** | Test code exists in the repository, but has **not yet passed** in the current build | File path of the test |
-| ✅ **Passed** | The test ran and passed | Date, commit ID and CI run link or log, recorded in the Status column |
+| ✅ **Passed** | The test ran and passed | Date, commit ID and CI run link or log, recorded in the Status column. "(local)" = local Supabase stack; "(CI)" = GitHub Actions; "(cloud)" = Supabase cloud project |
 | ❌ **Failed** | The test ran and failed | Date, commit, link; issue opened |
 
-**Current status (11 November 2026): every test below is 📝 Documented. No tests have been implemented or run, because no application code or database exists yet.**
+**Current status (11 November 2026, end of Stage 1):**
+- **Planned tests:** 3 ✅ passed on the **local** Supabase stack, 5 🛠 partly implemented, 133 📝 documented only.
+- **Stage 1 foundation tests (§0a):** 91 ✅ passed (local).
+- **CI:** see §0a. "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), not the cloud project, which doesn't exist yet.
 
 | Area | Tests | 📝 Documented | 🛠 Implemented | ✅ Passed |
 |---|---|---|---|---|
 | Financial (TC-FIN) | 8 | 8 | 0 | 0 |
 | Cost (TC-COST) | 21 | 21 | 0 | 0 |
 | Sale time (TC-TIME) | 10 | 10 | 0 | 0 |
-| Daily closing (TC-CLOSE) | 9 | 9 | 0 | 0 |
+| Daily closing (TC-CLOSE) | 9 | 8 | 0 | 1 |
 | Purchases (TC-PUR) | 16 | 16 | 0 | 0 |
 | Needs attention (TC-ATTN) | 7 | 7 | 0 | 0 |
 | Losses (TC-LOSS) | 3 | 3 | 0 | 0 |
 | Credit (TC-CRED, TC-CASH) | 13 | 13 | 0 | 0 |
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 |
 | Cancellation (TC-CANCEL) | 9 | 9 | 0 | 0 |
-| Concurrency (TC-CONC) | 7 | 7 | 0 | 0 |
-| Security (TC-SEC) | 9 | 9 | 0 | 0 |
+| Concurrency (TC-CONC) | 7 | 6 | 1 | 0 |
+| Security (TC-SEC) | 9 | 3 | 4 | 2 |
 | Backup (TC-BAK) | 5 | 5 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 |
-| **Total** | **141** | **141** | **0** | **0** |
+| **Total (planned)** | **141** | **133** | **5** | **3** |
+| Stage 1 foundation (TC-DB, TC-FN, TC-API, §0a) | 91 | 0 | 0 | 91 |
+
+## 0a. Stage 1 foundation tests (implemented and run)
+
+These test the database foundation built in Stage 1: schema, constraints, RLS, privileges, and the two Stage 1 server functions. They complement the planned tests above.
+
+| Group | IDs | Count | Where | Status |
+|---|---|---|---|---|
+| Structure and security setup: 30 tables, RLS on every table, no anon access, writes only on 4 tables, policies everywhere, function privileges, append-only triggers | TC-DB-01 – 08 | 8 | `supabase/tests/database/01_structure_and_constraints.test.sql` | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1-local.log) |
+| Constraints: duplicate sale ID and receipt, totals and discounts, credit needs customer, cross-business references, low-confidence costing, line totals, device codes, ledger signs and reasons, paid-now ≤ cost, approximate corrections must be flagged with reasons, movement reasons, unique names, one closing per day, one original cash count, MoMo transaction IDs, phone format | TC-DB-10 – 34 | 25 | same file | ✅ Passed (local) 2026-11-11 |
+| Append-only and immutability: movements, ledger, closings, adjustments, audit log, purchases, business_id; customer archive rule; request log | TC-DB-40 – 53 | 13 | same file | ✅ Passed (local) 2026-11-11 |
+| Functions: create_business and register_device, including idempotency, request-ID reuse, foreign business, internal helpers | TC-FN-01 – 09 | 9 | `supabase/tests/database/02_rls_isolation_and_functions.test.sql` | ✅ Passed (local) 2026-11-11 |
+| Isolation and privileges as real database roles (fixtures in **every** business table; A↔B in both directions; writes; anonymous) | TC-SEC-00, 01a–l, 03a–f, 04a–c | 22 | same file | ✅ Passed (local) 2026-11-11 |
+| End-to-end through the real API (Auth + PostgREST): password rule, profiles, isolation, server-function-only writes, idempotency incl. 5 parallel duplicates, anonymous access | TC-API-01 – 14 | 14 | `tests/security.api.test.ts` | ✅ Passed (local) 2026-11-11 |
+| **Total** | | **91** | | **91 ✅ (local)** |
+
+**Checks that the tests can fail (negative controls, 11 November 2026):**
+- With the append-only trigger removed, the immutability test reported **not ok**.
+- With RLS disabled on one table, the RLS-everywhere test reported **not ok**.
+- With a fake key planted, the secret scan **failed**.
+
+**CI:** `.github/workflows/ci.yml` runs the secret scan, typecheck, all database tests and API tests on every push, using a local Supabase stack inside the GitHub runner. CI status is recorded in `docs/IMPLEMENTATION-STATUS.md`.
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
@@ -108,7 +133,7 @@
 | TC-CLOSE-05 | Cash recount after closing → adjustment; original count kept; adjusted expected/counted/difference correct | C-102 | 📝 |
 | TC-CLOSE-06 | Cost adjustments and purchase corrections are dated on the processing day, never on a closed day | C-103 | 📝 |
 | TC-CLOSE-07 | For every closed day: original + Σ adjustments = fresh recalculation from records | C-105 | 📝 |
-| TC-CLOSE-08 | Direct UPDATE/DELETE on `day_closings` and `day_adjustments` via the API is denied | SEC-27 | 📝 |
+| TC-CLOSE-08 | Direct UPDATE/DELETE on `day_closings` and `day_adjustments` via the API is denied | SEC-27 | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1-local.log) (TC-DB-04, TC-DB-43–45) |
 | TC-CLOSE-09 | Weekly and monthly reports show adjusted totals plus the count and value of closed-day adjustments | C-106 | 📝 |
 
 ## 2c. Purchases and supplier credit
@@ -214,7 +239,7 @@ Run with several parallel database connections, repeated at least 100 times to e
 | TC-CONC-02 | Sales touching overlapping product sets in opposite orders | No deadlock (fixed lock order); all succeed | 📝 |
 | TC-CONC-03 | Sale and restock of the same product at the same time | Both applied; avg and history consistent with one sequential order | 📝 |
 | TC-CONC-04 | Forced deadlock/serialisation error (test hook) | Full rollback; client retry succeeds once; no partial rows | 📝 |
-| TC-CONC-05 | Same request ID sent from two connections simultaneously (payment, write-off, restock) | Exactly one write; both callers receive the same result | 📝 |
+| TC-CONC-05 | Same request ID sent from two connections simultaneously (payment, write-off, restock) | Exactly one write; both callers receive the same result | 🛠 Implemented, partial: register_device, 5 parallel duplicates (TC-API-12); payment, write-off and restock functions not built yet |
 | TC-CONC-06 | Credit sale and payment for the same customer at the same time | Balance = Σ ledger; never negative | 📝 |
 | TC-CONC-07 | Void and a new sale of the same product at the same time | Both applied consistently; integrity check passes | 📝 |
 
@@ -222,14 +247,14 @@ Run with several parallel database connections, repeated at least 100 times to e
 
 | ID | Test | Status |
 |---|---|---|
-| TC-SEC-01 | Every table: Business A cannot select, insert, update or delete Business B rows | 📝 |
-| TC-SEC-02 | Every function: another business's IDs rejected | 📝 |
-| TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | 📝 |
-| TC-SEC-04 | Invalid inputs rejected server-side | 📝 |
-| TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | 📝 |
+| TC-SEC-01 | Every table: Business A cannot select, insert, update or delete Business B rows | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1-local.log): all 30 current tables; re-runs automatically for new tables |
+| TC-SEC-02 | Every function: another business's IDs rejected | 🛠 Implemented, partial: covers the 2 Stage 1 functions; extend with each new function |
+| TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | ✅ Passed (local) 2026-11-11, [log](../test-evidence/2026-11-11-stage1-local.log) |
+| TC-SEC-04 | Invalid inputs rejected server-side | 🛠 Implemented, partial: table constraints done (TC-DB-10–34); function inputs in later stages |
+| TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | 🛠 Implemented, partial: repository scan ✅ ([log](../test-evidence/2026-11-11-stage1-local.log)); app bundle scan when the first build exists |
 | TC-SEC-06 | Crash reports contain no personal or business data | 📝 |
 | TC-SEC-07 | "Log out other devices" revokes sessions; outboxes kept | 📝 |
-| TC-SEC-08 | Audit entries for every SEC-21 action | 📝 |
+| TC-SEC-08 | Audit entries for every SEC-21 action | 🛠 Implemented, partial: create_business and register_device audit entries only |
 | TC-SEC-09 | Cancellation requires re-authentication | 📝 |
 
 ## 8. Backup and restore (Gate G2)

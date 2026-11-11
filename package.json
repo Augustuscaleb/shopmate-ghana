@@ -1,0 +1,27 @@
+{
+  "name": "shopmate-ghana",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ShopMate Ghana: root tooling for database, security tests and CI. The mobile app lives in app/.",
+  "scripts": {
+    "db:start": "supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "test:db": "supabase test db",
+    "test:security": "vitest run --config tests/vitest.config.ts",
+    "test": "npm run test:db && npm run test:security",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "typecheck": "tsc -p tests/tsconfig.json --noEmit && npm --prefix app run typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "@types/node": "^22.20.5",
+    "supabase": "^3.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "type": "module"
+}

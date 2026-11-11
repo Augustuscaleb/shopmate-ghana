@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment files: never commit keys, passwords or service-role secrets
+.env
+.env.*
+!.env.example
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/
+
+# Test output
+coverage/
+*.log

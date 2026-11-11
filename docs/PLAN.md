@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v7.1 — for final approval as the implementation baseline (product specification revision 5.1)
+**Status:** v7.1. **Approved as the implementation baseline** (11 November 2026), with product specification revision 5.1. Implementation progress: [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -370,7 +370,15 @@ Timelines are estimates for part-time work.
 - Hands-on testing of 3–5 competitor apps; app-store review mining; online survey via WhatsApp
 - **Targets (not guaranteed outcomes):** 30+ shop-owner survey responses, 50%+ reporting a clear problem, 10+ pilot volunteers, at least 3 pilot shops to start (aiming for 5–10)
 
-### Stage 1 — MVP build (6–8 weeks)
+### Stage 1 — MVP build (6–8 weeks), in controlled sub-stages, each reviewed and approved by the owner
+
+| Sub-stage | Scope | Status |
+|---|---|---|
+| **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Built; **awaiting owner review** |
+| 1B | App login and onboarding (secure session storage), business setup, cloud project connection | Proposed next |
+| 1C onwards | Business features in agreed slices (inventory and purchases, sales and sync, credit, expenses, closing, reports, backup) | Not started |
+
+Original Stage 1 scope:
 
 - Project setup, database schema, RLS policies and automated security tests
 - Email login, business setup (owner-only)
@@ -530,16 +538,16 @@ Timelines are estimates for part-time work.
 | 29 | Test status reported as Documented / Implemented / Passed, with evidence; currently all Documented | Approved |
 | 30 | **Value-pool weighted average** (stock value in pesewas; average = value ÷ qty; sales remove their sale-time cost; edge cases posted as visible cost adjustments) | Approved |
 | 31 | Sale-time verification with elapsed-time clock and time confidence; low confidence uses upload time | Superseded by 36 |
-| 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Proposed — for final approval |
+| 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Approved |
 | 33 | Immutable day snapshots on Close the day; late changes shown separately | Superseded by 38 |
-| 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Proposed — for final approval |
+| 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Approved |
 | 35 | Purchases at **full acquisition cost**; amount paid recorded separately; per-purchase unpaid amounts, Pay supplier, purchase corrections, supplier returns; no full supplier accounts in MVP | Approved |
 | 36 | Sale time from **server anchors + same-session elapsed time**; reboot and clock-change detection; bounds; low confidence → upload time, flagged | Approved |
 | 37 | Never adjust quantities automatically; every automatic value change is a visible cost adjustment with a Needs attention item | Approved |
 | 38 | **One immutable original closing per day**; later changes as itemised day adjustments; current adjusted total shown alongside (supersedes 33) | Approved |
 | 39 | **Goods taken for own use are not a business cost:** shown below estimated net profit, inventory reduced at cost (changes the earlier rule that counted own use as a stock loss) | Approved |
-| 40 | Partial supplier payments against a purchase, any number of times; never stock value, never expenses | Proposed — for final approval |
-| 41 | Purchase-cost corrections split proportionally (already sold / losses / own use / remaining stock) from movement history; dated on the correction day; no restatement | Proposed — for final approval |
+| 40 | Partial supplier payments against a purchase, any number of times; never stock value, never expenses | Approved |
+| 41 | Purchase-cost corrections split proportionally (already sold / losses / own use / remaining stock) from movement history; dated on the correction day; no restatement; approximate corrections flagged with reasons and audited | Approved |
 
 ### References
 
