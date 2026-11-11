@@ -1,6 +1,6 @@
 # ShopMate Ghana — MVP Product Specification
 
-**Status:** Revision 4 — for final review as the implementation baseline
+**Status:** Revision 5 — for final approval as the implementation baseline
 **Date:** 11 November 2026
 **Depends on:** [docs/PLAN.md](../PLAN.md) (approved) and [Stage 0 research](../market-research/STAGE-0-REPORT.md) (approved direction)
 
@@ -38,7 +38,7 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 
 **Money:** all amounts are stored as integer pesewas and displayed as GH₵ (see 05).
 
-**Test status:** every test case in 10 is currently **📝 Documented only**. None is implemented or passed. See 10 §0.
+**Test status:** all 134 test cases in 10 are currently **📝 Documented only**. None is implemented or passed. See 10 §0.
 
 ## Decisions reflected in this specification
 
@@ -50,6 +50,18 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 6. The verified / reported / assumption distinction is preserved throughout.
 
 ## Revision log
+
+### Revision 5 (11 November 2026)
+
+| # | Clarification requested | Resolution | Where |
+|---|---|---|---|
+| 1 | Purchase cost vs amount paid | Stock value rises by the **full purchase cost** (e.g. +GH₵500 when GH₵300 is paid). Amount paid, paid from, and per-purchase unpaid amount recorded; Pay supplier; purchase corrections; returns to supplier. Cash count includes drawer payments. Limitations L6–L9 (no supplier accounts; transport expensed; corrections spread over remaining stock; no settlement discounts) | 05 §12; 04 §2.2; 03 S-33, S-38, S-39; 09 `purchases` etc.; TC-PUR-01–09 |
+| 2 | Timestamp reliability | Elapsed time is used **only** relative to a server anchor in the **same boot session**. Reboot detection (boot ID or elapsed decrease), clock-change detection, time bounds, high/medium/low confidence; low → upload time with window shown and flagged | 05 §3.6; 06 §9; 09 `device_anchors`; TC-TIME-01–10 |
+| 3 | Negative stock and adjustments visible | Quantities never changed automatically. Every automatic value change is a cost adjustment with a **Needs attention** item stating what happened, the GH₵ effect and the action; acknowledging changes no figures | 05 §3.4 (C-120 – C-126); 03 S-36; 09 `attention_items`; TC-ATTN-01–07 |
+| 4 | Daily closing | **One immutable original closing per day**; later changes are itemised **day adjustments** (including cash recounts); report shows original → adjustments → current adjusted total; consistency check | 05 §11; 04 §5; 03 S-60/61; 09 `day_closings`, `day_adjustments`; TC-CLOSE-01–09 |
+| — | Conservation wording | Restated with every term (opening stock, full-cost purchases, purchase corrections, customer returns, stock found, owner corrections, supplier returns, cost of items sold, losses, own use, cost adjustments), and an explicit statement of what it does and doesn't prove | 05 §3.2; TC-COST-20 |
+| — | **Proposed change** | Own use shown below net profit as "Goods taken for own use", **not** a business cost (previously counted as a stock loss) | 05 C-37; TC-PUR-09 |
+
 
 ### Revision 4 (11 November 2026)
 

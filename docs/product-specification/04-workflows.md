@@ -1,6 +1,6 @@
 # 04 — Workflows
 
-**Revision 4.** All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function) with an idempotency key and fixed lock order. See [09-data-model.md §4](09-data-model.md). Table names refer to 09.
+**Revision 5.** All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function) with an idempotency key and fixed lock order. See [09-data-model.md §4](09-data-model.md). Table names refer to 09.
 
 ---
 
@@ -108,22 +108,50 @@ Replaces the earlier "DISCARD" idea. Goal: allow a genuine mistake to be removed
 - **Archive** instead of delete. Archived products are hidden from selling, but their history remains.
 - Price changes are audit-logged (old → new).
 
-### 2.2 Restock (F-05) 🌐
+### 2.2 Restock (purchase) and supplier credit (F-05, F-27) 🌐
 
-- **Input:** quantity received (whole number ≥ 1), or packs × units per pack; then **either** total cost **or** unit cost.
-- **Server:**
-  - if stock is **negative**, first re-values the negative units at this restock's unit cost and records the difference as a **cost adjustment** (C-25)
-  - adds a movement (`type = restock`, + quantity, + **total amount paid** as value)
-  - increases `stock_qty` and `stock_value`; the new average is value ÷ quantity (C-20, C-21)
-  - writes a `product_cost_history` row (C-22)
-- If the product has open discrepancies, the app asks: "Was the stock count wrong before this restock?" and links to an adjustment. It does **not** auto-resolve.
+**Input:**
+- Quantity received (whole number ≥ 1, or packs × units per pack).
+- **Purchase cost:** the full price of the goods, entered as a total or per unit. Required.
+- **Amount paid now:** defaults to the full purchase cost; can be anything from 0 up to the purchase cost.
+- **Paid from:** cash drawer, MoMo or other.
+- Supplier name (optional, free text) and a note.
+
+**The form states clearly:**
+> "Stock value increases by the full cost of the goods (GH₵ 500.00). You paid GH₵ 300.00 now; **GH₵ 200.00 will be recorded as owed to the supplier.**"
+
+**Server** (one transaction):
+- If stock is **negative**, the negative units are first re-valued at this purchase's unit cost. The difference is recorded as a **cost adjustment**, and a Needs attention item explains it (C-25, C-122).
+- A movement is added: `type = restock`, + quantity, + **full purchase cost** (C-21, C-111).
+- `stock_qty` and `stock_value` increase; the new average is value ÷ quantity.
+- A `product_cost_history` row is written.
+- A `purchases` record is created with purchase cost, paid now, paid from and supplier name. The **unpaid amount** is calculated (C-112).
+
+If the product has open discrepancies, the app asks: "Was the stock count wrong before this restock?" and links to an adjustment. It does **not** auto-resolve.
+
+**Pay supplier** (from the **Unpaid purchases** list, S-38) 🌐:
+- Amount (≤ unpaid), paid from, date.
+- Changes cash/MoMo out and the amount owed only. **No effect on stock value or profit** (C-113).
+
+**Correct a purchase** (from the purchase in product history) 🌐:
+- Choose a price or quantity correction, enter the corrected value and a reason (required).
+- Recorded as a `purchase_correction` linked to the original, which is never edited.
+- If the product still has stock, the value change goes into the stock value. Otherwise it is posted as a visible cost adjustment. The unpaid amount is updated (C-116).
+
+**Return to supplier** 🌐:
+- Quantity, reason, and the supplier's credit: refund received (cash/MoMo) **or** reduce the unpaid amount of a chosen purchase.
+- Stock value is reduced at the current average. Any difference from the credit is a visible cost adjustment (C-117, C-25c).
+
+**Not in the MVP:** supplier accounts and statements (L6); adding transport costs to stock cost (L7; record transport as an expense).
 
 ### 2.3 Stock adjustment (F-06, F-22) 🌐
 
 - **Input:** either the **counted quantity** (the app computes the change) or a +/− change, a reason, and an optional note.
 - **Server:** adds a movement (`type = adjustment`), updates `stock_qty`, and marks the product's open discrepancies **resolved** when the resulting stock is ≥ 0. Each resolved discrepancy is linked to this movement.
 - Each adjustment is valued at round_half_up(qty × current average) and moves that value out of (losses) or into (stock found) the stock value, so the average is unchanged (C-21). If stock reaches 0 with a value left over, the leftover becomes a cost adjustment (C-25a).
-- **Stock-reducing adjustments** (damaged, expired, missing/theft, own use, count correction down) are **stock losses**. They **reduce estimated net profit** and are shown on their own line in Reports (C-30, C-44).
+- **Stock-reducing adjustments** (damaged, expired, missing/theft, count correction down) are **stock losses**. They **reduce estimated net profit** and are shown on their own line in Reports (C-30, C-44).
+- **Own use** (goods taken for personal or household use) is recorded with its own reason. It is shown as "Goods taken for own use", below net profit, and does not reduce business profit (C-37, proposed).
+- **The app never adjusts quantities by itself.** Every quantity change comes from a sale, purchase, return or owner-entered adjustment. Negative stock stays visible until the owner acts (C-120).
 - **Stock-increasing count corrections** are shown as "stock found" for information and are **not** counted as income (C-31). Resolving negative stock this way has no profit effect (C-32).
 
 ### 2.4 Low stock (F-07)
@@ -193,15 +221,17 @@ Three different actions. The app never mixes them (full rules in 05 §7.2):
 ## 5. Cash count — close the day (F-19) 🌐
 
 1. **Opening cash:** defaults to the previous day's counted cash (editable, e.g. after money was removed for banking).
-2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments + cash recoveries of written-off debt − operating expenses paid from the cash drawer (all for that day; voided and cancelled-before-upload sales excluded).
+2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments + cash recoveries of written-off debt + cash refunds from suppliers − operating expenses paid from the cash drawer − purchase and supplier payments from the cash drawer (all for that day; voided and cancelled-before-upload sales excluded).
 3. The owner enters **counted cash** and an optional note.
 4. **Difference** = counted − expected. Labels: Balanced (0), Over (+), Short (−).
-5. Saved as a `cash_counts` row: date, opening, expected, counted, difference, note. Re-counting creates a new version; earlier versions are kept.
-5a. **The day is closed:** the server stores an immutable **day snapshot** of all report figures for that day (05 §11, C-100). Later uploads, voids or cancellations affecting that day are shown as "Changes after closing", and the confirmed figures are never rewritten. Closing is optional; days that are never closed simply show current figures with the late-upload note (C-56).
+5. **Close the day** saves the cash count and the **original closing record** of all that day's figures (05 §11, C-100). This can be done **once per day**, and the record is never edited or replaced.
+5a. **After closing:** late uploads, voids, cancellations, back-dated entries and cash recounts for that day are each recorded as a separate **day adjustment** (C-101, C-102). A recount does not replace the original count; it is added as an adjustment. The day's report shows **Original closing figures → Adjustments after closing → Current adjusted total** (C-104), and the owner is notified (C-126).
+5b. Closing is optional. Days that are never closed show current figures with the late-upload note (C-56).
 6. **MoMo received** that day (MoMo sales + MoMo paid-now + MoMo repayments + MoMo recoveries) is displayed for manual comparison with the wallet. It is not stored as a count in the MVP.
 
 **Limitations (stated in the app help) [A]:** owners often take money out of the drawer for personal use or pay suppliers from it.
-- MVP: record supplier payments as Restock (no drawer effect) and personal withdrawals via the note.
+- Supplier payments from the drawer are recorded (purchase paid-now and Pay supplier) and reduce expected cash.
+- Personal cash withdrawals: use the note in the MVP.
 - A "cash out of drawer" entry type is a candidate future feature, depending on pilot feedback.
 
 **Schema:** see [09-data-model.md](09-data-model.md) (`cash_counts`, `expenses.paid_from`, `sales.momo_reference`, `customer_ledger.momo_reference`).

@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v6 — for final review as the implementation baseline (product specification revision 4)
+**Status:** v7 — for final approval as the implementation baseline (product specification revision 5)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -181,7 +181,11 @@ Rules:
 - Closed days keep immutable snapshots, so confirmed reports are never rewritten.
 - Details: specification 05 §3, §11.
 - Limitations and the fallback (last-restock pricing) are documented in specification 05 §3.
-- **Stock losses** (damaged, expired, missing, own use, count corrections down) and **bad debts written off** **reduce estimated net profit**. They are shown separately from operating expenses.
+- **Purchases** add their **full acquisition cost** to stock value, whatever was paid. Unpaid amounts are tracked per purchase (no full supplier accounts in the MVP).
+- **Goods taken for own use** are shown separately, below net profit (proposed: not a business cost).
+- **Every automatic cost adjustment is visible**, with a Needs attention item showing its GH₵ effect and the action required.
+- **Daily closing** keeps the original figures; later changes are separate adjustments.
+- **Stock losses** (damaged, expired, missing, count corrections down) and **bad debts written off** **reduce estimated net profit**. They are shown separately from operating expenses.
 
 ### 5.5 Units
 
@@ -527,6 +531,11 @@ Timelines are estimates for part-time work.
 | 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Proposed — for final review |
 | 33 | Immutable day snapshots on Close the day; late changes shown separately | Proposed — for final review |
 | 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Proposed — for final review |
+| 35 | Purchases at **full acquisition cost**; amount paid recorded separately; per-purchase unpaid amounts, Pay supplier, purchase corrections, supplier returns; no full supplier accounts in MVP | Proposed — for final review |
+| 36 | Sale time from **server anchors + same-session elapsed time**; reboot and clock-change detection; bounds; low confidence → upload time, flagged | Proposed — for final review (supersedes 31) |
+| 37 | Never adjust quantities automatically; every automatic value change is a visible cost adjustment with a Needs attention item | Proposed — for final review |
+| 38 | **One immutable original closing per day**; later changes as itemised day adjustments; current adjusted total shown alongside (supersedes 33) | Proposed — for final review |
+| 39 | **Goods taken for own use are not a business cost:** shown below net profit (changes the earlier rule that counted own use as a stock loss) | Proposed — for final review |
 
 ### References
 

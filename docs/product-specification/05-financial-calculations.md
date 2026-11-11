@@ -1,9 +1,14 @@
 # 05 — Financial Calculations
 
-**Revision 4.**
-- **Value-pool weighted average** with sale-time costing. This replaces the stored running average, and fixes the late-sale average problem.
-- Time-confidence checks for phone timestamps.
-- Day-close snapshots, so confirmed reports are never rewritten.
+**Revision 5.**
+- Purchases at full acquisition cost, with supplier credit (§12).
+- Anchor-based sale-time design (§3.6).
+- Visible cost adjustments with Needs attention items (§3.4).
+- Original daily closing plus separate adjustments (§11).
+- A precise conservation statement (§3.2).
+- Own use shown separately (§4).
+
+Revision 4 introduced the value-pool weighted average with sale-time costing.
 - Unchanged from revision 3: undo vs recovery of write-offs; losses and bad debts reduce estimated net profit.
 
 Every rule here is linked to test cases in [10-test-plan.md](10-test-plan.md). **Those tests are documented only, not yet implemented or run.** Database fields are defined in [09-data-model.md](09-data-model.md).
@@ -52,21 +57,36 @@ The future average was wrong because the restock was blended against a stock cou
 
 | ID | Rule |
 |---|---|
-| C-20 | Each product keeps `stock_qty` (integer) and **`stock_value`** (integer pesewas). **Average cost = stock_value ÷ stock_qty** whenever stock_qty > 0. Not stored; computed exactly. Rounded only when a line cost is calculated |
-| C-21 | Every event changes the pool by an exact, recorded amount (the `value` on its stock movement):<br>• **Opening stock:** + qty, + qty × entered cost<br>• **Restock:** + qty, + **total amount paid** (exact pesewas, no division needed)<br>• **Sale:** − qty, − line cost (C-23)<br>• **Void:** + qty, + the original line cost<br>• **Stock loss** (damaged, expired, missing, own use, count down): − qty, − round_half_up(qty × average)<br>• **Stock found** (count up): + qty, + round_half_up(qty × average) |
-| C-22 | After every event, the server writes one `product_cost_history` row: time (server), stock_qty, stock_value, and the resulting average (4 dp, for lookups and display) |
+| C-20 | Each product keeps `stock_qty` (integer) and **`stock_value`** (integer pesewas). **Average cost = stock_value ÷ stock_qty** whenever stock_qty > 0. Not stored; computed exactly. Rounded only when a movement's value is calculated |
+| C-21 | Every change to the pool is a recorded stock movement with an exact value. These are the **only** ways stock value can change:<br>• **Opening stock:** + qty, + qty × entered cost<br>• **Purchase (restock):** + qty, + **full acquisition cost** (purchase cost, *not* the amount paid; see §12)<br>• **Purchase correction:** ± qty and/or ± value, correcting a recorded purchase (§12, C-116)<br>• **Sale:** − qty, − sale-time line cost (C-23)<br>• **Void (customer return):** + qty, + the original line cost<br>• **Return to supplier:** − qty, − round_half_up(qty × average) (§12, C-117)<br>• **Stock loss** (damaged, expired, missing/theft, count down): − qty, − round_half_up(qty × average)<br>• **Own use** (goods taken for personal use): − qty, − round_half_up(qty × average)<br>• **Stock found** (count up): + qty, + round_half_up(qty × average)<br>• **Owner cost correction:** ± value only (C-27)<br>• **Cost adjustment:** ± value only, in the visible cases of §3.4 |
+| C-22 | After every movement, the server writes one `product_cost_history` row: time (server), stock_qty, stock_value, and average (4 dp) |
 
-**Conservation guarantee** (checked by test TC-COST-20 for every product):
+**Stock-cost conservation statement** (verified by test TC-COST-20 for every product and every period):
 
-> Opening value + restocks + stock found + void returns + manual corrections = cost of items sold + cost adjustments + stock losses + current stock value
+```
+Closing stock value
+  = Opening stock value (start of period; for a new product, its opening-stock entry)
+  + Purchases at full acquisition cost (paid and unpaid)
+  ± Purchase corrections (price or quantity errors in recorded purchases)
+  + Customer returns (voids, at original sale cost)
+  + Stock found (count increases, at average)
+  ± Owner cost corrections
+  − Returns to supplier (at average)
+  − Cost of items sold (sale-time costs)
+  − Stock losses (damaged, expired, missing/theft, count decreases, at average)
+  − Goods taken for own use (at average)
+  ± Cost adjustments (§3.4: negative-stock revaluation, zero-stock leftover, negative-value correction, supplier-return difference)
+```
 
-No pesewa of cost is ever created or lost, whatever order events arrive in.
+**What this guarantee means, and what it doesn't:**
+- It is a **bookkeeping identity enforced by construction**: stock value can only change through the movement types above, each is recorded, and the test proves no change happens outside them, whatever order offline sales arrive in.
+- It does **not** prove the figures are economically right. That still depends on the owner entering correct purchase costs, doing stock counts, and on sale-time estimates (§3.6).
 
 ### 3.3 Cost of a sale: sale-time ("as-of") costing (C-23 – C-23c)
 
 | ID | Rule |
 |---|---|
-| C-23 | **Cost time** = the sale's `occurred_at` (best estimate of when the sale happened, §3.6). If time confidence is **low**, the server uses `received_at` instead and records `cost_basis = received_at` |
+| C-23 | **Cost time** = the sale's `occurred_at` (best estimate, §3.6). If time confidence is **low**, the upload time is used (C-96) and `cost_basis = received_at` is recorded |
 | C-23a | `unit_cost` = the average from the **latest `product_cost_history` row at or before the cost time**. If none is that early, the earliest row is used and `cost_basis_adjusted` is set. Equal timestamps: the history row counts as earlier |
 | C-23b | `line_cost = round_half_up(qty × unit_cost)`. This exact amount is removed from the pool (C-21) |
 | C-23c | The phone's provisional cost is stored as `device_unit_cost` for audit only. If it differs, the sale detail explains why |
@@ -74,18 +94,39 @@ No pesewa of cost is ever created or lost, whatever order events arrive in.
 | C-28 | **Pending sales on the phone** use the phone's cached average for display only, labelled "estimated" until uploaded |
 | C-29 | **A recorded sale's cost never changes** — not after restocks, cost corrections or later uploads |
 
-### 3.4 Keeping the pool valid (C-25 – C-27)
+### 3.4 Edge cases: visible cost adjustments, never silent (C-25 – C-27, C-120 – C-126)
 
-Edge cases are handled by an explicit, visible **cost adjustment** movement, dated when it is processed, so no history is rewritten:
+**Principles:**
+- The app **never changes a stock quantity by itself**. Quantities change only through sales, purchases, returns and owner-entered adjustments.
+- The app **never changes stock value without a recorded movement**. Every automatic **cost adjustment** is dated when processed (history is not rewritten), shown in reports, and raises a **Needs attention** item that explains three things:
+  - **what happened**
+  - **the financial effect** in GH₵
+  - **what the owner should do**
 
 | ID | Situation | Rule | Reported as |
 |---|---|---|---|
-| C-25 | **Restock while stock is negative** (items were sold before their purchase was recorded) | First re-value the negative units at the new restock unit cost: `stock_value := stock_qty × (total paid ÷ qty)`. The difference becomes a cost adjustment. Then add the restock | Cost of items sold → "Cost adjustments" |
-| C-25a | **Stock reaches exactly 0 but value isn't 0** (rounding leftovers or earlier misallocation) | Post the leftover value as a cost adjustment; value := 0 | Cost adjustments |
-| C-25b | **Stock positive but value negative** (a late sale removed more than the pool held) | Post the difference so value := 0 | Cost adjustments |
-| C-26 | **Void** returns the original line cost to the pool (C-21) | | — |
-| C-27 | **Manual cost correction** (owner says the average is wrong): `stock_value := stock_qty × new cost`. The difference is a **stock value correction**, audit-logged | Info line "Stock value corrections" — **not** in profit, because no money was spent or lost |
-| C-27a | **First cost for a product with unknown cost:** same as C-27 (no profit effect). Earlier sales keep cost 0 (`cost_missing`) | Info |
+| C-25 | **Purchase recorded while stock is negative** (items were sold before their purchase was recorded) | The negative units are re-valued at this purchase's unit cost; the difference is a cost adjustment; then the purchase is added | Cost of items sold → "Cost adjustments" |
+| C-25a | **Stock reaches exactly 0 but value isn't 0** | The leftover value is posted as a cost adjustment | Cost adjustments (amounts under GH₵0.10 shown as "Rounding") |
+| C-25b | **Stock positive but value negative** (e.g. a late sale removed more value than remained) | A cost adjustment brings value to 0, and **a "Cost check needed" alert is raised**, because this signals a wrong purchase cost or a missed restock | Cost adjustments |
+| C-25c | **Return to supplier refund differs from the value removed** | The difference is a cost adjustment (§12, C-117) | Cost adjustments |
+| C-26 | Void returns the original line cost (C-21) | | — |
+| C-27 | **Owner cost correction** (owner says the average is wrong): `stock_value := stock_qty × new cost`; the difference is a value correction, audit-logged | | Info line "Stock value corrections" (not profit) |
+| C-27a | **First cost for a product with unknown cost:** as C-27. Earlier sales keep cost 0 (`cost_missing`) | | Info |
+
+**Needs attention items** (shown on Today and in the Stock issues screen; each with plain-language text):
+
+| ID | Item | Example message | Financial effect shown | Action offered | Clears when |
+|---|---|---|---|---|---|
+| C-120 | **Negative stock** | "Sardine shows **−2**. You sold 2 more than the app knew you had." | "These 2 were costed at GH₵11.00 each (GH₵22.00), an estimate until you record the purchase or correct the count." | **Count and correct** · **Record a missed restock** · **Cancel a wrong sale** | Stock ≥ 0 through an owner action |
+| C-121 | **Negative stock value** (with negative qty) | Shown inside C-120: "Value −GH₵22.00 = the estimated cost of items sold without a recorded purchase." | As above | As above | As above |
+| C-122 | **Cost adjustment posted** (C-25, C-25a ≥ GH₵0.10, C-25c) | "Sardine purchase on 12 Nov re-valued 2 items already sold: **+GH₵1.20** cost, because they were bought at GH₵11.60, not the GH₵11.00 estimated." | Amount and direction (profit lower / higher) | **View details** · **I understand** (acknowledgement is recorded) | Acknowledged |
+| C-123 | **Cost check needed** (C-25b) | "Milo's stock value went below zero (−GH₵3.40) after a late sale. This usually means a purchase cost was entered too low or a restock was missed." | "Cost of items sold increased by GH₵3.40." | **Check recent purchases** · **Correct cost price** · **I understand** | Owner acts or acknowledges |
+| C-124 | **Cost missing** | "3 products have no cost price, so profit looks higher than it really is." | "N sales lines costed at GH₵0.00." | **Add cost prices** | Cost set |
+| C-125 | **Sale time uncertain** | §3.6 | "Counted on [upload day] instead of [claimed day]." | **View sale** · **I understand** | Acknowledged |
+| C-126 | **Changes to a closed day** | §11 | "+GH₵22.00 sales added to 12 Nov after closing." | **View changes** | Acknowledged |
+
+- Acknowledging an item **never changes any figure**. It only records that the owner has seen it.
+- Unresolved items remain listed.
 
 ### 3.5 The owner's scenario, worked through (tests TC-COST-11, -12)
 
@@ -119,23 +160,37 @@ This residual misallocation (limitation L2) only occurs when **another sale of t
 
 **Not in the MVP:** a full "replay" that would correct in-between sales by posting a correcting adjustment. It is possible, but adds real complexity (re-ordering every event since the late sale). It is recorded as a **candidate improvement only if pilot data shows material amounts**. The pilot logs the size of every such misallocation (C-58) so the decision can be made on evidence.
 
-### 3.6 Sale time and time confidence (C-90 – C-95)
+### 3.6 Sale time: anchors, reboot detection and confidence (C-90 – C-97)
 
-Phone clocks can be wrong, or deliberately changed. Each offline sale carries:
-- the phone's wall-clock time
-- the phone's **elapsed time since boot** (Android's monotonic clock, which a user cannot change in settings)
-- a boot ID
+**Why elapsed time alone isn't enough:** Android's elapsed time (time since the phone was switched on) can't be changed in settings, but it **restarts from zero after every reboot**. It is only meaningful relative to an anchor taken in the **same boot session**. The design therefore combines four sources, each with known weaknesses:
 
-At every sync, the phone sends its current wall-clock and elapsed time.
-
-| ID | Check | Outcome |
+| Source | Strength | Weakness |
 |---|---|---|
-| C-90 | **Elapsed-time verification:** if the sale and the sync happened in the same boot session, then true sale time = server time at sync − (elapsed at sync − elapsed at sale). This works even if the wall clock was changed | `occurred_at` = verified time; confidence **high** (differences over 2 minutes from the phone's wall clock are noted) |
-| C-91 | Different boot session (phone restarted): use the phone's wall clock, checked against the device's **clock offset** (measured at each sync). If the offset at the last sync was ≤ 5 minutes | Confidence **medium** |
-| C-92 | **Red flags:** sale time later than upload time (beyond 5 minutes); more than 30 days before upload; earlier than the device's registration or the product's creation; earlier than a previous receipt number from the same device (clock went backwards); large offset at last sync | Confidence **low**; sale flagged in Needs attention: "Check this sale's time" |
-| C-93 | **Low confidence:** reports and costing use `received_at` (upload time). The phone's claimed time is kept for the record. The owner sees both | |
-| C-94 | Stored: `occurred_at_device` (raw), `occurred_at` (best estimate), `time_confidence`, `time_check` details | |
-| C-95 | **Purpose:** catches mistakes and casual manipulation. It is not a defence against a determined technical attacker. Acceptable for owner-only use; to be revisited when staff accounts are added [A] | |
+| **Server time** (at every successful contact) | Trusted | Only available online |
+| **Elapsed time since boot** | Can't be changed by the user; steady | Resets on reboot |
+| **Boot session ID** (Android boot counter where available; otherwise a reboot is detected when elapsed time goes **down**) | Detects reboots | Boot counter availability via Expo to be confirmed [A]; the fallback check always works |
+| **Phone wall clock** | Always available | Can be wrong or changed |
+
+**Rules:**
+
+| ID | Rule |
+|---|---|
+| C-90 | **Anchors.** Whenever the app reaches the server (login, sync heartbeat, any online action), it stores an **anchor**: server time, elapsed time, boot ID and wall-clock time. The server keeps the same anchors per device |
+| C-91 | **Every sale records** the wall-clock time, elapsed time, boot ID, the ID of the latest anchor, and a per-device sequence number |
+| C-92 | **Reboot detection:** boot ID changed, or elapsed time lower than the last recorded value → new boot session. The app records a "reboot detected" event. A sale in a new boot session has **no elapsed-time link** to anything before the reboot |
+| C-93 | **Wall-clock change detection:** within one boot session, `wall clock − elapsed` should stay constant. A jump of more than 2 minutes is recorded as a "clock changed" event (with the size of the change) |
+| C-94 | **Time bounds:** every sale must lie between a **lower bound** (the later of the device's previous sale time estimate and the latest anchor before it) and an **upper bound** (the server time when it was uploaded) |
+| C-95 | **Confidence:**<br>• **High:** an anchor exists **in the same boot session** before the sale. Estimated time = anchor server time + (sale elapsed − anchor elapsed). The wall clock is not used<br>• **Medium:** no same-session anchor (the phone rebooted while offline), but the wall clock lies within the bounds (C-94), no clock change was detected since the last anchor, and the clock offset at the last anchor was ≤ 5 minutes. Estimated time = wall clock<br>• **Low:** anything else (wall clock outside the bounds, clock changed while offline, large offset, sequence out of order) |
+| C-96 | **Fallback for low confidence:** the sale is **accepted, never rejected**. It is costed and reported at its **upload time**, and the known window ("between Mon 09:12 and Tue 14:00") is shown. A **Sale time uncertain** item is raised (C-125). The wall-clock time claimed is kept for the record. In the MVP the owner cannot edit sale times |
+| C-97 | **Limits:** the design catches wrong clocks, reboots and casual clock changes. It cannot stop a determined technical attacker who modifies the app. Acceptable for owner-only use; to be re-assessed before staff accounts [A] |
+
+**Examples:**
+
+| Case | Result |
+|---|---|
+| Anchor at 08:00 (sync); offline; sale at elapsed +2 h; no reboot | **High**: 10:00, even if the wall clock says 07:00 |
+| Phone dies at 11:00, restarts, sale at 12:30 by wall clock; previous sale 10:50; uploaded 15:00; clock offset at last anchor 1 min; no clock change | **Medium**: 12:30 |
+| Same, but the wall clock says yesterday 21:00 (before the previous sale) | **Low**: reported at 15:00 (upload), window shown, flagged |
 
 ### 3.7 Two devices with overlapping or conflicting times
 
@@ -156,9 +211,10 @@ At every sync, the phone sends its current wall-clock and elapsed time.
 
 | # | Limitation | Effect | Mitigation |
 |---|---|---|---|
-| L1 | Sale time is estimated (C-90–C-95) | Wrong cost period possible for low-confidence or near-tie sales | Elapsed-time check; flags; fallback to upload time |
+| L1 | Sale time is estimated (C-90 – C-97) | Wrong cost period possible for medium-confidence or near-tie sales | Anchors, reboot and clock-change detection, bounds; low confidence → upload time and flag |
 | L2 | In-between sales (§3.5, scenario B) | Small misallocation between those sales' cost and remaining stock value; total conserved | Logged (C-58); replay correction deferred unless pilot shows need |
-| L3 | Negative stock | Sales while negative use the last average; corrected via cost adjustment at the next restock (C-25) | Visible as "Cost adjustments" |
+| L3 | Negative stock | Sales while negative use the last average; corrected via cost adjustment at the next purchase (C-25) | Needs attention items C-120 – C-122 |
+| L6 – L9 | Purchases and suppliers | See §12 | |
 | L4 | Unknown cost | Profit too high | Warning (C-54) |
 | L5 | Corrections are not retroactive | Earlier sales keep their cost | Intentional |
 
@@ -169,19 +225,20 @@ Last-restock pricing:
 - **Effect:** when prices rise, older stock is costed at the newer price and profit is understated; when prices fall, profit is overstated.
 - The conservation guarantee does not hold, so this is a less safe option.
 
-## 4. Losses and recoveries (C-30 – C-36)
+## 4. Losses, own use and recoveries (C-30 – C-37)
 
 | ID | Rule |
 |---|---|
-| C-30 | **Stock losses** = stock-reducing adjustments with reason *damaged*, *expired*, *missing/theft*, *own use*, *count correction (decrease)*, valued at round_half_up(qty × current average) (C-21) |
+| C-30 | **Stock losses** = stock-reducing adjustments with reason *damaged*, *expired*, *missing/theft*, *count correction (decrease)*, valued at round_half_up(qty × current average) (C-21) |
 | C-31 | **Stock found** (increasing count corrections) is **not** income; information only (approved) |
 | C-32 | Resolving a negative-stock discrepancy by an increasing correction has no profit effect |
 | C-33 | **Bad debts written off** (period) = Σ `write_off` amounts dated in the period − Σ `write_off_undo` amounts dated in the period |
 | C-34 | Balance **corrections** (`adjustment`) do not affect profit |
 | C-35 | **Recovered bad debts** (period) = Σ `debt_recoveries` amounts dated in the period. Money received for a debt that was **correctly** written off. Shown as its own positive line |
 | C-36 | Undo and recovery are **different events** (§7.2); one payment is never counted as both |
+| C-37 | **Goods taken for own use** = own-use adjustments at average. **Not a business cost:** like the owner paying themselves. Shown below net profit as "Goods taken for own use", so the owner sees it, without reducing business profit (proposed change, see README revision 5) |
 
-## 5. Report figures for a period (C-40 – C-56)
+## 5. Report figures for a period (C-40 – C-59)
 
 Voided sales, sales cancelled before upload and deleted expenses are excluded. Periods use Ghana time; sales by `occurred_at`; other events by their dates.
 
@@ -206,8 +263,9 @@ Voided sales, sales cancelled before upload and deleted expenses are excluded. P
 | C-56 | **Late uploads note** | Count of sales in the period with `received_at` after the period ended |
 | C-57 | **Stock value corrections** (info) | Σ manual cost-correction value changes (C-27); not in profit |
 | C-58 | **Late-sale cost difference** (diagnostic) | For each late sale: Σ qty × (average at upload time − sale-time cost). Logged per product to measure L2; not a profit figure |
+| C-59 | **Purchases and suppliers** (info) | Stock purchased, Paid to suppliers, Owed to suppliers (C-114) |
 
-**C-56 (late uploads):** a sale uploaded late is **added** to the day on which it happened. That is a new record, not a change to existing records. If that day was already **closed**, the confirmed figures remain as they were, and the late sale is shown separately (§11).
+**C-56 (late uploads):** a sale uploaded late is **added** to the day on which it happened. That is a new record, not a change to existing records. If that day was already **closed**, the original closing figures remain as they were, and the late sale appears as a separate day adjustment (§11).
 
 **Profit statement layout** (Reports and the Today detail view):
 
@@ -220,6 +278,8 @@ Sales                          GH₵ 149.75
 − Bad debts written off        GH₵  12.00
 + Recovered bad debts          GH₵   0.00
 = Net profit (estimated)      −GH₵   8.23
+
+Goods taken for own use        GH₵   0.00   (not a business cost)
 ```
 
 **Revenue rule:**
@@ -274,7 +334,7 @@ Sales                          GH₵ 149.75
 
 | ID | Formula |
 |---|---|
-| C-80 | Expected cash = opening + cash sales + cash paid-now + cash repayments + cash recoveries − operating expenses paid from the cash drawer (same day) |
+| C-80 | Expected cash = opening + cash sales + cash paid-now + cash repayments + cash recoveries + cash refunds from suppliers − operating expenses paid from the cash drawer − purchase and supplier payments from the cash drawer (same day) |
 | C-81 | Difference = counted − expected; informational, not added to profit [A] |
 | C-82 | Voided and cancelled-before-upload sales, and deleted expenses, are excluded. Late changes do not rewrite a saved count |
 
@@ -325,23 +385,61 @@ Ama (customer) owes **GH₵100**.
 - Money received = 80 + 20 = GH₵100 (each pesewa counted once).
 - Net bad-debt effect on profit over days 1–5 = +40 +60 −60 −20 −20 = **0**. Correct, because Ama paid everything.
 
-## 11. Day close and confirmed reports (C-100 – C-104)
+## 11. Daily closing: original figures preserved, adjustments separate (C-100 – C-106)
 
-**Goal:** late-arriving transactions are recorded truthfully, without rewriting figures the owner has already confirmed.
+**Goal:** what the owner confirmed at closing is kept exactly as it was. Anything that arrives or changes later appears as a **separate, itemised adjustment**, with a **current adjusted total** available alongside.
 
 | ID | Rule |
 |---|---|
-| C-100 | **Close the day** (with the cash count, 04 §5) stores an **immutable day snapshot**: every figure in §5 for that day, the closing time, and the list of included record IDs |
-| C-101 | Reports are always calculated from the underlying records, but for a **closed day** they show the snapshot as **"Confirmed figures"**, then any records added or changed after closing as **"Changes after closing"**, then the **"Current total"** |
-| C-102 | **Changes after closing:** late-uploaded sales that happened that day, voids of that day's sales, and cancellations. Each is listed with its upload or action time. Cost adjustments are dated when processed, so they never appear in an earlier day |
-| C-103 | A snapshot is never edited. Closing the same day again (re-count) creates a **new version** and keeps the old one (audit) |
-| C-104 | Weekly and monthly reports sum days and show "Includes N changes after days were closed (GH₵ X)". Nothing changes silently |
+| C-100 | **Close the day** (with the cash count, 04 §5) stores the **original closing record**: every figure in §5 for that day, the cash count, the closing time, and the IDs of all records included. It can be created **once per day** and is **never edited or replaced** |
+| C-101 | **Day adjustments:** any later event that affects a closed day's figures creates a **day adjustment** record linked to that day: what it was, which figures it changes and by how much, when it happened, and who did it. Day adjustments are append-only |
+| C-102 | **Events that create day adjustments:** late-uploaded sales that happened that day; voids or cancellations of that day's sales; back-dated expenses, repayments, recoveries or supplier payments dated that day; a cash recount after closing (recorded as a "cash recount" adjustment; the original count stays) |
+| C-103 | **Not day adjustments:** cost adjustments, purchase corrections and owner cost corrections are dated **when processed**, so they appear on the processing day, never on an earlier closed day |
+| C-104 | **Display for a closed day:** **Original closing figures** (time, who) → **Adjustments after closing** (each item with its date and time, and its effect) → **Current adjusted total** = original + Σ adjustments |
+| C-105 | **Consistency check:** the current adjusted total must equal a fresh calculation from the underlying records. Any mismatch is a defect (test TC-CLOSE-07), never silently "fixed" |
+| C-106 | **Weekly and monthly reports** sum current adjusted totals, and also show "Includes N adjustments to closed days (GH₵ X)". The original closing figures stay available per day |
 
 **Example:**
-- 12 Nov closed at 19:00, confirmed sales GH₵1,240.50.
-- On 13 Nov at 08:30, a 12 Nov offline sale of GH₵22.00 uploads.
+- 12 Nov closed at 19:00 with sales GH₵1,240.50 and counted cash GH₵227.00.
+- 13 Nov 08:30: a 12 Nov offline sale of GH₵22.00 (cash) uploads.
+- 13 Nov 09:00: the owner recounts and finds the 12 Nov cash was actually GH₵249.00.
 
-The 12 Nov report shows:
-- Confirmed (19:00): GH₵1,240.50
-- Changes after closing: + GH₵22.00 (1 late sale, uploaded 13 Nov 08:30)
-- Current total: GH₵1,262.50
+| 12 Nov | Sales | Expected cash | Counted cash |
+|---|---|---|---|
+| **Original closing (19:00, Ama)** | 1,240.50 | 227.00 | 227.00 |
+| Adjustment: late sale A-000131, uploaded 13 Nov 08:30 | + 22.00 | + 22.00 | |
+| Adjustment: cash recount, 13 Nov 09:00 | | | → 249.00 |
+| **Current adjusted** | **1,262.50** | **249.00** | **249.00** (balanced) |
+
+## 12. Stock purchases and supplier credit (C-110 – C-118)
+
+**Principle:** stock value increases by the **full acquisition cost** of the goods, whatever was paid at the time. Payment is a separate matter of cash and amounts owed, not cost.
+
+| ID | Rule |
+|---|---|
+| C-110 | **Recording a purchase (restock)** captures: quantity; **purchase cost** (the full agreed price of the goods, required); **amount paid now** (0 to purchase cost); paid from (cash drawer / MoMo / other); supplier name (optional free text); date |
+| C-111 | **Stock value** increases by the **purchase cost** (C-21), e.g. goods worth GH₵500 with GH₵300 paid → stock value **+GH₵500** |
+| C-112 | **Unpaid amount** of a purchase = purchase cost − amount paid now − later payments ± purchase cost corrections. It must stay ≥ 0 |
+| C-113 | **Paying for an earlier purchase** ("Pay supplier") is linked to that purchase: amount ≤ unpaid; paid from. It changes **no stock value and no profit**, only cash/MoMo out and the amount owed |
+| C-114 | **Reports (information, not profit):** Stock purchased (Σ purchase cost); Paid to suppliers (by method, including paid-now); **Owed to suppliers** (Σ unpaid, with a list of unpaid purchases) |
+| C-115 | **Cash count:** purchase payments and supplier payments **from the cash drawer** reduce expected cash; supplier refunds received in cash increase it (C-80) |
+| C-116 | **Purchase correction** (wrong price or quantity entered): recorded against the original purchase, never by editing it. Quantity corrections are valued at that purchase's unit cost. If stock is above 0, the value change goes to the pool; if stock is 0 or below (the goods have been sold), it is posted as a visible cost adjustment (C-122). The unpaid amount is updated |
+| C-117 | **Return to supplier:** stock − qty, value − (qty × average). The supplier's credit is recorded as a refund (cash/MoMo in) **or** a reduction of a chosen purchase's unpaid amount. Any difference between the credit and the value removed is a visible cost adjustment (C-25c) |
+| C-118 | **Delivery and transport costs** are **not** added to stock cost in the MVP; they are recorded as an operating expense ("Stock transport") |
+
+**Example:** goods worth GH₵500, GH₵300 paid from the cash drawer, GH₵200 owed.
+
+| Effect | Amount |
+|---|---|
+| Stock value | **+500.00** |
+| Expected cash today | −300.00 |
+| Owed to suppliers | +200.00 |
+| Profit today | 0 (the cost reaches profit only as the goods are sold) |
+
+A week later, "Pay supplier" GH₵200 by MoMo → owed 0; MoMo out 200; stock value and profit unchanged.
+
+**Limitations (documented):**
+- **L6:** no full supplier accounts. There are no supplier records, statements or balances across purchases. Each unpaid amount belongs to one purchase, with supplier name as free text. A supplier ledger is a future feature.
+- **L7:** transport costs are expensed immediately rather than included in item cost. Gross profit per item is slightly higher, and net profit is the same over time, with a timing difference.
+- **L8:** purchase corrections after some goods have sold spread the change over the remaining stock rather than re-costing past sales. The total is conserved.
+- **L9:** no settlement discounts or supplier credit notes beyond returns. A supplier forgiving part of a debt is recorded as a purchase cost correction (lower cost), which is economically correct.

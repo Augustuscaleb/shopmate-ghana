@@ -27,6 +27,9 @@
 | Payment > balance + recoverable | "Kofi owes GH₵ 20.00 and has GH₵ 40.00 written off. The most you can record is GH₵ 60.00." | Server-enforced (C-79) |
 | Undo more than was written off | "Only GH₵ 25.00 of this write-off can still be undone." | |
 | Cancel a sale the server already has | "This sale was already recorded. Use Cancel sale (void) instead." | Sale marked Synced (04 §1.5) |
+| Pay supplier more than owed | "Only GH₵ 200.00 is owed on this purchase." | |
+| Paid now more than purchase cost | "Amount paid can't be more than the cost of the goods." | |
+| Close a day that is already closed | "12 Nov is already closed. You can record a recount; the original closing stays as it is." | |
 | Cancel attempted offline | "Cancelling needs internet, so we can check the sale wasn't already uploaded. The sale is safe on this phone." | |
 | Credit limit exceeded | "This takes Kofi above the credit limit of GH₵ 100.00. Continue anyway?" | Warning only |
 | Discount > subtotal | "Discount can't be more than the sale amount." | |
@@ -65,7 +68,7 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | SEC-15 | The service-role key is never in the app or the repository. Only the public anon key ships in the app |
 | SEC-16 | Admin actions (confirming subscription payments) are performed by a separate admin role, never through the shop app |
 
-### B3. Integrity, concurrency and audit (SEC-20 – SEC-26)
+### B3. Integrity, concurrency and audit (SEC-20 – SEC-27)
 
 | ID | Requirement |
 |---|---|
@@ -76,6 +79,7 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | SEC-24 | **Idempotency:** every write function takes a client-generated key (sale ID or request ID). Repeats return the original result and write nothing (09 §4.3) |
 | SEC-25 | **Transactions and locks:** every write function is one transaction with the fixed lock order (claim → products by ID → customer). Deadlock or serialisation errors roll back fully and are retried by the client (09 §4.2) |
 | SEC-26 | **Re-authentication** (account password, or PIN/fingerprint when app lock is on) is required to cancel an unsent sale (04 §1.5) |
+| SEC-27 | `day_closings` and `day_adjustments` cannot be updated or deleted by anyone through the app or API (database policy). Corrections are new adjustments |
 
 ### B4. Privacy and personal data (SEC-30 – SEC-36)
 

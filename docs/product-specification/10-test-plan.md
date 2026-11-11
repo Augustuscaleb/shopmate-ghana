@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 4.**
+**Revision 5.**
 
 ## 0. Test status (read this first)
 
@@ -17,8 +17,10 @@
 |---|---|---|---|---|
 | Financial (TC-FIN) | 8 | 8 | 0 | 0 |
 | Cost (TC-COST) | 21 | 21 | 0 | 0 |
-| Sale time (TC-TIME) | 8 | 8 | 0 | 0 |
-| Day close (TC-CLOSE) | 6 | 6 | 0 | 0 |
+| Sale time (TC-TIME) | 10 | 10 | 0 | 0 |
+| Daily closing (TC-CLOSE) | 9 | 9 | 0 | 0 |
+| Purchases (TC-PUR) | 9 | 9 | 0 | 0 |
+| Needs attention (TC-ATTN) | 7 | 7 | 0 | 0 |
 | Losses (TC-LOSS) | 3 | 3 | 0 | 0 |
 | Credit (TC-CRED, TC-CASH) | 13 | 13 | 0 | 0 |
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 |
@@ -27,7 +29,7 @@
 | Security (TC-SEC) | 9 | 9 | 0 | 0 |
 | Backup (TC-BAK) | 5 | 5 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 |
-| **Total** | **113** | **113** | **0** | **0** |
+| **Total** | **134** | **134** | **0** | **0** |
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
@@ -58,8 +60,8 @@
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-COST-01 | Restock adds total paid: 10 / 11000 + 12 paid 13920 → 22 / 24920 (avg 1132.7273) | C-21 | 📝 |
-| TC-COST-02 | Restock while stock is −2 (value −2000) with 10 paid 15000 → cost adjustment +1000; pool 8 / 12000 (avg 1500) | C-25 | 📝 |
+| TC-COST-01 | Restock adds the **purchase cost**: 10 / 11000 + 12 costing 13920 → 22 / 24920 (avg 1132.7273) | C-21 | 📝 |
+| TC-COST-02 | Restock while stock is −2 (value −2000) with 10 costing 15000 → cost adjustment +1000 with a Needs attention item; pool 8 / 12000 (avg 1500) | C-25, C-122 | 📝 |
 | TC-COST-03 | Stock reaches 0 with value left over → leftover posted as cost adjustment; value 0 | C-25a | 📝 |
 | TC-COST-04 | Every value-changing event writes exactly one history row with qty, value and average | C-22 | 📝 |
 | TC-COST-05 | Unknown cost → line cost 0, `cost_missing`, warning count; first cost set → value correction, no profit effect | C-24, C-27a | 📝 |
@@ -74,41 +76,72 @@
 | TC-COST-14 | Re-sending a recorded sale returns the same stored cost | C-29 | 📝 |
 | TC-COST-15 | Low-confidence sale is costed at upload time; `cost_basis` recorded | C-23, C-93 | 📝 |
 | TC-COST-16 | Sale time earlier than the first history row → earliest row; `cost_basis_adjusted` | C-23a | 📝 |
-| TC-COST-17 | Late sale leaves value negative while qty > 0 → clamp to 0 via cost adjustment | C-25b | 📝 |
+| TC-COST-17 | Late sale leaves value negative while qty > 0 → cost adjustment to 0 **and** a "Cost check needed" item showing the GH₵ effect | C-25b, C-123 | 📝 |
 | TC-COST-18 | **Order independence:** the same restocks plus several offline sales (no in-between online sales), uploaded in every possible order, give an identical final pool, equal to true-time-order processing | C-21 | 📝 |
 | TC-COST-19 | Restock, adjustment, void and cost correction are impossible offline (buttons disabled; no queue) | 05 §3.8 | 📝 |
-| TC-COST-20 | **Conservation identity** (05 §3.2) holds exactly, to the pesewa, for every product after every test in this section | C-20 | 📝 |
+| TC-COST-20 | **Conservation statement** (05 §3.2), with every term (opening value, purchases at full cost, purchase corrections, customer returns, stock found, owner corrections, supplier returns, cost of items sold, stock losses, own use, cost adjustments), holds exactly to the pesewa for every product and every period, after every test in sections 2, 2a, 2c and 2d | C-20, C-21 | 📝 |
 | TC-COST-21 | Cost-adjustment and value-correction lines appear in the right report lines (Cost of items sold sub-line vs info) | C-41, C-57 | 📝 |
 
-## 2a. Sale time checks
+## 2a. Sale time: anchors, reboots and clock changes
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-TIME-01 | Wall clock moved +2 h before an offline sale, same boot → sale time corrected from elapsed time; confidence high; difference noted | C-90 | 📝 |
-| TC-TIME-02 | Phone restarted between sale and sync, offset at last sync ≤ 5 min → wall clock used; confidence medium | C-91 | 📝 |
-| TC-TIME-03 | Sale time later than upload time (beyond 5 min) → low; costed and reported at upload time | C-92, C-93 | 📝 |
-| TC-TIME-04 | Clock moved backwards (receipt A-000120 earlier than A-000119) → low | C-92 | 📝 |
-| TC-TIME-05 | Sale more than 30 days before upload, or before device registration or product creation → low | C-92 | 📝 |
-| TC-TIME-06 | Low-confidence sale appears in Needs attention with both times; never rejected | SY-52 | 📝 |
-| TC-TIME-07 | Two devices with overlapping sale times around a restock: each sale costed against the server-timed restock by its own best-estimate time | 05 §3.7 | 📝 |
-| TC-TIME-08 | Sale time exactly equal to a restock's time → history row counts as earlier | C-23a | 📝 |
+| TC-TIME-01 | Anchor at 08:00; offline; wall clock moved −3 h; sale 2 h later in the same boot → estimated 10:00, **high** | C-90, C-95 | 📝 |
+| TC-TIME-02 | **Reboot while offline** (elapsed resets): reboot detected (boot ID or elapsed decrease); no same-session anchor; wall clock within bounds, no clock change, offset ≤ 5 min → **medium**, wall-clock time used | C-92, C-95 | 📝 |
+| TC-TIME-03 | Reboot detected via elapsed decrease when the boot counter is unavailable | C-92 | 📝 |
+| TC-TIME-04 | Clock changed by > 2 min within a session → "clock changed" event; later sales in that session without a newer anchor are not medium | C-93, C-95 | 📝 |
+| TC-TIME-05 | Wall clock earlier than the previous sale (lower bound) → **low**; reported and costed at upload time; window shown | C-94 – C-96 | 📝 |
+| TC-TIME-06 | Wall clock later than upload time → **low** | C-94 | 📝 |
+| TC-TIME-07 | Sequence numbers out of order with estimated times → **low** | C-95 | 📝 |
+| TC-TIME-08 | Low-confidence sale raises "Sale time uncertain" with both times; never rejected | C-96, C-125 | 📝 |
+| TC-TIME-09 | Two devices with overlapping times around a server-timed restock: each costed by its own estimate | 05 §3.7 | 📝 |
+| TC-TIME-10 | Sale time exactly equal to a restock → history row counts as earlier | C-23a | 📝 |
 
-## 2b. Day close and late arrivals
+## 2b. Daily closing and adjustments
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-CLOSE-01 | Close the day stores an immutable snapshot of all report figures | C-100 | 📝 |
-| TC-CLOSE-02 | Late upload of a sale from a closed day: confirmed figures unchanged; shown under "Changes after closing"; current total correct | C-101, C-102 | 📝 |
-| TC-CLOSE-03 | Void or cancellation affecting a closed day shown as a change after closing | C-102 | 📝 |
-| TC-CLOSE-04 | Re-closing a day creates a new version; the earlier snapshot is still readable | C-103 | 📝 |
-| TC-CLOSE-05 | Cost adjustments are dated on the processing day, never on an earlier closed day | C-102 | 📝 |
-| TC-CLOSE-06 | Weekly and monthly reports show the count and value of changes after closing | C-104 | 📝 |
+| TC-CLOSE-01 | Close the day stores the original closing record (all figures and the cash count) | C-100 | 📝 |
+| TC-CLOSE-02 | A second close for the same day is refused; the original is unchanged | C-100 | 📝 |
+| TC-CLOSE-03 | Late upload of a sale from a closed day → day adjustment; original figures byte-for-byte unchanged; adjusted total correct | C-101, C-104 | 📝 |
+| TC-CLOSE-04 | Void, cancellation and back-dated expense, payment and supplier payment affecting a closed day → one adjustment each | C-102 | 📝 |
+| TC-CLOSE-05 | Cash recount after closing → adjustment; original count kept; adjusted expected/counted/difference correct | C-102 | 📝 |
+| TC-CLOSE-06 | Cost adjustments and purchase corrections are dated on the processing day, never on a closed day | C-103 | 📝 |
+| TC-CLOSE-07 | For every closed day: original + Σ adjustments = fresh recalculation from records | C-105 | 📝 |
+| TC-CLOSE-08 | Direct UPDATE/DELETE on `day_closings` and `day_adjustments` via the API is denied | SEC-27 | 📝 |
+| TC-CLOSE-09 | Weekly and monthly reports show adjusted totals plus the count and value of closed-day adjustments | C-106 | 📝 |
+
+## 2c. Purchases and supplier credit
+
+| ID | Test | Rules | Status |
+|---|---|---|---|
+| TC-PUR-01 | Goods worth GH₵500, paid GH₵300 from the cash drawer → stock value +500; owed 200; expected cash −300; profit 0 | C-110 – C-115 | 📝 |
+| TC-PUR-02 | Paid now > purchase cost rejected | C-110 | 📝 |
+| TC-PUR-03 | Pay supplier 200 by MoMo → owed 0; MoMo out 200; stock value and profit unchanged; paying more than owed rejected | C-113 | 📝 |
+| TC-PUR-04 | Same Pay supplier request twice → recorded once; two parallel payments exceeding unpaid → one rejected | SEC-24, 09 §4.2 | 📝 |
+| TC-PUR-05 | Price correction with stock remaining → value goes into the pool; unpaid updated; original purchase unchanged | C-116 | 📝 |
+| TC-PUR-06 | Correction after all goods were sold → visible cost adjustment with an attention item | C-116, C-122 | 📝 |
+| TC-PUR-07 | Return to supplier: value removed at average; refund in cash increases expected cash; credit vs value difference → cost adjustment | C-117, C-25c | 📝 |
+| TC-PUR-08 | Return credited against a purchase's unpaid amount → unpaid reduced; never below 0 | C-117 | 📝 |
+| TC-PUR-09 | Own use → own-use line below net profit; not in stock losses; stock value reduced | C-37 | 📝 |
+
+## 2d. Needs attention (visibility)
+
+| ID | Test | Rules | Status |
+|---|---|---|---|
+| TC-ATTN-01 | Negative stock raises an item with the shortfall, its estimated cost in GH₵, and the three actions | C-120, C-121 | 📝 |
+| TC-ATTN-02 | Every automatic cost adjustment ≥ GH₵0.10 raises an item with amount and direction; smaller ones appear as "Rounding" in reports | C-122, C-25a | 📝 |
+| TC-ATTN-03 | Negative value with positive qty raises "Cost check needed" | C-123 | 📝 |
+| TC-ATTN-04 | **No silent changes:** across all tests, every change to stock_qty has an owner-initiated or sale source, and every automatic value change has a matching attention item or rounding line | §3.4 principles | 📝 |
+| TC-ATTN-05 | Acknowledging an item changes no figures | §3.4 | 📝 |
+| TC-ATTN-06 | Items clear only through the stated action (e.g. negative stock clears only when stock ≥ 0 through an owner action) | C-120 | 📝 |
+| TC-ATTN-07 | Messages are understandable to a non-technical owner (pilot usability check) | D-05 | 📝 |
 
 ## 3. Losses, credit and cash
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-LOSS-01 | Damaged / expired / missing / own use / count-down = stock losses at avg | C-30 | 📝 |
+| TC-LOSS-01 | Damaged / expired / missing / count-down = stock losses at average (own use excluded, see TC-PUR-09) | C-30 | 📝 |
 | TC-LOSS-02 | Count-up corrections are not income ("stock found") | C-31 | 📝 |
 | TC-LOSS-03 | Resolving negative stock by count-up has no profit effect | C-32 | 📝 |
 | TC-CRED-01 | Credit sale with paid-now creates `credit_sale` + `repayment` | C-70, C-71 | 📝 |
@@ -123,7 +156,7 @@
 | TC-CRED-10 | Recovery leaves the balance unchanged; appears in Recovered bad debts, cash/MoMo received and expected cash | C-35, C-48, C-80 | 📝 |
 | TC-CRED-11 | The same payment request sent twice (double-tap or retry) → recorded once | SEC-24 | 📝 |
 | TC-CRED-12 | Two parallel payments for the same customer whose sum exceeds balance + recoverable → one succeeds; the other is rejected or reduced per the split rule, never both in full | 09 §4.2 | 📝 |
-| TC-CASH-01 | Expected cash includes paid-now cash, cash repayments and cash recoveries, minus drawer expenses only | C-80 | 📝 |
+| TC-CASH-01 | Expected cash includes paid-now cash, cash repayments, cash recoveries and cash supplier refunds, minus drawer expenses and drawer purchase/supplier payments | C-80 | 📝 |
 
 ## 4. Offline synchronisation and stock consistency (Gate G2)
 
@@ -219,6 +252,6 @@ A gate is passed only when **every** listed test is ✅ Passed with evidence.
 
 | Gate | Required before | Tests | Status |
 |---|---|---|---|
-| **G1 — Internal build** | Owner testing with fake data | TC-FIN, TC-COST, TC-TIME, TC-CLOSE, TC-LOSS, TC-CRED, TC-CASH | Not reached |
+| **G1 — Internal build** | Owner testing with fake data | TC-FIN, TC-COST, TC-TIME, TC-CLOSE, TC-PUR, TC-ATTN, TC-LOSS, TC-CRED, TC-CASH | Not reached |
 | **G2 — Real data allowed** | Any pilot shop enters real data | G1 + all TC-SYNC, TC-CANCEL, TC-CONC, TC-SEC, TC-BAK | Not reached |
 | **G3 — Pilot expansion** | Beyond the first 2–3 shops | G2 + TC-SYNC-20 on pilot devices + no open critical bugs | Not reached |

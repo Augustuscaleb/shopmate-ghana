@@ -23,7 +23,7 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 | `payload` | Full sale: lines with qty and unit price, **provisional** unit cost (phone display only; the server assigns the real cost, C-23), discount, method, customer, paid now, MoMo reference |
 | `payload_version` | Integer; starts at 1 |
 | `occurred_at` | Phone wall-clock time at the sale |
-| `elapsed_ms`, `boot_id` | Android elapsed time since boot (cannot be changed in settings) and boot session ID, used to verify the sale time (05 §3.6) |
+| `elapsed_ms`, `boot_id`, `anchor_id`, `sequence_no` | Elapsed time since boot (resets on reboot), boot session, latest server anchor, per-device sequence: used together to estimate the sale time (05 §3.6) |
 | `created_offline` | true if first attempt failed (sent with `mode = offline`) |
 | `status` | `pending` · `sending` · `synced` · `failed` |
 | `attempts`, `last_error`, `next_retry_at` | Retry control |
@@ -109,14 +109,18 @@ Owner-only does not prevent the owner using 2–3 phones (e.g. a phone and a tab
 
 **Which sale gets the discrepancy?** The one the server processed second, which depends on upload order, not sale time. The discrepancy screen therefore lists **all recent sales of that product from every device**, so the owner can judge which one was wrong.
 
-## 9. Sale time and clock problems (SY-50 – SY-53)
+## 9. Sale time: anchors, reboots and clock changes (SY-50 – SY-55)
+
+Full rules and examples: [05 §3.6](05-financial-calculations.md) (C-90 – C-97). Elapsed time is **never** used on its own, because it restarts at every reboot.
 
 | ID | Rule |
 |---|---|
-| SY-50 | Every sync starts with `sync_heartbeat`: the phone sends its wall-clock time, elapsed time and boot ID; the server records the device's clock offset |
-| SY-51 | For each uploaded sale, the server estimates the true sale time and assigns a **time confidence** (high / medium / low) using the checks in 05 §3.6 (C-90 – C-95) |
-| SY-52 | **Low confidence** (e.g. sale time after upload time, clock moved backwards between receipts, far in the past): the sale is **accepted** (never lost), costed and reported at upload time, and flagged in Needs attention: "Check this sale's time: your phone's clock may be wrong." Both times are shown |
-| SY-53 | Overlapping times from several devices are not a conflict for costing, because sales don't change the average and cost events are server-timed (05 §3.7). Stock conflicts are handled by discrepancies (§8.1) |
+| SY-50 | **Anchor at every server contact** (login, heartbeat, any online action): the phone stores server time, elapsed time, boot ID and wall clock. The server stores the same (`device_anchors`) |
+| SY-51 | **Each sale stores** wall clock, elapsed time, boot ID, latest anchor ID and the device sequence number |
+| SY-52 | **Reboot detection:** boot ID changed, or elapsed time went down → new session; "reboot detected" event recorded. **Clock-change detection:** (wall clock − elapsed) jumps by > 2 minutes within a session → "clock changed" event. Events are uploaded at the next sync |
+| SY-53 | **Server estimate per sale:** **high** (same-session anchor: anchor server time + elapsed difference) · **medium** (no same-session anchor; wall clock within bounds; no clock change; last offset ≤ 5 min) · **low** (anything else). Bounds: after the device's previous sale and latest anchor; before upload time |
+| SY-54 | **Low confidence:** accepted, costed and reported at upload time, with the possible window shown and a "Sale time uncertain" item raised. Never rejected |
+| SY-55 | Overlapping times across devices don't affect costs (sales don't change the average; cost events are server-timed), 05 §3.7. Stock conflicts → discrepancies (§8.1) |
 
 ## 10. App updates (SY-60)
 

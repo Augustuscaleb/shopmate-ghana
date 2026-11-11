@@ -21,7 +21,9 @@
 | F-02 | Business setup with shop type and sample product lists | Provision store / mini-mart / boutique / other |
 | F-03 | Products: create, edit, archive; cost and selling price; category; unit; low-stock level | |
 | F-04 | Quick price change | From the product list |
-| F-05 | Restock (stock in) with optional pack multiplier | Updates the **weighted-average cost** (see 05 §3) |
+| F-05 | Restock (purchase) with optional pack multiplier: **purchase cost** (full acquisition cost) and **amount paid now** | Stock value rises by the full purchase cost (05 §12) |
+| F-27 | **Unpaid purchases:** amounts owed per purchase; Pay supplier; correct a purchase; return to supplier | No full supplier accounts (05 L6) |
+| F-28 | **Needs attention** list explaining negative stock, cost adjustments, cost checks, uncertain sale times and changes to closed days, with GH₵ effect and action | 05 §3.4 |
 | F-06 | Stock adjustment with reason | Also resolves negative-stock flags. Losses reduce estimated net profit (05 §4) |
 | F-07 | Low-stock list, shareable as text | Uses the Android share sheet (WhatsApp, SMS, etc.) |
 | F-08 | **New Sale**: cart, sale discount, payment method Cash / MoMo / Credit | **Works offline** |
