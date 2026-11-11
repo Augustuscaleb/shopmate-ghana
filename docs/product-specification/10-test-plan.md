@@ -13,7 +13,7 @@
 
 **Current status (11 November 2026, end of Stage 1B, awaiting owner review):**
 - **Planned tests:** 4 ✅ passed on the **local** Supabase stack and in CI; 7 🛠 implemented but not complete or not yet run (including **all 3 cloud verification tests, which have never been run**: no cloud project exists yet); 133 📝 documented only.
-- **Stage 1 foundation and Stage 1B tests (§0a, §0b):** 112 ✅ passed (local); CI results in §0b.
+- **Stage 1 foundation and Stage 1B tests (§0a, §0b):** 112 ✅ passed, locally and in CI.
 - "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), **not** the cloud project.
 
 | Area | Tests | 📝 Documented | 🛠 Implemented | ✅ Passed |
@@ -72,6 +72,8 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ Passed (local) |
 | Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ✅ Passed (local) |
 | **Total** | | **21** | | **21 ✅ (local)** |
+
+**CI:** Stage 1B commit `1aee353`: ✅ all 21 tests above passed on GitHub Actions ([run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)), together with all Stage 1A tests and the bundle secret scan.
 
 **Not tested yet (needs a phone):** the screens themselves (layout, flow, Android Keystore on a real device, email links opening the app). These are manual device checks in §0c, 📝 documented.
 

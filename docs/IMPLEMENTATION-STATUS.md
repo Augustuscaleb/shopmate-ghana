@@ -28,7 +28,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | API security and integration tests (incl. real login, onboarding, cloud safeguards) | ✅ 22/22 (local) | same |
 | App unit tests | ✅ 13/13 (local) | same |
 | Repository and bundle secret scans; dependency gate; typecheck | ✅ (local) | same |
-| CI (GitHub Actions) | See "CI runs" below | |
+| CI (GitHub Actions) | ✅ Passed: 77 DB, 22 integration, 13 app unit tests; secret, dependency and bundle scans | [run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
 | **Cloud verification** | ⛔ **Not run**: no cloud project | |
 | On-device checks (TC-DEV-01–03) | 📝 Not done: needs your phone | |
 
@@ -67,6 +67,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | Date | Commit | Result | Link |
 |---|---|---|---|
 | 2026-11-11 | `634206b` | ✅ Success: secret scan, typecheck, 77/77 database tests, 14/14 API tests | [run 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749) |
+| 2026-11-11 | `1aee353` (Stage 1B) | ✅ Success: secret scan, dependency gate, typecheck, 77/77 database, 22/22 integration, 13/13 app unit tests, Android bundle built and scanned | [run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
 
 ## Not done in Stage 1A (by design, or blocked)
 
