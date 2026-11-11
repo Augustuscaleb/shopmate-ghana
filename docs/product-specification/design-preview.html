@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShopMate Ghana — Design Preview (draft)</title>
+<style>
+  :root{
+    --green:#0B6B4F; --green-dark:#084C38; --gold:#F4B400; --bg:#FAF8F3; --surface:#fff;
+    --ink:#1C1B19; --stone:#5A5550; --sand:#E4DFD5; --ok:#1E7F4F;
+    --warn:#8A5300; --warn-bg:#FFF4D6; --danger:#B42318; --danger-bg:#FDECEA; --grey:#6B6B6B;
+    --cash:#1E7F4F; --momo:#3949AB; --credit:#8A5300;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Roboto,"Segoe UI",Arial,sans-serif;background:#EDEAE3;color:var(--ink)}
+  header.page{padding:24px 32px 8px}
+  header.page h1{margin:0 0 4px;font-size:24px}
+  header.page p{margin:0;color:var(--stone)}
+  .row{display:flex;flex-wrap:wrap;gap:28px;padding:24px 32px}
+  .phone{width:340px;height:700px;background:var(--bg);border-radius:28px;border:8px solid #222;overflow:hidden;display:flex;flex-direction:column;position:relative}
+  .cap{font-size:13px;color:var(--stone);text-align:center;margin-top:8px}
+  .statusbar{height:22px;background:var(--green-dark)}
+  .top{background:var(--green);color:#fff;padding:12px 16px}
+  .top .shop{font-size:18px;font-weight:600}
+  .top .sub{font-size:13px;opacity:.9;display:flex;justify-content:space-between;margin-top:2px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7CE0B0;margin-right:4px}
+  .banner{padding:8px 16px;font-size:14px;display:flex;gap:8px;align-items:center}
+  .banner.warn{background:var(--warn-bg);color:var(--warn)}
+  .banner.off{background:#E9E7E2;color:#3d3a36}
+  .content{flex:1;overflow:hidden;padding:12px}
+  .card{background:var(--surface);border:1px solid var(--sand);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi .lbl{font-size:13px;color:var(--stone);text-transform:uppercase;letter-spacing:.3px}
+  .kpi .val{font-size:22px;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .kpi .hint{font-size:13px;color:var(--stone)}
+  .kpi .val.profit{border-bottom:3px solid var(--gold);display:inline-block}
+  .split{display:flex;justify-content:space-between;font-size:14px}
+  .pm{font-weight:600}
+  .pm.cash{color:var(--cash)} .pm.momo{color:var(--momo)} .pm.credit{color:var(--credit)}
+  .line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--sand);font-size:15px}
+  .line:last-child{border-bottom:0}
+  .chip{font-size:12px;padding:2px 8px;border-radius:999px;font-weight:600}
+  .chip.warn{background:var(--warn-bg);color:var(--warn)}
+  .chip.danger{background:var(--danger-bg);color:var(--danger)}
+  .chip.ok{background:#E3F3EA;color:var(--ok)}
+  .chip.grey{background:#EEE;color:var(--grey)}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+  .btn{height:56px;border-radius:12px;font-size:15px;text-align:center;padding:0 6px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--green)}
+  .btn.primary{background:var(--green);color:#fff}
+  .btn.secondary{background:#fff;color:var(--green)}
+  .btn.full{width:100%;margin-top:8px}
+  .link{text-align:center;color:var(--green);font-weight:600;font-size:15px;margin-top:10px}
+  nav{display:flex;border-top:1px solid var(--sand);background:#fff;height:62px}
+  nav div{flex:1;text-align:center;font-size:12px;color:var(--stone);padding-top:9px}
+  nav div b{display:block;font-size:18px;font-weight:400;margin-bottom:2px}
+  nav div.on{color:var(--green);font-weight:700}
+  .search{background:#fff;border:1px solid var(--sand);border-radius:10px;padding:10px 12px;color:var(--stone);font-size:15px;margin-bottom:10px}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tile{background:#fff;border:1px solid var(--sand);border-radius:12px;padding:10px;min-height:76px}
+  .tile .n{font-size:15px;font-weight:600;line-height:1.2}
+  .tile .p{font-size:15px;font-variant-numeric:tabular-nums;margin-top:4px}
+  .tile .s{font-size:12px;margin-top:4px}
+  .tile.sel{border:2px solid var(--green);background:#F1F8F4}
+  .qty{float:right;background:var(--green);color:#fff;border-radius:999px;font-size:12px;padding:1px 7px}
+  .cart{background:var(--green);color:#fff;margin:0 12px 10px;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;font-weight:700;font-size:17px}
+  .total{text-align:center;padding:14px 0 6px}
+  .total .lbl{color:var(--stone);font-size:14px}
+  .total .big{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums}
+  .methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0 12px}
+  .m{border:2px solid var(--sand);border-radius:12px;background:#fff;text-align:center;padding:12px 4px;font-weight:700;font-size:15px}
+  .m b{display:block;font-size:22px;font-weight:400}
+  .m.on{border-color:var(--credit);background:#FFF8EC;color:var(--credit)}
+  .field{background:#fff;border:1px solid var(--sand);border-radius:10px;padding:8px 12px;margin-bottom:8px}
+  .field .l{font-size:12px;color:var(--stone)}
+  .field .v{font-size:17px;font-variant-numeric:tabular-nums}
+  .note{font-size:14px;background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+  .bal{text-align:center;padding:6px 0 10px}
+  .bal .big{font-size:34px;font-weight:700;color:var(--ink)}
+  .hist .line{font-size:14px}
+  .amt-plus{color:var(--danger);font-weight:600;font-variant-numeric:tabular-nums}
+  .amt-minus{color:var(--ok);font-weight:600;font-variant-numeric:tabular-nums}
+  .swatches{display:flex;flex-wrap:wrap;gap:12px;padding:0 32px 32px}
+  .sw{width:150px;border-radius:12px;overflow:hidden;border:1px solid var(--sand);background:#fff;font-size:13px}
+  .sw div:first-child{height:56px}
+  .sw div:last-child{padding:8px}
+  footer{padding:0 32px 32px;color:var(--stone);font-size:13px}
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>ShopMate Ghana — Design Preview <span style="font-weight:400;color:var(--stone)">(draft for review)</span></h1>
+  <p>Static mock-up of the proposed visual direction. Sample data is illustrative only. Not the real app.</p>
+</header>
+
+<div class="row">
+  <!-- TODAY -->
+  <div>
+  <div class="phone">
+    <div class="statusbar"></div>
+    <div class="top"><div class="shop">Ama's Provisions</div>
+      <div class="sub"><span>Wed 12 Nov</span><span><span class="dot"></span>Online</span></div></div>
+    <div class="banner warn">⏱ 3 sales waiting to upload</div>
+    <div class="content">
+      <div class="card kpis">
+        <div class="kpi"><div class="lbl">Today's sales</div><div class="val">GH₵ 1,240.50</div><div class="hint">48 sales</div></div>
+        <div class="kpi"><div class="lbl">Today's profit</div><div class="val profit">GH₵ 310.20</div><div class="hint">after expenses ⓘ</div></div>
+      </div>
+      <div class="card split">
+        <span class="pm cash">💵 Cash<br>GH₵ 820.00</span>
+        <span class="pm momo">📱 MoMo<br>GH₵ 300.50</span>
+        <span class="pm credit">📒 Credit<br>GH₵ 120.00</span>
+      </div>
+      <div class="card">
+        <div class="line"><span>Money owed to you</span><b>GH₵ 1,560.00 ›</b></div>
+        <div class="line"><span>Low stock</span><span class="chip warn">5 items ›</span></div>
+        <div class="line"><span>Needs attention</span><span class="chip danger">1 stock issue ›</span></div>
+      </div>
+      <div class="btns"><div class="btn primary">New sale</div><div class="btn secondary">Add expense</div></div>
+      <div class="link">Close the day →</div>
+    </div>
+    <nav><div class="on"><b>⌂</b>Today</div><div><b>🛒</b>Sell</div><div><b>▦</b>Products</div><div><b>👥</b>Customers</div><div><b>☰</b>More</div></nav>
+  </div>
+  <div class="cap">S-10 Today (dashboard)</div>
+  </div>
+
+  <!-- NEW SALE -->
+  <div>
+  <div class="phone">
+    <div class="statusbar"></div>
+    <div class="top"><div class="shop">New sale</div><div class="sub"><span>Tap items to add</span><span>Offline</span></div></div>
+    <div class="banner off">📴 Offline — sales are saved on this phone</div>
+    <div class="content">
+      <div class="search">🔍 Search products…</div>
+      <div style="font-size:13px;color:var(--stone);margin:0 2px 6px">Most sold</div>
+      <div class="tiles">
+        <div class="tile sel"><span class="qty">×2</span><div class="n">Milo sachet</div><div class="p">GH₵ 5.00</div><div class="s"><span class="chip ok">34 left</span></div></div>
+        <div class="tile sel"><span class="qty">×1</span><div class="n">Sugar 1kg</div><div class="p">GH₵ 12.00</div><div class="s"><span class="chip ok">18 left</span></div></div>
+        <div class="tile"><div class="n">Sardine tin</div><div class="p">GH₵ 15.00</div><div class="s"><span class="chip warn">3 left</span></div></div>
+        <div class="tile"><div class="n">Rice 5kg</div><div class="p">GH₵ 85.00</div><div class="s"><span class="chip ok">9 left</span></div></div>
+        <div class="tile"><div class="n">Sachet water (bag)</div><div class="p">GH₵ 10.00</div><div class="s"><span class="chip danger">0 left</span></div></div>
+        <div class="tile"><div class="n">Bathing soap</div><div class="p">GH₵ 8.50</div><div class="s"><span class="chip ok">22 left</span></div></div>
+      </div>
+    </div>
+    <div class="cart"><span>3 items</span><span>Charge GH₵ 22.00 ›</span></div>
+    <nav><div><b>⌂</b>Today</div><div class="on"><b>🛒</b>Sell</div><div><b>▦</b>Products</div><div><b>👥</b>Customers</div><div><b>☰</b>More</div></nav>
+  </div>
+  <div class="cap">S-20 New sale (offline)</div>
+  </div>
+
+  <!-- PAYMENT -->
+  <div>
+  <div class="phone">
+    <div class="statusbar"></div>
+    <div class="top"><div class="shop">‹ Payment</div><div class="sub"><span>Receipt A-000124</span><span></span></div></div>
+    <div class="content">
+      <div class="total"><div class="lbl">Total</div><div class="big">GH₵ 85.00</div><div class="lbl">+ Add discount</div></div>
+      <div class="methods">
+        <div class="m"><b>💵</b>Cash</div><div class="m"><b>📱</b>MoMo</div><div class="m on"><b>📒</b>Credit</div>
+      </div>
+      <div class="field"><div class="l">Customer</div><div class="v">Kofi Mensah ▾ <span style="font-size:13px;color:var(--stone)">owes GH₵ 75.00</span></div></div>
+      <div class="field"><div class="l">Paid now (optional)</div><div class="v">GH₵ 20.00 · 💵 Cash</div></div>
+      <div class="note">GH₵ 65.00 will be added to Kofi's balance.<br>New balance: <b>GH₵ 140.00</b></div>
+      <div class="note" style="background:var(--danger-bg);color:var(--danger)">⚠ This takes Kofi above the credit limit of GH₵ 100.00. You can still continue.</div>
+      <div class="btn primary full">Save sale</div>
+    </div>
+    <nav><div><b>⌂</b>Today</div><div class="on"><b>🛒</b>Sell</div><div><b>▦</b>Products</div><div><b>👥</b>Customers</div><div><b>☰</b>More</div></nav>
+  </div>
+  <div class="cap">S-21 Payment — credit with part payment</div>
+  </div>
+
+  <!-- CUSTOMER -->
+  <div>
+  <div class="phone">
+    <div class="statusbar"></div>
+    <div class="top"><div class="shop">‹ Kofi Mensah</div><div class="sub"><span>024 XXX XXXX</span><span>Limit GH₵ 100.00</span></div></div>
+    <div class="content">
+      <div class="card bal"><div class="lbl" style="color:var(--stone);font-size:14px">Owes you</div><div class="big">GH₵ 140.00</div>
+        <div style="font-size:13px;color:var(--stone)">Last payment 9 days ago</div></div>
+      <div class="btns"><div class="btn primary">Record repayment</div><div class="btn secondary">Send reminder</div></div>
+      <div class="card hist" style="margin-top:10px">
+        <div style="font-weight:600;margin-bottom:4px">History</div>
+        <div class="line"><span>Today · Credit sale A-000124<br><small style="color:var(--stone)">GH₵ 85.00, paid GH₵ 20.00 now</small></span><span class="amt-plus">+65.00</span></div>
+        <div class="line"><span>3 Nov · Repayment 📱 MoMo<br><small style="color:var(--stone)">Ref 4417</small></span><span class="amt-minus">−50.00</span></div>
+        <div class="line"><span>28 Oct · Credit sale A-000087</span><span class="amt-plus">+125.00</span></div>
+        <div class="line"><span>20 Oct · Repayment 💵 Cash</span><span class="amt-minus">−40.00</span></div>
+      </div>
+    </div>
+    <nav><div><b>⌂</b>Today</div><div><b>🛒</b>Sell</div><div><b>▦</b>Products</div><div class="on"><b>👥</b>Customers</div><div><b>☰</b>More</div></nav>
+  </div>
+  <div class="cap">S-42 Customer (credit book)</div>
+  </div>
+</div>
+
+<header class="page"><h1 style="font-size:20px">Palette</h1></header>
+<div class="swatches">
+  <div class="sw"><div style="background:#0B6B4F"></div><div><b>Shop Green</b><br>#0B6B4F · primary</div></div>
+  <div class="sw"><div style="background:#084C38"></div><div><b>Deep Green</b><br>#084C38</div></div>
+  <div class="sw"><div style="background:#F4B400"></div><div><b>Market Gold</b><br>#F4B400 · accent</div></div>
+  <div class="sw"><div style="background:#FAF8F3"></div><div><b>Warm White</b><br>#FAF8F3 · background</div></div>
+  <div class="sw"><div style="background:#1C1B19"></div><div><b>Ink</b><br>#1C1B19 · text</div></div>
+  <div class="sw"><div style="background:#8A5300"></div><div><b>Amber</b><br>#8A5300 · warning / credit</div></div>
+  <div class="sw"><div style="background:#B42318"></div><div><b>Red</b><br>#B42318 · danger</div></div>
+  <div class="sw"><div style="background:#3949AB"></div><div><b>Indigo</b><br>#3949AB · MoMo marker</div></div>
+</div>
+<footer>Draft for review · Visual choices are assumptions [A] to be validated with pilot users · Names and numbers are illustrative.</footer>
+</body>
+</html>
