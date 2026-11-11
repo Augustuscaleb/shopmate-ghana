@@ -1,7 +1,9 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** Approved (v3, final)
+**Status:** v4 — v3 approved; v4 updates for final review (research-led Stage 0, product specification revision 2)
 **Last updated:** 11 November 2026
+
+> Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
 
 ShopMate Ghana is a mobile-first business management app for small businesses in Ghana — provision stores, mini-marts and boutiques. It helps owners manage daily sales, inventory, expenses, low-stock alerts, customer credit, and revenue/profit reports, in Ghana cedis (GH₵).
 
@@ -168,7 +170,13 @@ Rules:
 
 *Note:* a modified app could falsely claim a sale was made offline to bypass online validation. In Stage 1 only the owner uses the app, so this is low risk, and such sales are still flagged as discrepancies. We will revisit this when cashier accounts are added.
 
-### 5.4 Units
+### 5.4 Cost method and losses
+
+- **Weighted-average cost** (assessed as feasible for the MVP). Each restock blends the cost of existing and new stock. The server assigns each sale's cost while holding a lock on the product rows, so simultaneous sales from several phones can't corrupt it.
+- Limitations and the fallback (last-restock pricing) are documented in specification 05 §3.
+- **Stock losses** (damaged, expired, missing, own use, count corrections down) and **bad debts written off** **reduce estimated net profit**. They are shown separately from operating expenses.
+
+### 5.5 Units
 
 MVP: each product has one selling unit (e.g. piece). When restocking, the owner can enter a simple multiplier (e.g. "1 carton = 24 pieces"). Full multi-unit support is deferred.
 
@@ -176,40 +184,35 @@ MVP: each product has one selling unit (e.g. piece). When restocking, the owner 
 
 ## 6. Database structure
 
+The full, authoritative data model (tables, fields, server functions) is in **[product-specification/09-data-model.md](product-specification/09-data-model.md)**. Summary:
+
 **Conventions**
 
-- **Money** is stored as whole **pesewas** (integers): GH₵12.50 = `1250`. The app displays GH₵.
+- **Money** is stored as whole **pesewas** (integers): GH₵12.50 = `1250`. The only exception is the average cost, which is stored as an exact decimal (4 dp, never floating point).
 - **Time** is stored in UTC. Reports use Ghana time (GMT/UTC+0, no daylight saving).
-- Every table has `id` (UUID), `business_id`, `created_at`, `updated_at` and `deleted_at`. Records are soft-deleted (hidden, not erased).
-- **Balances and stock are derived from ledgers.** Customer balances come from `customer_ledger` and stock history from `stock_movements`.
+- Every table has `id` (UUID), `business_id`, `created_at`, `updated_at` and `deleted_at`. Records are soft-deleted.
+- **Balances and stock are derived from append-only ledgers** (`customer_ledger`, `stock_movements`).
+- Money, stock and ledger changes happen **only** through server functions.
 
-| Table | Purpose | Key fields |
-|---|---|---|
-| `businesses` | Each shop (tenant) | name, type, phone, town/region, reference_code (e.g. `SM-0042`) |
-| `profiles` | Each login | full_name, email |
-| `business_members` | Links users to businesses | business_id, user_id, role (`owner` in Stage 1; `manager` and `cashier` later) |
-| `categories` | Product groups | name |
-| `products` | Items for sale | name, category_id, unit, cost_price, selling_price, stock_qty, low_stock_level, active |
-| `stock_movements` | Every stock change | product_id, type, qty_change, unit_cost, reason, sale_id/adjustment link, user_id, created_at |
-| `stock_discrepancies` | Negative-stock flags from offline sales | product_id, sale_id, shortfall_qty, status (`open`/`resolved`), resolved_by_movement_id, resolved_at |
-| `sales` | Each receipt | id (generated on phone, **unique**), receipt_no, subtotal, discount, total, payment_method (`cash`/`momo`/`credit`), customer_id, created_offline, occurred_at, received_at, payload_version, voided_at, void_reason |
-| `sale_items` | Receipt lines | sale_id, product_id, qty, unit_price, unit_cost (snapshot at time of sale), line_total |
-| `customers` | Credit customers | name, phone, credit_limit (optional), notes |
-| `customer_ledger` | Every change to what a customer owes | customer_id, type (`credit_sale` +, `repayment` −, `void_reversal`, `adjustment`), amount, method (`cash`/`momo`), sale_id, note, user_id, created_at |
-| `expense_categories` | Rent, ECG, transport, etc. | name |
-| `expenses` | Business spending | category_id, amount, description, expense_date |
-| `subscriptions` | Plan status | plan, status (`trial`/`active`/`overdue`), paid_until |
-| `subscription_payments` | Manually confirmed MoMo payments | business_id, amount, momo_transaction_id (unique), payer_number, confirmed_by, paid_at |
-| `audit_log` | Sensitive actions | user_id, action, entity, before, after, created_at |
+**Tables:**
 
-**Report formulas**
+| Area | Tables |
+|---|---|
+| Business and access | `businesses`, `profiles`, `business_members`, `devices` |
+| Products and stock | `categories`, `products` (with `avg_cost`), `stock_movements`, `stock_discrepancies` |
+| Sales | `sales` (phone-generated ID, MoMo reference, paid-now amount, online/offline mode), `sale_items` (server-assigned unit cost) |
+| Customers and credit | `customers`, `customer_ledger` (credit_sale, repayment, adjustment, write_off, write_off_reversal, void_reversal) |
+| Expenses and cash | `expense_categories`, `expenses` (paid_from), `cash_counts` |
+| Subscription and audit | `subscriptions` (incl. `pilot` plan), `subscription_payments`, `audit_log` |
 
-- **Sales (revenue)** = sum of non-voided sale totals, including credit sales
-- **Cash & MoMo received** = cash/MoMo sales + customer repayments
-- **Cost of goods sold** = Σ (qty × unit_cost snapshot)
-- **Gross profit** = revenue − cost of goods sold
-- **Net profit** = gross profit − expenses
-- **Credit outstanding** = Σ customer ledger balances
+**Report formulas** (full rules in specification 05):
+
+- **Sales** = Σ non-voided sale totals, including credit sales
+- **Cost of items sold** = Σ server-assigned line costs (weighted average)
+- **Gross profit** = Sales − Cost of items sold
+- **Net profit (estimated)** = Gross profit − Operating expenses − Stock losses − Bad debts written off. Each is shown on its own line
+- **Cash / MoMo received** = sales + paid-now + repayments, by method
+- **Credit outstanding** = Σ customer balances
 
 ---
 
@@ -291,6 +294,8 @@ A monthly "Pay now" MoMo prompt with automatic confirmation would remove most ma
 
 ## 10. Backups and restoration
 
+> **Status: designed, not yet implemented or tested.** The backup is **not** treated as a working feature until the restore drill passes (tests TC-BAK-01 to TC-BAK-05, release gate G2). No real business data is entered before then.
+
 ### 10.1 Feasibility on the free tier (checked against documentation)
 
 - The Supabase **Free plan has no downloadable managed backups**, so we must make our own.
@@ -345,12 +350,12 @@ The **test restore target** is a second free Supabase project or a local Supabas
 
 Timelines are estimates for part-time work.
 
-### Stage 0 — Validate (2–4 weeks, almost no code)
+### Stage 0 — Validate (research-led; physical interviews optional)
 
-- **Interview 10–15 shop owners:** how they record sales, stock and credit today; what loses them money; their concerns about staff; what they would pay monthly.
-- Show **screen mock-ups** (Figma or paper) of New Sale, Products and the Credit Book; observe understanding.
-- **Recruit at least 5 pilot businesses.**
-- **Checkpoint (targets, not guaranteed outcomes):** at least 7 owners show a clear problem and interest, and at least 5 businesses agree to pilot. If the targets are missed, revise the idea before building.
+- ✅ Desk research and competitor analysis (see [market-research/](market-research/STAGE-0-REPORT.md))
+- ✅ Product specification and design direction (see [product-specification/](product-specification/README.md))
+- Hands-on testing of 3–5 competitor apps; app-store review mining; online survey via WhatsApp
+- **Targets (not guaranteed outcomes):** 30+ shop-owner survey responses, 50%+ reporting a clear problem, 10+ pilot volunteers, at least 3 pilot shops to start (aiming for 5–10)
 
 ### Stage 1 — MVP build (6–8 weeks)
 
@@ -362,13 +367,16 @@ Timelines are estimates for part-time work.
 - Sales history and voids
 - Customer credit ledger: customers, credit sales, balances, repayments
 - Expenses, dashboard, basic reports
-- Weekly encrypted backup workflow and a **successful test restore**
-- Automated tests for money calculations, stock rules, sync/idempotency and RLS
-- **Exit criteria:** all tests pass, the backup has run, and a test restore has been verified
+- Weighted-average costing, stock losses and write-offs in reports, cash count, CSV export, optional MoMo reference
+- Weekly encrypted backup workflow and a **demonstrated, successful test restore**
+- Automated tests per [10-test-plan.md](product-specification/10-test-plan.md)
+- **Exit criteria:** release gate **G2** passed: calculations, all sync tests (duplicates, failed-sync recovery, multi-device, reconciliation), all security tests and all backup/restore tests
 
-### Stage 2 — Pilot (4–6 weeks, free for pilot shops)
+### Stage 2 — Pilot (30–60 days, all features free)
 
-- In-person installation and training; weekly feedback
+- **5–10 shops**, all features free (plan `pilot`). Start with 2–3 shops; expand after gate G3
+- In-person or remote (WhatsApp video) installation and training; weekly feedback
+- Gather **willingness to pay** for the pricing hypotheses (Starter free, Standard about GH₵30, Plus about GH₵60) before finalising prices
 - Monitor daily usage, sync failures, discrepancies and crashes
 - Measure how many owners struggle with email login
 - **Checkpoint:** at least half the pilot shops still use it daily after 3 weeks, and at least 3 say they would pay
@@ -405,7 +413,7 @@ Timelines are estimates for part-time work.
 | 500 MB database | Far more than a pilot needs |
 | Built-in email rate limits | Enough for a small pilot; replace before launch |
 
-**Suggested pricing to test in the pilot:** a free plan (1 user, about 50 products) and a Standard plan at about GH₵50–80/month. Roughly 6–10 paying shops would cover early running costs.
+**Pricing hypotheses (approved for testing, not final):** Starter (free), Standard (about GH₵30/month), Plus (about GH₵60/month). The pilot runs free for 30–60 days, and prices are finalised only after reviewing feedback and willingness to pay. At these prices, roughly 10–15 paying shops would cover early running costs (estimate).
 
 ---
 
@@ -448,7 +456,9 @@ Timelines are estimates for part-time work.
 | Risk | Mitigation |
 |---|---|
 | Rounding errors | Integer pesewas; one shared, tested rounding function |
-| Profit changing when cost prices change | Cost snapshot on each sale line |
+| Profit changing when cost prices change | Weighted-average cost, assigned by the server and stored on each sale line; past sales never re-costed |
+| Average cost corrupted by simultaneous activity | Row locks in product-ID order; exact decimals; tests TC-COST-09/10 |
+| Profit overstated by hidden losses | Stock losses and bad debts subtracted, each shown separately |
 | Credit sales inflating apparent cash | Separate Sales, Cash & MoMo received, and Credit outstanding figures |
 | Edited or drifting balances | Balances derived from ledger; corrections as visible adjustment entries |
 | Voids leaving stock or credit wrong | Void creates reversing stock and credit entries; original kept as voided |
@@ -481,9 +491,19 @@ Timelines are estimates for part-time work.
 | 8 | Customer credit ledger in Stage 1 | Approved |
 | 9 | Manual monthly MoMo payments; payment automation researched later | Approved |
 | 10 | Free tiers only until validation; no domain, Play Store account or paid hosting yet | Approved |
-| 11 | Stage 0 validation targets: interview 10–15 owners, at least 7 interested, at least 5 pilots (targets, not guarantees) | Approved |
+| 11 | ~~Stage 0 interviews of 10–15 owners~~ → research-led Stage 0; physical interviews optional | Superseded (approved) |
 | 12 | Weekly encrypted backup with a tested restore before any real business data | Approved |
 | 13 | Implementation starts only on explicit instruction | In force |
+| 14 | MVP includes optional MoMo reference, CSV export (all plans), basic cash count | Approved |
+| 15 | Deferred: automated WhatsApp reports, staff management, automated subscription payments | Approved |
+| 16 | Positioning: simplicity, reliable offline use, Ghanaian operations, affordability, local support | Approved |
+| 17 | Stock losses and written-off debts reduce estimated net profit; shown separately from operating expenses | Approved |
+| 18 | Weighted-average costing in the MVP (assessed feasible); last-restock pricing as documented fallback | Proposed — for final review |
+| 19 | Pricing hypotheses: Starter free, Standard about GH₵30, Plus about GH₵60 (not final) | Approved |
+| 20 | Pilot: 5–10 shops, all features free for 30–60 days | Approved |
+| 21 | Backup counts as implemented only after a demonstrated restore (gate G2) | Approved |
+| 22 | Visual design (colours, typography, layout) | Provisionally approved |
+| 23 | Verified / reported / assumption labelling in all documentation | Approved |
 
 ### References
 

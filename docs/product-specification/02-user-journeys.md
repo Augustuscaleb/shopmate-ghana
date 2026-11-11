@@ -59,7 +59,7 @@ The owner sends it personally. Nothing is sent automatically.
 
 1. Products → **Restock** (or from the low-stock list).
 2. Pick a product → quantity received (option: "in packs: 2 cartons × 24 = 48") → total cost paid or unit cost.
-3. Save → stock increases; cost price updates to the new unit cost.
+3. Save → stock increases; the product's **average cost** is updated by blending old and new stock (see 05 §3).
 
 ## J7 — Close the day (cash count)
 

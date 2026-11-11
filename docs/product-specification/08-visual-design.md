@@ -1,6 +1,6 @@
 # 08 — Visual Design Direction
 
-**Status:** Proposal for review. Almost every choice here is **[A]**, a reasoned design decision to be tested with pilot users.
+**Status:** **Provisionally approved** (colours, typography, layout). Almost every choice here is **[A]**, a reasoned design decision to be confirmed with pilot users.
 
 A visual mock-up is in [design-preview.html](design-preview.html). Download it and open it in any browser.
 
@@ -108,7 +108,22 @@ Must respect the phone's font-size setting up to 130%, without breaking layouts.
 - **Amounts:** always `GH₵ 1,240.50`. Dates: "Wed 12 Nov". Times: 24-hour or am/pm per the phone setting.
 - **Tone with customers' debts:** neutral and respectful. Reminder templates must never shame customers.
 
-## 8. Accessibility (D-06)
+## 8. Simplicity rules for owners less comfortable with technology (D-08)
+
+| Rule | Detail |
+|---|---|
+| One main action per screen | One big green button; secondary actions are smaller or under "More" |
+| Plain taps only | Every action works with a simple tap. No long-press, swipe or pinch is ever required (TC-UX-03) |
+| Words with every icon | No icon-only buttons |
+| Confirm money changes in words | e.g. "Record GH₵40.00 repayment from Kofi?" |
+| Undo-friendly | Mistakes are fixed with clearly named actions ("Cancel sale", "Correct stock", "Correct a mistake"); nothing silently disappears |
+| No hidden settings | Defaults work without configuration; Settings is optional |
+| Consistent places | Back is always top-left; the main button is always at the bottom |
+| Gentle language | Errors explain what to do next; no blame |
+| Numbers first | The amount is the largest thing on money screens |
+| Help in context | ⓘ next to terms such as "estimated profit" and "average cost" opens a 2–3 sentence explanation |
+
+## 9. Accessibility (D-06)
 
 - WCAG 2.1 AA contrast for all text.
 - Never rely on colour alone (icons + words).
@@ -116,14 +131,14 @@ Must respect the phone's font-size setting up to 130%, without breaking layouts.
 - Support large font settings.
 - Avoid time-limited interactions.
 
-## 9. Performance-driven design (D-07)
+## 10. Performance-driven design (D-07)
 
 - No heavy images or animations. App icon and illustrations as simple vector shapes.
 - Target an installed app size under about 30 MB [A: to be measured with Expo builds].
 - Lists virtualised so they stay smooth with 1,000+ products.
 - Skeleton loading instead of spinners where possible.
 
-## 10. To validate with pilot users
+## 11. To validate with pilot users
 
 1. Green/gold palette: does it feel trustworthy and local?
 2. Are tile sizes and fonts comfortable at arm's length in daylight?

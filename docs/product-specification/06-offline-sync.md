@@ -20,7 +20,7 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 |---|---|
 | `sale_id` | UUID created on the phone; the server's duplicate check key |
 | `receipt_no` | See §5 |
-| `payload` | Full sale: lines with unit price and unit cost, discount, method, customer, paid now, MoMo reference |
+| `payload` | Full sale: lines with qty and unit price, **provisional** unit cost (phone display only; the server assigns the real cost, C-23), discount, method, customer, paid now, MoMo reference |
 | `payload_version` | Integer; starts at 1 |
 | `occurred_at` | Phone time at the sale |
 | `created_offline` | true if first attempt failed (sent with `mode = offline`) |
@@ -49,7 +49,9 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 | SY-14 | **Permanent errors → Failed:** invalid data that the server refuses (e.g. corrupted payload, unknown business). The owner can tap **Retry** (after an app update) or **Contact support** (sends the sale ID, never business amounts, to support) |
 | SY-15 | The server reply "already recorded" = success (duplicate prevention) |
 | SY-16 | A Failed sale never blocks later sales from sending |
-| SY-17 | After each success, the phone refreshes the affected products and customers from the server |
+| SY-17 | After each success, the phone refreshes the affected products and customers from the server, and replaces provisional costs with server costs |
+| SY-18 | **Failed-sale recovery:** a Failed sale stays on the phone with its reason. Options: **Retry** (e.g. after an app update); **Send details to support** (owner-initiated WhatsApp message with the sale's details, so support can help); **Discard** (only if the sale did not really happen; requires typing "DISCARD"; restores local stock; logged locally and uploaded as an audit event). Failed sales are counted in the "Needs attention" banner until resolved |
+| SY-19 | **Classification:** "needs app update" (unsupported payload version), "data problem" (validation failed), "account problem" (business mismatch or revoked device). Each has its own plain-English message |
 
 ## 5. Receipt numbers (SY-20)
 
@@ -63,7 +65,7 @@ The server cannot assign numbers offline, so each phone gets a short **device co
 | ID | Rule |
 |---|---|
 | SY-30 | **Displayed stock** = last downloaded server stock − quantities in this phone's Pending and Failed sales |
-| SY-31 | **Today figures** = server figures (synced) + locally computed figures for Pending sales (see 05 §5) |
+| SY-31 | **Today figures** = server figures (synced) + locally computed figures for Pending sales (see 05 §6) |
 | SY-32 | **Cached customer balance** for credit decisions = last downloaded balance + this phone's Pending credit (total − paid now) |
 
 ## 7. Session and account safety (SY-40 – SY-44)
@@ -78,10 +80,16 @@ The server cannot assign numbers offline, so each phone gets a short **device co
 
 ## 8. Multiple phones for one shop
 
-Owner-only does not prevent the owner using 2 phones (e.g. phone and tablet), within plan limits.
-- Each device has its own outbox and device code.
-- Stock may briefly differ between devices until both sync. The server totals are authoritative.
-- If both phones sell the last item offline, negative stock is flagged as normal.
+Owner-only does not prevent the owner using 2–3 phones (e.g. a phone and a tablet), within plan limits. Pilot shops may use up to 3.
+
+| ID | Rule |
+|---|---|
+| SY-70 | Each device is registered (`register_device`) and gets a unique device code. It has its own outbox and receipt counter, so receipt numbers never collide |
+| SY-71 | The server processes sales from all devices **one product row at a time**: each `record_sale` locks the products it touches, in product-ID order, inside one transaction. Simultaneous sales are therefore serialised: stock and average cost are never corrupted, and deadlocks are avoided |
+| SY-72 | **Online sales from two devices for the last unit:** the first succeeds; the second fails stock validation and is not queued (04 §1.2) |
+| SY-73 | **Offline sales from two devices for the last unit:** both are accepted; the sale processed second creates a discrepancy (04 §1.3) |
+| SY-74 | Each device refreshes its cache after syncing, and every 15 minutes while online, so the devices converge. The server is authoritative |
+| SY-75 | **Stock reconciliation:** an adjustment resolves open discrepancies (04 §2.3). `check_stock_integrity()` confirms stock_qty = Σ movements and runs in tests and weekly in production; any mismatch alerts the admin |
 
 ## 9. Clock problems (SY-50)
 
@@ -95,17 +103,6 @@ The server records `received_at`.
 - Updates never delete the outbox.
 - Database changes on the phone run as versioned local migrations that keep queued sales.
 
-## 11. Test scenarios (must pass before the pilot)
+## 11. Test scenarios
 
-1. Sale offline → reconnect → synced once; stock correct.
-2. Network drops **after** the server saves but before the reply → retry → "already recorded" → only one sale exists.
-3. 50 offline sales over a day → all sync in order; totals match.
-4. App killed during sending → restart → no loss, no duplicates.
-5. Offline sale makes stock −2 → discrepancy created → adjustment resolves it.
-6. Online sale with insufficient stock → rejected; nothing queued; correction flow works.
-7. Token expired offline → sell → reconnect → refresh → synced.
-8. Different account login attempt with Pending sales → blocked.
-9. Corrupted payload → Failed status, visible, later sales unaffected.
-10. Two devices sell the same item offline → both accepted; discrepancy flagged.
-11. Phone clock set 2 days wrong → sale flagged.
-12. App upgraded with Pending sales → still sync.
+All sync, duplicate-prevention, failed-sync recovery, multi-device and reconciliation tests are in **[10-test-plan.md §4](10-test-plan.md)** (TC-SYNC-01 to TC-SYNC-20). They are **release gate G2**: they must pass before any real business data is used.

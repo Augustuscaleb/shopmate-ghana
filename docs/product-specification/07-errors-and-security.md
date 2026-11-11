@@ -55,9 +55,9 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | ID | Requirement |
 |---|---|
 | SEC-10 | **Row Level Security on every table**; every row carries `business_id`; policies allow access only to members of that business |
-| SEC-11 | Money, stock and ledger changes happen **only** through server functions (`record_sale`, `void_sale`, `restock`, `adjust_stock`, `record_repayment`, `adjust_balance`, `save_cash_count`). Direct table writes for these tables are denied |
+| SEC-11 | Money, stock and ledger changes happen **only** through server functions (full list in [09-data-model.md §3](09-data-model.md)). Direct table writes for these tables are denied |
 | SEC-12 | Server functions validate everything again: business membership, positive quantities, amounts within limits (C-04), discount ≤ subtotal, repayment ≤ balance, field lengths, allowed values |
-| SEC-13 | The client is never trusted for totals. The server **recalculates** subtotal, total and cost from the lines, and rejects mismatches with the client's total. Unit prices as charged are accepted (owner-only) and recorded |
+| SEC-13 | The client is never trusted for totals or costs. The server **recalculates** subtotal and total from the lines, rejects mismatches with the client's total, and **assigns unit costs itself** (C-23), ignoring the phone's provisional cost. Unit prices as charged are accepted (owner-only) and recorded |
 | SEC-14 | Automated tests prove that Business A cannot read or change Business B's data, for every table and function |
 | SEC-15 | The service-role key is never in the app or the repository. Only the public anon key ships in the app |
 | SEC-16 | Admin actions (confirming subscription payments) are performed by a separate admin role, never through the shop app |
@@ -88,5 +88,5 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | ID | Requirement |
 |---|---|
 | SEC-40 | HTTPS only |
-| SEC-41 | Weekly encrypted backups and a tested restore **before real data** (PLAN.md §10) |
+| SEC-41 | Weekly encrypted backups with a **demonstrated, successful restore before any real business data** (PLAN.md §10; tests TC-BAK-01 to 05, gate G2). Until the restore drill passes, backup is reported as **"designed, not yet implemented"**, never as a working feature |
 | SEC-42 | Dependencies are kept updated; automated dependency alerts are enabled on GitHub |

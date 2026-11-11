@@ -20,14 +20,14 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
 
 4. On **Charge**, the app:
    - creates the sale ID (UUID) and receipt number (see 06 §5)
-   - snapshots each line's `unit_cost` from the cached product cost price
+   - records a **provisional** `unit_cost` from the cached average cost, for on-phone profit only. The server assigns the authoritative cost when it records the sale (C-23, C-28)
    - writes the sale to the **outbox**
    - updates **local** stock
    - shows **Sale complete**
 5. The sync engine sends the sale to the server function `record_sale` (see 06).
 
 **Server-side result of `record_sale`:**
-- `sales` row + `sale_items` rows
+- `sales` row + `sale_items` rows, each with a **server-assigned unit cost** from the current weighted average (C-23)
 - one `stock_movements` row per line (`type = sale`, negative quantity)
 - `products.stock_qty` reduced atomically
 - for a credit sale: a `customer_ledger` entry of `credit_sale` (+ total) and, if paid now > 0, a `repayment` entry (− paid now) with the same sale link
@@ -53,8 +53,8 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
 - Requires a reason (pick list: "Customer returned items", "Wrong item/quantity", "Duplicate entry", "Other" + text).
 - The server, in one transaction:
   - sets `voided_at` and `void_reason`
-  - adds reversing stock movements (`type = void`, positive quantity)
-  - for credit sales, adds a `void_reversal` ledger entry that cancels the **outstanding** credit from that sale (see 05 §6)
+  - adds reversing stock movements (`type = void`, positive quantity) and re-blends the average cost using the original line cost (C-26)
+  - for credit sales, adds a `void_reversal` ledger entry that cancels the **outstanding** credit from that sale (see 05 §7)
   - writes an audit entry
 - Voided sales stay visible (struck through) and are excluded from totals.
 - A pending (not yet synced) sale **cannot be voided** until it syncs. The app explains why.
@@ -65,7 +65,8 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
 ### 2.1 Create or edit a product (F-03, F-04) 🌐
 
 - **Required:** name (unique per shop, case-insensitive), selling price > 0.
-- **Optional:** category, unit, cost price (≥ 0; if missing, profit shows a warning "cost price not set"), low-stock level (default from Settings, e.g. 5).
+- **Optional:** category, unit, cost price (≥ 0; sets the initial average cost; if missing, profit shows a warning "cost price not set"), low-stock level (default from Settings, e.g. 5).
+- **Correct cost price** (existing product): sets the average cost directly; audit-logged; past sales are unchanged (C-27).
 - **Initial stock:** entered only at creation, and recorded as a movement of `type = opening`.
 - **Archive** instead of delete. Archived products are hidden from selling, but their history remains.
 - Price changes are audit-logged (old → new).
@@ -76,14 +77,16 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
 - **Server:**
   - adds a movement (`type = restock`, positive quantity, `unit_cost`)
   - increases `stock_qty`
-  - sets the product's cost price to the new unit cost (**last-cost method**, see 05 §3)
+  - updates the product's **weighted-average cost** (C-22): blends existing stock and new stock; if stock was zero or negative, or the cost was unknown, the new unit cost is used
 - If the product has open discrepancies, the app asks: "Was the stock count wrong before this restock?" and links to an adjustment. It does **not** auto-resolve.
 
 ### 2.3 Stock adjustment (F-06, F-22) 🌐
 
 - **Input:** either the **counted quantity** (the app computes the change) or a +/− change, a reason, and an optional note.
 - **Server:** adds a movement (`type = adjustment`), updates `stock_qty`, and marks the product's open discrepancies **resolved** when the resulting stock is ≥ 0. Each resolved discrepancy is linked to this movement.
-- Adjustments that reduce stock for damaged, expired or missing items are reported in Reports as **stock losses** at cost.
+- Each adjustment is valued at the current average cost (C-25) and does not change the average.
+- **Stock-reducing adjustments** (damaged, expired, missing/theft, own use, count correction down) are **stock losses**. They **reduce estimated net profit** and are shown on their own line in Reports (C-30, C-44).
+- **Stock-increasing count corrections** are shown as "stock found" for information and are **not** counted as income (C-31). Resolving negative stock this way has no profit effect (C-32).
 
 ### 2.4 Low stock (F-07)
 
@@ -100,7 +103,7 @@ A product is low when `stock_qty ≤ low_stock_level` (and the product is active
 
 ### 3.2 Balance
 
-- Balance = sum of the customer's ledger entries (see 05 §6). It is never stored as an editable number.
+- Balance = sum of the customer's ledger entries (see 05 §7). It is never stored as an editable number.
 - The app may cache the balance for display; the server value is authoritative.
 
 ### 3.3 Repayment (F-14) 🌐
@@ -122,9 +125,11 @@ A product is low when `stock_qty ≤ low_stock_level` (and the product is active
 - Requires the customer's phone for direct WhatsApp; otherwise the share sheet is used.
 - **No automatic sending.**
 
-### 3.6 Bad debt
+### 3.6 Bad debt (write-off) and recovery
 
-The owner writes off a debt with a balance adjustment, reason "Written off". It appears in Reports as **credit written off**.
+- **Write off** (S-44, type `write_off`): the owner gives up some or all of a balance, with a reason. It **reduces estimated net profit** in the period it is recorded and appears in Reports as **Bad debts written off**, separate from operating expenses (C-33, C-45).
+- **Customer pays after a write-off:** first **Reverse write-off** (type `write_off_reversal`, up to the amount previously written off for that customer), then record a normal repayment. The reversal reduces bad debts in its period (C-74).
+- **Corrections** (type `adjustment`) fix typing errors and do **not** affect profit (C-34).
 
 ## 4. Expenses (F-16) 🌐
 
@@ -137,7 +142,7 @@ The owner writes off a debt with a balance adjustment, reason "Written off". It 
 ## 5. Cash count — close the day (F-19) 🌐
 
 1. **Opening cash:** defaults to the previous day's counted cash (editable, e.g. after money was removed for banking).
-2. **Expected cash** = opening cash + cash sales + cash "paid now" on credit sales + cash repayments − expenses paid from the cash drawer (all for that day, non-voided).
+2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments − operating expenses paid from the cash drawer (all for that day, non-voided).
 3. The owner enters **counted cash** and an optional note.
 4. **Difference** = counted − expected. Labels: Balanced (0), Over (+), Short (−).
 5. Saved as a `cash_counts` row: date, opening, expected, counted, difference, note. One record per day; re-counting replaces it, with the earlier version kept in the audit log.
@@ -147,7 +152,7 @@ The owner writes off a debt with a balance adjustment, reason "Written off". It 
 - MVP: record supplier payments as Restock (no drawer effect) and personal withdrawals via the note.
 - A "cash out of drawer" entry type is a candidate future feature, depending on pilot feedback.
 
-**Schema addition** (vs PLAN.md): `cash_counts` table; `expenses.paid_from`; `sales.momo_reference`; `customer_ledger.momo_reference`.
+**Schema:** see [09-data-model.md](09-data-model.md) (`cash_counts`, `expenses.paid_from`, `sales.momo_reference`, `customer_ledger.momo_reference`).
 
 ## 6. CSV export (F-20) 🌐
 
