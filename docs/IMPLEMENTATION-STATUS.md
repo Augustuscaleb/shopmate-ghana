@@ -20,7 +20,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | Server functions: `create_business`, `register_device` (idempotent) | ✅ Done | `..._foundation_functions.sql` |
 | Automated tests: 77 database tests and 14 API tests | ✅ 91/91 passed (local) | `supabase/tests/database/`, `tests/` |
 | Secret scan | ✅ Passes; negative control fails as expected | `scripts/check-secrets.mjs` |
-| CI on GitHub Actions (free runners, no secrets needed) | ⏳ Configured; first run result recorded below | `.github/workflows/ci.yml` |
+| CI on GitHub Actions (free runners, no secrets needed) | ✅ First run passed | `.github/workflows/ci.yml` |
 | Dependabot dependency alerts (SEC-42) | ✅ Configured | `.github/dependabot.yml` |
 | Supabase **cloud** project | ⏳ **Not created**. Needs the owner's account; supabase.com is unreachable from Claude's environment | `docs/setup/SUPABASE-CLOUD-SETUP.md` |
 
@@ -32,14 +32,14 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | API security tests, 14 | ✅ 14/14 passed | Same, through real Auth and PostgREST | same log |
 | Secret scan | ✅ Passed | Repository | same log |
 | Typecheck (tests and app) | ✅ Passed | | same log |
-| CI (GitHub Actions) | See "CI runs" below | GitHub-hosted runner | |
+| CI (GitHub Actions) | ✅ Passed: same 77 + 14 tests | GitHub-hosted runner, local Supabase inside the runner | [run](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749) |
 
 **Planned tests (10-test-plan):** 3 ✅ passed (local), 5 🛠 partly implemented, 133 📝 documented. **No release gate has been reached.** Real shop data remains **not allowed**: that needs gate G2, including the backup restore drill.
 
 ### CI runs
 | Date | Commit | Result | Link |
 |---|---|---|---|
-| (pending first run) | | | |
+| 2026-11-11 | `634206b` | ✅ Success: secret scan, typecheck, 77/77 database tests, 14/14 API tests | [run 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749) |
 
 ## Not done in Stage 1A (by design, or blocked)
 

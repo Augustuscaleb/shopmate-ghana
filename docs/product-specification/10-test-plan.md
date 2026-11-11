@@ -14,7 +14,7 @@
 **Current status (11 November 2026, end of Stage 1):**
 - **Planned tests:** 3 ✅ passed on the **local** Supabase stack, 5 🛠 partly implemented, 133 📝 documented only.
 - **Stage 1 foundation tests (§0a):** 91 ✅ passed (local).
-- **CI:** see §0a. "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), not the cloud project, which doesn't exist yet.
+- **CI:** passed on GitHub Actions (§0a). "Local" means the local Supabase stack (Docker, PostgreSQL 17.11, Supabase CLI 3.1.0), not the cloud project, which doesn't exist yet.
 
 | Area | Tests | 📝 Documented | 🛠 Implemented | ✅ Passed |
 |---|---|---|---|---|
@@ -54,7 +54,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 - With RLS disabled on one table, the RLS-everywhere test reported **not ok**.
 - With a fake key planted, the secret scan **failed**.
 
-**CI:** `.github/workflows/ci.yml` runs the secret scan, typecheck, all database tests and API tests on every push, using a local Supabase stack inside the GitHub runner. CI status is recorded in `docs/IMPLEMENTATION-STATUS.md`.
+**CI:** `.github/workflows/ci.yml` runs the secret scan, typecheck, all database tests and API tests on every push, using a local Supabase stack inside the GitHub runner. First CI run, 11 November 2026, commit `634206b`: **✅ 77/77 database and 14/14 API tests passed** ([run 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)). The 91 Stage 1 tests therefore have both local and CI evidence.
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
