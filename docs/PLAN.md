@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v5 — for final review as the implementation baseline (product specification revision 3)
+**Status:** v6 — for final review as the implementation baseline (product specification revision 4)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -173,7 +173,13 @@ Rules:
 
 ### 5.4 Cost method and losses
 
-- **Weighted-average cost** (assessed as feasible for the MVP). Each restock blends the cost of existing and new stock. The server assigns each sale's cost while holding a lock on the product rows, so simultaneous sales from several phones can't corrupt it.
+- **Weighted-average cost using a value pool:** each product keeps stock quantity and stock value (whole pesewas); average = value ÷ quantity.
+- Each sale is costed **as at its sale time** from the product's cost history, and removes exactly that cost from the pool. A late-uploaded offline sale therefore keeps its original cost **and** leaves the correct future average.
+- Total cost is always conserved.
+- Cost-changing events (restock, adjustment, void, cost correction) are online-only and server-timed.
+- Phone sale times are verified with Android's elapsed-time clock and flagged when doubtful.
+- Closed days keep immutable snapshots, so confirmed reports are never rewritten.
+- Details: specification 05 §3, §11.
 - Limitations and the fallback (last-restock pricing) are documented in specification 05 §3.
 - **Stock losses** (damaged, expired, missing, own use, count corrections down) and **bad debts written off** **reduce estimated net profit**. They are shown separately from operating expenses.
 
@@ -189,7 +195,7 @@ The full, authoritative data model (tables, fields, server functions) is in **[p
 
 **Conventions**
 
-- **Money** is stored as whole **pesewas** (integers): GH₵12.50 = `1250`. The only exception is the average cost, which is stored as an exact decimal (4 dp, never floating point).
+- **Money** is stored as whole **pesewas** (integers): GH₵12.50 = `1250`, including stock value. Average-cost snapshots are exact decimals (4 dp, never floating point).
 - **Time** is stored in UTC. Reports use Ghana time (GMT/UTC+0, no daylight saving).
 - Every table has `id` (UUID), `business_id`, `created_at`, `updated_at` and `deleted_at`. Records are soft-deleted.
 - **Balances and stock are derived from append-only ledgers** (`customer_ledger`, `stock_movements`).
@@ -200,16 +206,16 @@ The full, authoritative data model (tables, fields, server functions) is in **[p
 | Area | Tables |
 |---|---|
 | Business and access | `businesses`, `profiles`, `business_members`, `devices` |
-| Products and stock | `categories`, `products` (with `avg_cost`), `product_cost_history`, `stock_movements`, `stock_discrepancies` |
+| Products and stock | `categories`, `products` (with `stock_qty`, `stock_value`), `product_cost_history`, `stock_movements` (with exact value changes), `stock_discrepancies` |
 | Sales | `sales` (phone-generated ID, MoMo reference, paid-now amount, online/offline mode), `sale_items` (server-assigned unit cost) |
 | Customers and credit | `customers`, `customer_ledger` (credit_sale, repayment, adjustment, write_off, write_off_undo, void_reversal), `debt_recoveries` |
-| Expenses and cash | `expense_categories`, `expenses` (paid_from), `cash_counts` |
+| Expenses and cash | `expense_categories`, `expenses` (paid_from), `cash_counts`, `day_snapshots` (immutable confirmed days) |
 | Subscription and audit | `subscriptions` (incl. `pilot` plan), `subscription_payments`, `audit_log`, `request_log` (idempotency) |
 
 **Report formulas** (full rules in specification 05):
 
 - **Sales** = Σ non-voided sale totals, including credit sales
-- **Cost of items sold** = Σ server-assigned line costs (weighted average)
+- **Cost of items sold** = Σ sale-time line costs + cost adjustments (shown as a sub-line)
 - **Gross profit** = Sales − Cost of items sold
 - **Net profit (estimated)** = Gross profit − Operating expenses − Stock losses − Bad debts written off + Recovered bad debts. Each is shown on its own line
 - **Cash / MoMo received** = sales + paid-now + repayments, by method
@@ -426,7 +432,9 @@ Timelines are estimates for part-time work.
 |---|---|
 | Duplicate sales from retries | Sale ID generated on the phone + primary key + idempotent `record_sale()`; idempotency keys on every other write (spec 09 §4) |
 | Concurrent uploads from several phones | One transaction per write; row locks in a fixed order (products by ID, then customer); retry on deadlock; tests TC-CONC |
-| Offline sale costed at a later average | Point-in-time costing from product cost history (spec 05 §3.3) |
+| Offline sale costed at a later average, or distorting the future average | Value pool + sale-time costing (spec 05 §3); conservation test TC-COST-20; order-independence test TC-COST-18 |
+| Wrong or manipulated phone clocks | Elapsed-time verification, clock offset, red-flag checks; low confidence → upload time (spec 05 §3.6) |
+| Late uploads changing confirmed reports | Immutable day snapshots; "Changes after closing" shown separately (spec 05 §11) |
 | Manipulation by removing unsent sales | Safe cancellation with reason, re-authentication and a permanent server record (spec 04 §1.5) |
 | Lost sales (crash, battery) | Written to local storage before confirmation is shown; removed only after server confirmation |
 | Half-saved sales | Single all-or-nothing database transaction |
@@ -509,11 +517,16 @@ Timelines are estimates for part-time work.
 | 22 | Visual design (colours, typography, layout) | Provisionally approved |
 | 23 | Verified / reported / assumption labelling in all documentation | Approved |
 | 24 | Not counting stock found in recounts as profit | Approved |
-| 25 | Point-in-time costing: sales costed as at their sale time from product cost history; recorded costs never change | Proposed — for final review |
-| 26 | Safe cancellation of unsent sales (server check, reason, re-authentication, permanent record); no local-only discard | Proposed — for final review |
-| 27 | Write-off undo (mistake, no money) is separate from debt recovery (money received, own profit line); payments split server-side | Proposed — for final review |
-| 28 | Transactions, fixed lock order and idempotency keys for every write | Proposed — for final review |
-| 29 | Test status reported as Documented / Implemented / Passed, with evidence; currently all Documented | Proposed — for final review |
+| 25 | Point-in-time costing: sales costed as at their sale time from product cost history; recorded costs never change | Approved in direction; refined by 30 |
+| 26 | Safe cancellation of unsent sales (server check, reason, re-authentication, permanent record); no local-only discard | Approved |
+| 27 | Write-off undo (mistake, no money) is separate from debt recovery (money received, own profit line); payments split server-side | Approved |
+| 28 | Transactions, fixed lock order and idempotency keys for every write | Approved |
+| 29 | Test status reported as Documented / Implemented / Passed, with evidence; currently all Documented | Approved |
+| 30 | **Value-pool weighted average** (stock value in pesewas; average = value ÷ qty; sales remove their sale-time cost; edge cases posted as visible cost adjustments) | Proposed — for final review |
+| 31 | Sale-time verification with elapsed-time clock and time confidence; low confidence uses upload time | Proposed — for final review |
+| 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Proposed — for final review |
+| 33 | Immutable day snapshots on Close the day; late changes shown separately | Proposed — for final review |
+| 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Proposed — for final review |
 
 ### References
 

@@ -1,6 +1,6 @@
 # 04 — Workflows
 
-**Revision 3.** All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function) with an idempotency key and fixed lock order. See [09-data-model.md §4](09-data-model.md). Table names refer to 09.
+**Revision 4.** All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function) with an idempotency key and fixed lock order. See [09-data-model.md §4](09-data-model.md). Table names refer to 09.
 
 ---
 
@@ -27,9 +27,9 @@
 5. The sync engine sends the sale to the server function `record_sale` (see 06).
 
 **Server-side result of `record_sale`:**
-- `sales` row (status `recorded`) + `sale_items` rows. Each line is costed **as at the time the sale happened** (`occurred_at`, from the product cost history), not at upload time (C-23 – C-23c). The phone's provisional cost is stored for audit only. The cost is fixed from then on (C-29)
-- one `stock_movements` row per line (`type = sale`, negative quantity)
-- `products.stock_qty` reduced atomically
+- `sales` row (status `recorded`, with best-estimate sale time and time confidence, 05 §3.6) + `sale_items` rows. Each line is costed **as at the time the sale happened** (`occurred_at`, from the product cost history), not at upload time (C-23 – C-23c). The phone's provisional cost is stored for audit only. The cost is fixed from then on (C-29)
+- one `stock_movements` row per line (`type = sale`, − quantity, − line cost)
+- `products.stock_qty` and `stock_value` reduced atomically (value by the sale-time line cost, so a late sale leaves the correct average, 05 §3.5); any C-25a/C-25b cost adjustment posted; a cost history row written
 - for a credit sale: a `customer_ledger` entry of `credit_sale` (+ total) and, if paid now > 0, a `repayment` entry (− paid now) with the same sale link
 - stock discrepancy rows for any product that went below zero (offline sales only)
 - an audit log entry
@@ -53,7 +53,7 @@
 - Requires a reason (pick list: "Customer returned items", "Wrong item/quantity", "Duplicate entry", "Other" + text).
 - The server, in one transaction:
   - sets `voided_at` and `void_reason`
-  - adds reversing stock movements (`type = void`, positive quantity) and re-blends the average cost using the original line cost (C-26)
+  - adds reversing stock movements (`type = void`, positive quantity) that return the **original line cost** to the product's stock value (C-21, C-26)
   - for credit sales, adds a `void_reversal` ledger entry that cancels the **outstanding** credit from that sale (see 05 §7)
   - writes an audit entry
   - if the void brings a product's stock back to ≥ 0, open discrepancies caused by **this sale** are resolved with resolution `sale_voided`
@@ -103,7 +103,7 @@ Replaces the earlier "DISCARD" idea. Goal: allow a genuine mistake to be removed
 
 - **Required:** name (unique per shop, case-insensitive), selling price > 0.
 - **Optional:** category, unit, cost price (≥ 0; sets the initial average cost; if missing, profit shows a warning "cost price not set"), low-stock level (default from Settings, e.g. 5).
-- **Correct cost price** (existing product): sets the average cost directly; audit-logged; past sales are unchanged (C-27).
+- **Correct cost price** (existing product): re-values the remaining stock at the new cost (`stock_value = stock_qty × cost`). The difference is recorded as a **stock value correction** (not profit); audit-logged; past sales unchanged (C-27).
 - **Initial stock:** entered only at creation, and recorded as a movement of `type = opening`.
 - **Archive** instead of delete. Archived products are hidden from selling, but their history remains.
 - Price changes are audit-logged (old → new).
@@ -112,16 +112,17 @@ Replaces the earlier "DISCARD" idea. Goal: allow a genuine mistake to be removed
 
 - **Input:** quantity received (whole number ≥ 1), or packs × units per pack; then **either** total cost **or** unit cost.
 - **Server:**
-  - adds a movement (`type = restock`, positive quantity, `unit_cost`)
-  - increases `stock_qty`
-  - updates the product's **weighted-average cost** (C-22): blends existing stock and new stock; if stock was zero or negative, or the cost was unknown, the new unit cost is used
+  - if stock is **negative**, first re-values the negative units at this restock's unit cost and records the difference as a **cost adjustment** (C-25)
+  - adds a movement (`type = restock`, + quantity, + **total amount paid** as value)
+  - increases `stock_qty` and `stock_value`; the new average is value ÷ quantity (C-20, C-21)
+  - writes a `product_cost_history` row (C-22)
 - If the product has open discrepancies, the app asks: "Was the stock count wrong before this restock?" and links to an adjustment. It does **not** auto-resolve.
 
 ### 2.3 Stock adjustment (F-06, F-22) 🌐
 
 - **Input:** either the **counted quantity** (the app computes the change) or a +/− change, a reason, and an optional note.
 - **Server:** adds a movement (`type = adjustment`), updates `stock_qty`, and marks the product's open discrepancies **resolved** when the resulting stock is ≥ 0. Each resolved discrepancy is linked to this movement.
-- Each adjustment is valued at the current average cost (C-25) and does not change the average.
+- Each adjustment is valued at round_half_up(qty × current average) and moves that value out of (losses) or into (stock found) the stock value, so the average is unchanged (C-21). If stock reaches 0 with a value left over, the leftover becomes a cost adjustment (C-25a).
 - **Stock-reducing adjustments** (damaged, expired, missing/theft, own use, count correction down) are **stock losses**. They **reduce estimated net profit** and are shown on their own line in Reports (C-30, C-44).
 - **Stock-increasing count corrections** are shown as "stock found" for information and are **not** counted as income (C-31). Resolving negative stock this way has no profit effect (C-32).
 
@@ -195,7 +196,8 @@ Three different actions. The app never mixes them (full rules in 05 §7.2):
 2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments + cash recoveries of written-off debt − operating expenses paid from the cash drawer (all for that day; voided and cancelled-before-upload sales excluded).
 3. The owner enters **counted cash** and an optional note.
 4. **Difference** = counted − expected. Labels: Balanced (0), Over (+), Short (−).
-5. Saved as a `cash_counts` row: date, opening, expected, counted, difference, note. One record per day; re-counting replaces it, with the earlier version kept in the audit log.
+5. Saved as a `cash_counts` row: date, opening, expected, counted, difference, note. Re-counting creates a new version; earlier versions are kept.
+5a. **The day is closed:** the server stores an immutable **day snapshot** of all report figures for that day (05 §11, C-100). Later uploads, voids or cancellations affecting that day are shown as "Changes after closing", and the confirmed figures are never rewritten. Closing is optional; days that are never closed simply show current figures with the late-upload note (C-56).
 6. **MoMo received** that day (MoMo sales + MoMo paid-now + MoMo repayments + MoMo recoveries) is displayed for manual comparison with the wallet. It is not stored as a count in the MVP.
 
 **Limitations (stated in the app help) [A]:** owners often take money out of the drawer for personal use or pay suppliers from it.

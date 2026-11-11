@@ -1,6 +1,6 @@
 # ShopMate Ghana — MVP Product Specification
 
-**Status:** Revision 3 — for final review as the implementation baseline
+**Status:** Revision 4 — for final review as the implementation baseline
 **Date:** 11 November 2026
 **Depends on:** [docs/PLAN.md](../PLAN.md) (approved) and [Stage 0 research](../market-research/STAGE-0-REPORT.md) (approved direction)
 
@@ -50,6 +50,18 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 6. The verified / reported / assumption distinction is preserved throughout.
 
 ## Revision log
+
+### Revision 4 (11 November 2026)
+
+| # | Issue raised | Resolution | Where |
+|---|---|---|---|
+| Main | Late offline sale keeps its cost, but the future average was wrong (restock blended against a stock count that missed the sale) | **Value-pool method:** products keep stock value (pesewas) and quantity; average = value ÷ qty; a late sale removes its sale-time cost, so the pool equals true-time-order processing (owner's scenario: 12.78). Total cost always conserved. Remaining limitation (in-between sales) quantified, bounded, logged | 05 §3.1–3.5, §3.9; 09; 04 §1.1, §2; TC-COST-01–21 |
+| 1 | Wrong or manipulated phone time | Android elapsed-time verification, clock offset, red-flag checks, time confidence; low → upload time; flagged, never rejected | 05 §3.6; 06 §9; TC-TIME-01–06 |
+| 2 | Overlapping device times | Sales don't change the average; cost events are server-timed; tie rule; stock conflicts via discrepancies | 05 §3.7; TC-TIME-07/08 |
+| 3 | Offline restocks or adjustments | Stay online-only, now an explicit accounting safeguard | 05 §3.8; TC-COST-19 |
+| 4 | Late arrivals vs confirmed reports | Immutable day snapshots; "Confirmed / Changes after closing / Current" | 05 §11; 04 §5; 03 S-60/61; TC-CLOSE-01–06 |
+| — | Test status | 113 documented, 0 implemented, 0 passed | 10 §0 |
+
 
 ### Revision 3 (11 November 2026)
 

@@ -1,6 +1,6 @@
 # 09 — Data Model (Database Requirements)
 
-**Revision 3.** This is the **single source of truth** for MVP tables, fields, server functions, transactions and locking. [PLAN.md §6](../PLAN.md#6-database-structure) summarises it. Calculation rules (C-xx) are in [05](05-financial-calculations.md).
+**Revision 4.** This is the **single source of truth** for MVP tables, fields, server functions, transactions and locking. [PLAN.md §6](../PLAN.md#6-database-structure) summarises it. Calculation rules (C-xx) are in [05](05-financial-calculations.md).
 
 > **Status:** this is a design, not an implementation. No database exists yet.
 
@@ -10,7 +10,7 @@
 |---|---|
 | IDs | UUID. Sale IDs are generated on the phone |
 | Common columns | `id`, `business_id`, `created_at`, `updated_at`, `deleted_at` (soft delete) |
-| Money | `BIGINT` pesewas. Only `avg_cost` / `unit_cost` / `device_unit_cost` use `NUMERIC(18,4)` pesewas |
+| Money | `BIGINT` pesewas, including **stock value**. Only average-cost snapshots (`product_cost_history.avg_cost`, `sale_items.unit_cost`, `device_unit_cost`, `avg_at_upload`) use `NUMERIC(18,4)` pesewas |
 | Quantities | `INTEGER` (whole units) |
 | Time | `TIMESTAMPTZ` (UTC); reports in Ghana time |
 | Security | RLS on every table (SEC-10). Money, stock and ledger tables are written only by server functions (SEC-11) |
@@ -25,24 +25,24 @@
 | `businesses` | name, type, town, phone, reference_code (unique), receipt_footer, default_low_stock_level |
 | `profiles` | user_id, full_name, email |
 | `business_members` | business_id, user_id, role (`owner` in MVP) |
-| `devices` | business_id, user_id, device_code (unique per business), label, last_seen_at, revoked_at |
+| `devices` | business_id, user_id, device_code (unique per business), label, last_seen_at, revoked_at, **last_sync_at, last_clock_offset_ms, last_boot_id, last_elapsed_ms** (time checks, 05 §3.6) |
 
 ### Products, cost and stock
 
 | Table | Key fields |
 |---|---|
 | `categories` | name |
-| `products` | name (unique per business, case-insensitive), category_id, unit, selling_price, **avg_cost** (nullable), stock_qty (may be negative), low_stock_level, active |
-| `product_cost_history` | product_id, **effective_at** (server time), avg_cost, cause (`opening`/`restock`/`void`/`set_cost`), movement_id or audit_id. Index (product_id, effective_at) — C-20 |
-| `stock_movements` | product_id, type (`opening`/`restock`/`sale`/`void`/`adjustment`), qty_change, unit_cost, value, reason (adjustments), sale_id, note, user_id, occurred_at |
+| `products` | name (unique per business, case-insensitive), category_id, unit, selling_price, stock_qty (may be negative), **stock_value** (BIGINT pesewas), **cost_known** (boolean), low_stock_level, active. **Average = stock_value ÷ stock_qty** (not stored) |
+| `product_cost_history` | product_id, **effective_at** (server time), stock_qty_after, stock_value_after, avg_cost (4-dp snapshot; null if qty ≤ 0 or cost unknown), cause (`opening`/`restock`/`sale`/`void`/`adjustment`/`cost_adjustment`/`set_cost`), movement_id. Index (product_id, effective_at). One row per value-changing event (C-22) |
+| `stock_movements` | product_id, type (`opening`/`restock`/`sale`/`void`/`adjustment`/**`cost_adjustment`**/**`value_correction`**), qty_change (0 for cost adjustments and corrections), **value (signed BIGINT, exact change to stock_value)**, unit_cost (info), reason (adjustments: damaged/expired/missing/own_use/count_correction/other; cost adjustments: `negative_stock_revaluation`/`zero_stock_residue`/`negative_value_clamp`), sale_id, note, user_id, occurred_at |
 | `stock_discrepancies` | product_id, sale_id, shortfall_qty, status (`open`/`resolved`), resolution (`adjustment`/`sale_voided`), resolved_by_movement_id, resolved_at |
 
 ### Sales
 
 | Table | Key fields |
 |---|---|
-| `sales` | **id (phone UUID, primary key)**, device_id, receipt_no (unique per business), **status** (`recorded` / `voided` / `cancelled_unsent`), subtotal, discount, total, payment_method, momo_reference, customer_id, paid_now_amount, paid_now_method, created_offline, mode, occurred_at, received_at, **cost_basis** (`occurred_at`/`received_at`), payload_version, clock_flag, voided_at, void_reason, cancelled_at, cancel_reason, cancel_note |
-| `sale_items` | sale_id, product_id, qty, unit_price, line_total, **unit_cost** (as-of server cost, C-23a), **device_unit_cost** (phone's provisional cost, audit only, C-23c), line_cost, cost_missing, cost_basis_adjusted |
+| `sales` | **id (phone UUID, primary key)**, device_id, receipt_no (unique per business), **status** (`recorded` / `voided` / `cancelled_unsent`), subtotal, discount, total, payment_method, momo_reference, customer_id, paid_now_amount, paid_now_method, created_offline, mode, **occurred_at_device** (phone wall clock), **occurred_at** (best estimate, 05 §3.6), **device_elapsed_ms**, **boot_id**, **time_confidence** (`high`/`medium`/`low`), **time_check** (JSON: checks and results), received_at, **cost_basis** (`occurred_at`/`received_at`), payload_version, voided_at, void_reason, cancelled_at, cancel_reason, cancel_note |
+| `sale_items` | sale_id, product_id, qty, unit_price, line_total, **unit_cost** (as-of server cost, C-23a), **device_unit_cost** (phone's provisional cost, audit only, C-23c), **avg_at_upload** (average when processed; diagnostic for C-58), line_cost (removed from stock_value), cost_missing, cost_basis_adjusted |
 
 For a `cancelled_unsent` sale, `sale_items` are stored **for the record only**. No stock movements, ledger entries or report effects are created.
 
@@ -60,7 +60,8 @@ For a `cancelled_unsent` sale, `sale_items` are stored **for the record only**. 
 |---|---|
 | `expense_categories` | name |
 | `expenses` | category_id, amount, paid_from (`cash_drawer`/`momo`/`other`), expense_date, note |
-| `cash_counts` | count_date (unique per business), opening_cash, expected_cash, counted_cash, difference, note |
+| `cash_counts` | count_date, version, opening_cash, expected_cash, counted_cash, difference, note |
+| `day_snapshots` | business_id, day, version, closed_at, closed_by, figures (JSON: all 05 §5 figures), included_record_ids. **Immutable**; new version on re-close (C-100 – C-103) |
 | `subscriptions` | plan (`starter`/`standard`/`plus`/`pilot`), status, paid_until |
 | `subscription_payments` | amount, momo_transaction_id (unique), payer_number, confirmed_by, paid_at |
 | `audit_log` | user_id, device_id, action, entity, entity_id, before, after, reason, created_at |
@@ -72,14 +73,16 @@ All functions run in **one database transaction**, take a client-generated **ide
 
 | Function | Changes | Key checks |
 |---|---|---|
-| `record_sale(payload, mode)` | sales, sale_items, stock_movements, products, customer_ledger, stock_discrepancies | Sale ID is the idempotency key; totals recalculated (SEC-13); as-of cost (C-23); online stock validation |
+| `record_sale(payload, mode)` | sales, sale_items, stock_movements, products (qty and value), product_cost_history, customer_ledger, stock_discrepancies | Sale ID is the idempotency key; totals recalculated (SEC-13); time-confidence checks (C-90–C-95); sale-time cost (C-23); value removed at that cost; pool validity rules (C-25a/b); online stock validation |
+| `sync_heartbeat(device_wall_clock, elapsed_ms, boot_id)` | devices | Records clock offset for time checks |
+| `close_day(date, cash_count)` | cash_counts, day_snapshots | Snapshot computed by the server; immutable |
 | `cancel_unsent_sale(payload, reason, note)` | sales (status `cancelled_unsent`), sale_items, audit_log | Sale ID must **not** already be recorded; reason required; re-authenticated owner (04 §1.5) |
 | `get_sale_status(sale_id)` | — | Returns recorded / cancelled / unknown |
-| `void_sale(sale_id, reason)` | sales, stock_movements, products, product_cost_history, customer_ledger, stock_discrepancies | Status `recorded`; balance ≥ 0 |
+| `void_sale(sale_id, reason)` | sales, stock_movements, products (qty and value: original line cost returned), product_cost_history, customer_ledger, stock_discrepancies | Status `recorded`; balance ≥ 0 |
 | `create_product` / `update_product` | products, stock_movements, product_cost_history | Unique name; price > 0 |
-| `set_cost(product, cost, reason)` | products, product_cost_history, audit_log | C-27 |
-| `restock(product, qty, cost)` | stock_movements, products, product_cost_history | qty ≥ 1 |
-| `adjust_stock(product, count or change, reason)` | stock_movements, products, stock_discrepancies | Reason required |
+| `set_cost(product, cost, reason)` | products (stock_value), stock_movements (`value_correction`), product_cost_history, audit_log | C-27 |
+| `restock(product, qty, total_paid)` | stock_movements (incl. any C-25 cost adjustment), products, product_cost_history | qty ≥ 1; total_paid ≥ 0 |
+| `adjust_stock(product, count or change, reason)` | stock_movements, products (qty and value), product_cost_history, stock_discrepancies | Reason required |
 | `record_payment(customer, amount, method, ref, date)` | customer_ledger (`repayment`) and/or debt_recoveries | Server computes the split (C-79); rejects amounts above balance + recoverable |
 | `adjust_balance(customer, amount, reason)` | customer_ledger (`adjustment`) | Balance ≥ 0 |
 | `write_off(customer, amount, reason)` | customer_ledger (`write_off`) | 0 < amount ≤ balance |
@@ -88,7 +91,7 @@ All functions run in **one database transaction**, take a client-generated **ide
 | `save_cash_count(date, opening, counted, note)` | cash_counts | Server computes expected (C-80) |
 | `register_device()` | devices | Next free device_code |
 | `export_csv(range, kinds)` | — (read) | Membership |
-| `check_stock_integrity()` | — (read) | stock_qty = Σ qty_change; avg_cost = latest history row |
+| `check_stock_integrity()` | — (read) | stock_qty = Σ qty_change; **stock_value = Σ value** (conservation, 05 §3.2); latest history row matches the product |
 
 ## 4. Transactions, locking and idempotency
 
@@ -132,7 +135,18 @@ All functions run in **one database transaction**, take a client-generated **ide
 | CHECK `qty > 0`, `amount > 0` where applicable | Invalid entries |
 | Foreign keys with `business_id` matching (composite) | Cross-business references |
 
-## 5. Changes from revision 2
+## 5. Changes in revision 4
+
+| Change | Reason |
+|---|---|
+| `products.stock_value` (+ `cost_known`) replaces a stored average; average = value ÷ qty | Value-pool method: late sales leave the correct average (05 §3.1–3.5) |
+| `stock_movements.value` is the exact signed value change; new types `cost_adjustment`, `value_correction` | Conservation; visible edge-case handling (C-25–C-27) |
+| `product_cost_history` records qty, value and average after **every** value-changing event, including sales | Sale-time lookup always sees the true pool state |
+| `sales.occurred_at_device`, `device_elapsed_ms`, `boot_id`, `time_confidence`, `time_check`; `devices` clock fields; `sync_heartbeat` | Timestamp checks (05 §3.6) |
+| `sale_items.avg_at_upload` | Measures limitation L2 (C-58) |
+| `day_snapshots`; versioned `cash_counts`; `close_day` | Confirmed reports never rewritten (05 §11) |
+
+## 6. Changes in revision 3
 
 | Change | Reason |
 |---|---|

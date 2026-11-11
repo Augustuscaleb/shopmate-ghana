@@ -22,7 +22,8 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 | `receipt_no` | See §5 |
 | `payload` | Full sale: lines with qty and unit price, **provisional** unit cost (phone display only; the server assigns the real cost, C-23), discount, method, customer, paid now, MoMo reference |
 | `payload_version` | Integer; starts at 1 |
-| `occurred_at` | Phone time at the sale |
+| `occurred_at` | Phone wall-clock time at the sale |
+| `elapsed_ms`, `boot_id` | Android elapsed time since boot (cannot be changed in settings) and boot session ID, used to verify the sale time (05 §3.6) |
 | `created_offline` | true if first attempt failed (sent with `mode = offline`) |
 | `status` | `pending` · `sending` · `synced` · `failed` |
 | `attempts`, `last_error`, `next_retry_at` | Retry control |
@@ -108,12 +109,14 @@ Owner-only does not prevent the owner using 2–3 phones (e.g. a phone and a tab
 
 **Which sale gets the discrepancy?** The one the server processed second, which depends on upload order, not sale time. The discrepancy screen therefore lists **all recent sales of that product from every device**, so the owner can judge which one was wrong.
 
-## 9. Clock problems (SY-50)
+## 9. Sale time and clock problems (SY-50 – SY-53)
 
-The server records `received_at`.
-- If `occurred_at` is more than 24 hours in the future, or more than 30 days in the past compared with `received_at`, the sale is **accepted** but flagged in Needs attention: "Check this sale's date: your phone's clock may be wrong."
-- Reports use `occurred_at`.
-- For costing, a flagged sale is costed as at `received_at` instead of `occurred_at` (C-23), and the sale detail says so.
+| ID | Rule |
+|---|---|
+| SY-50 | Every sync starts with `sync_heartbeat`: the phone sends its wall-clock time, elapsed time and boot ID; the server records the device's clock offset |
+| SY-51 | For each uploaded sale, the server estimates the true sale time and assigns a **time confidence** (high / medium / low) using the checks in 05 §3.6 (C-90 – C-95) |
+| SY-52 | **Low confidence** (e.g. sale time after upload time, clock moved backwards between receipts, far in the past): the sale is **accepted** (never lost), costed and reported at upload time, and flagged in Needs attention: "Check this sale's time: your phone's clock may be wrong." Both times are shown |
+| SY-53 | Overlapping times from several devices are not a conflict for costing, because sales don't change the average and cost events are server-timed (05 §3.7). Stock conflicts are handled by discrepancies (§8.1) |
 
 ## 10. App updates (SY-60)
 

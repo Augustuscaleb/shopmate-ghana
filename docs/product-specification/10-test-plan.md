@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 3.**
+**Revision 4.**
 
 ## 0. Test status (read this first)
 
@@ -16,7 +16,9 @@
 | Area | Tests | 📝 Documented | 🛠 Implemented | ✅ Passed |
 |---|---|---|---|---|
 | Financial (TC-FIN) | 8 | 8 | 0 | 0 |
-| Cost (TC-COST) | 16 | 16 | 0 | 0 |
+| Cost (TC-COST) | 21 | 21 | 0 | 0 |
+| Sale time (TC-TIME) | 8 | 8 | 0 | 0 |
+| Day close (TC-CLOSE) | 6 | 6 | 0 | 0 |
 | Losses (TC-LOSS) | 3 | 3 | 0 | 0 |
 | Credit (TC-CRED, TC-CASH) | 13 | 13 | 0 | 0 |
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 |
@@ -25,7 +27,7 @@
 | Security (TC-SEC) | 9 | 9 | 0 | 0 |
 | Backup (TC-BAK) | 5 | 5 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 |
-| **Total** | **94** | **94** | **0** | **0** |
+| **Total** | **113** | **113** | **0** | **0** |
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
@@ -52,26 +54,55 @@
 | TC-FIN-07 | Net profit = gross − expenses − stock losses − bad debts + recoveries; each line shown separately | C-47 | DB + E2E | 📝 |
 | TC-FIN-08 | Day boundaries (23:59 / 00:01 Ghana time) | §5 | DB | 📝 |
 
-## 2. Cost (weighted average and as-of costing)
+## 2. Cost (value-pool weighted average, sale-time costing)
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-COST-01 | Restock blending (10 @ 11.00 + 12 @ 11.60 → 1132.7273) | C-22 | 📝 |
-| TC-COST-02 | Restock with stock ≤ 0 → avg = new unit cost | C-22 | 📝 |
-| TC-COST-03 | Restock with unknown cost → avg = new unit cost | C-22 | 📝 |
-| TC-COST-04 | Every avg change writes exactly one `product_cost_history` row | C-20 | 📝 |
-| TC-COST-05 | Unknown cost → line cost 0, `cost_missing`, warning count | C-24, C-54 | 📝 |
-| TC-COST-06 | Adjustments don't change avg; loss valued at avg | C-25 | 📝 |
-| TC-COST-07 | Void re-blends at the original line cost and writes a history row | C-26 | 📝 |
-| TC-COST-08 | Manual cost correction: new history row; past sales unchanged | C-27, C-29 | 📝 |
+| TC-COST-01 | Restock adds total paid: 10 / 11000 + 12 paid 13920 → 22 / 24920 (avg 1132.7273) | C-21 | 📝 |
+| TC-COST-02 | Restock while stock is −2 (value −2000) with 10 paid 15000 → cost adjustment +1000; pool 8 / 12000 (avg 1500) | C-25 | 📝 |
+| TC-COST-03 | Stock reaches 0 with value left over → leftover posted as cost adjustment; value 0 | C-25a | 📝 |
+| TC-COST-04 | Every value-changing event writes exactly one history row with qty, value and average | C-22 | 📝 |
+| TC-COST-05 | Unknown cost → line cost 0, `cost_missing`, warning count; first cost set → value correction, no profit effect | C-24, C-27a | 📝 |
+| TC-COST-06 | Losses and stock found valued at round(qty × average); average unchanged | C-21, C-30 | 📝 |
+| TC-COST-07 | Void returns the original line cost to the pool | C-21, C-26 | 📝 |
+| TC-COST-08 | Manual cost correction → `value_correction` (info line, not profit); past sales unchanged | C-27, C-29 | 📝 |
 | TC-COST-09 | Two parallel restocks of one product = sequential result | 09 §4.2 | 📝 |
-| TC-COST-10 | 100 random restocks, sales, voids and adjustments: integrity check passes (stock = Σ movements; avg = latest history) | All | 📝 |
-| TC-COST-11 | **Offline sale before a restock, uploaded after it**, is costed at the pre-restock average (example 05 §3.5: GH₵33.00, not 33.98) | C-23, C-23a | 📝 |
-| TC-COST-12 | Offline sale made **after** a restock (phone cache stale) is costed at the post-restock average; `device_unit_cost` keeps the phone's figure; sale detail shows the "cost updated" note | C-23a, C-23c | 📝 |
-| TC-COST-13 | Recorded sale cost **never changes** after later restocks, cost corrections or other devices' late uploads (re-read after each) | C-29 | 📝 |
-| TC-COST-14 | Re-sending a recorded sale (idempotent retry) returns the **same** stored cost | C-29, 09 §4.3 | 📝 |
-| TC-COST-15 | Clock-flagged sale is costed as at `received_at`; future `occurred_at` is clamped to `received_at`; `cost_basis` recorded | C-23 | 📝 |
-| TC-COST-16 | `occurred_at` earlier than the first history row → earliest row used, `cost_basis_adjusted` set | C-23a | 📝 |
+| TC-COST-10 | 100 random restocks, sales, voids and adjustments: `check_stock_integrity()` passes | 09 §3 | 📝 |
+| TC-COST-11 | **Owner's scenario A** (05 §3.5): late sale costed 2 × 10.00 = 20.00; pool afterwards 18 / 23000, average **1277.7778**, equal to true-time-order processing | C-21, C-23 | 📝 |
+| TC-COST-12 | **Scenario B** (in-between sale): every figure in 05 §3.5 matches; total cost conserved; C-58 logs the late-sale difference | C-20, C-58 | 📝 |
+| TC-COST-13 | A recorded sale's cost never changes after later restocks, corrections or uploads | C-29 | 📝 |
+| TC-COST-14 | Re-sending a recorded sale returns the same stored cost | C-29 | 📝 |
+| TC-COST-15 | Low-confidence sale is costed at upload time; `cost_basis` recorded | C-23, C-93 | 📝 |
+| TC-COST-16 | Sale time earlier than the first history row → earliest row; `cost_basis_adjusted` | C-23a | 📝 |
+| TC-COST-17 | Late sale leaves value negative while qty > 0 → clamp to 0 via cost adjustment | C-25b | 📝 |
+| TC-COST-18 | **Order independence:** the same restocks plus several offline sales (no in-between online sales), uploaded in every possible order, give an identical final pool, equal to true-time-order processing | C-21 | 📝 |
+| TC-COST-19 | Restock, adjustment, void and cost correction are impossible offline (buttons disabled; no queue) | 05 §3.8 | 📝 |
+| TC-COST-20 | **Conservation identity** (05 §3.2) holds exactly, to the pesewa, for every product after every test in this section | C-20 | 📝 |
+| TC-COST-21 | Cost-adjustment and value-correction lines appear in the right report lines (Cost of items sold sub-line vs info) | C-41, C-57 | 📝 |
+
+## 2a. Sale time checks
+
+| ID | Test | Rules | Status |
+|---|---|---|---|
+| TC-TIME-01 | Wall clock moved +2 h before an offline sale, same boot → sale time corrected from elapsed time; confidence high; difference noted | C-90 | 📝 |
+| TC-TIME-02 | Phone restarted between sale and sync, offset at last sync ≤ 5 min → wall clock used; confidence medium | C-91 | 📝 |
+| TC-TIME-03 | Sale time later than upload time (beyond 5 min) → low; costed and reported at upload time | C-92, C-93 | 📝 |
+| TC-TIME-04 | Clock moved backwards (receipt A-000120 earlier than A-000119) → low | C-92 | 📝 |
+| TC-TIME-05 | Sale more than 30 days before upload, or before device registration or product creation → low | C-92 | 📝 |
+| TC-TIME-06 | Low-confidence sale appears in Needs attention with both times; never rejected | SY-52 | 📝 |
+| TC-TIME-07 | Two devices with overlapping sale times around a restock: each sale costed against the server-timed restock by its own best-estimate time | 05 §3.7 | 📝 |
+| TC-TIME-08 | Sale time exactly equal to a restock's time → history row counts as earlier | C-23a | 📝 |
+
+## 2b. Day close and late arrivals
+
+| ID | Test | Rules | Status |
+|---|---|---|---|
+| TC-CLOSE-01 | Close the day stores an immutable snapshot of all report figures | C-100 | 📝 |
+| TC-CLOSE-02 | Late upload of a sale from a closed day: confirmed figures unchanged; shown under "Changes after closing"; current total correct | C-101, C-102 | 📝 |
+| TC-CLOSE-03 | Void or cancellation affecting a closed day shown as a change after closing | C-102 | 📝 |
+| TC-CLOSE-04 | Re-closing a day creates a new version; the earlier snapshot is still readable | C-103 | 📝 |
+| TC-CLOSE-05 | Cost adjustments are dated on the processing day, never on an earlier closed day | C-102 | 📝 |
+| TC-CLOSE-06 | Weekly and monthly reports show the count and value of changes after closing | C-104 | 📝 |
 
 ## 3. Losses, credit and cash
 
@@ -188,6 +219,6 @@ A gate is passed only when **every** listed test is ✅ Passed with evidence.
 
 | Gate | Required before | Tests | Status |
 |---|---|---|---|
-| **G1 — Internal build** | Owner testing with fake data | TC-FIN, TC-COST, TC-LOSS, TC-CRED, TC-CASH | Not reached |
+| **G1 — Internal build** | Owner testing with fake data | TC-FIN, TC-COST, TC-TIME, TC-CLOSE, TC-LOSS, TC-CRED, TC-CASH | Not reached |
 | **G2 — Real data allowed** | Any pilot shop enters real data | G1 + all TC-SYNC, TC-CANCEL, TC-CONC, TC-SEC, TC-BAK | Not reached |
 | **G3 — Pilot expansion** | Beyond the first 2–3 shops | G2 + TC-SYNC-20 on pilot devices + no open critical bugs | Not reached |
