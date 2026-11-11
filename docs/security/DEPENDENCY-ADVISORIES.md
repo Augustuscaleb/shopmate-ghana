@@ -31,3 +31,12 @@ How we handle known vulnerabilities in third-party packages (SEC-42).
 | Date | Root | App | Notes |
 |---|---|---|---|
 | 2026-11-11 | 0 | 3 moderate (ADV-001) | Recorded at Stage 1A; CI high/critical gate added in Stage 1B |
+
+## Dependabot proposals (for the owner's decision; Claude does not merge)
+
+| PR | Proposal | Assessment |
+|---|---|---|
+| [#1](https://github.com/Augustuscaleb/shopmate-ghana/pull/1) | `actions/setup-node` 4 → 7 | Reasonable: removes GitHub's Node.js 20 deprecation warning. Merge only if its CI run passes |
+| [#2](https://github.com/Augustuscaleb/shopmate-ghana/pull/2) | `actions/checkout` 4 → 7 | Same as #1 |
+| [#3](https://github.com/Augustuscaleb/shopmate-ghana/pull/3) | `@types/node` 22 → 26 | **Not recommended**: we run Node 22. Future major proposals are now ignored |
+| [#4](https://github.com/Augustuscaleb/shopmate-ghana/pull/4) | TypeScript 6 → 7 in `/app` | **Not recommended**: Expo SDK 58 pins TypeScript ~6.0.3. Now ignored; TypeScript moves with Expo SDK upgrades |
