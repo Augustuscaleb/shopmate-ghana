@@ -27,10 +27,10 @@
 | F-08 | **New Sale**: cart, sale discount, payment method Cash / MoMo / Credit | **Works offline** |
 | F-09 | **Optional MoMo reference** on MoMo sales and repayments | Free text, up to 30 characters |
 | F-10 | Credit sale with optional **amount paid now** | Remainder goes to the customer's balance |
-| F-11 | Sales history with sync status; receipt view; share receipt as text | |
+| F-11 | Sales history with sync status; receipt view; share receipt as text; **safe cancellation of unsent sales** (04 §1.5) | |
 | F-12 | Void a sale with a reason (online) | Reverses stock and credit |
 | F-13 | Customers: create, edit, archive; optional phone and credit limit | |
-| F-14 | Customer balance and history; **record repayment** (cash or MoMo); **write off bad debt** and reverse a write-off | Write-offs reduce estimated net profit (05 §4) |
+| F-14 | Customer balance and history; **record payment** (cash or MoMo; applied as repayment, then recovery of written-off debt); **write off bad debt**; **undo a mistaken write-off** | Write-offs reduce and recoveries increase estimated net profit (05 §4, §7.2) |
 | F-15 | Balance reminder: pre-filled message opened in WhatsApp | Manual send by owner. **Not** automated |
 | F-16 | Expenses: add, edit, delete (soft); category; paid from (cash drawer / MoMo / other) | |
 | F-17 | **Today dashboard**: sales, profit, payment split, money owed, low stock, needs attention | |

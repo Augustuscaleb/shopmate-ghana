@@ -1,6 +1,6 @@
 # ShopMate Ghana — MVP Product Specification
 
-**Status:** Revision 2 — for final review (direction approved; visual design provisionally approved)
+**Status:** Revision 3 — for final review as the implementation baseline
 **Date:** 11 November 2026
 **Depends on:** [docs/PLAN.md](../PLAN.md) (approved) and [Stage 0 research](../market-research/STAGE-0-REPORT.md) (approved direction)
 
@@ -38,6 +38,8 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 
 **Money:** all amounts are stored as integer pesewas and displayed as GH₵ (see 05).
 
+**Test status:** every test case in 10 is currently **📝 Documented only**. None is implemented or passed. See 10 §0.
+
 ## Decisions reflected in this specification
 
 1. Core MVP: sales, inventory, expenses, customer credit, profit reporting, offline sales recording.
@@ -48,6 +50,18 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 6. The verified / reported / assumption distinction is preserved throughout.
 
 ## Revision log
+
+### Revision 3 (11 November 2026)
+
+| # | Issue raised | Resolution | Where |
+|---|---|---|---|
+| 1 | Offline sale costed at a later average | **Point-in-time costing:** every average-cost change is written to `product_cost_history`; each sale is costed as at its sale time (`occurred_at`, or `received_at` if the clock is suspect); recorded costs never change. Limitations L1–L5 documented | 05 §3.2–3.5; 09; TC-COST-11–16 |
+| 2 | DISCARD could lose or hide records | Replaced by **Cancel unsent sale**: internet status check (refused if the server already has it), required reason, review, password or PIN, server-side `cancelled_unsent` record and audit entry; ID reserved against stale uploads; visible in history and reports. No local-only discard. Outcomes for sales that never reach the server documented | 04 §1.5; 03 S-24/S-25; 06 SY-07, SY-18; TC-CANCEL-01–09 |
+| 3 | Undo vs recovery of written-off debt | **Undo write-off** (`write_off_undo`, mistake, no money, restores balance) vs **Recovery** (`debt_recoveries`, money received, balance unchanged, "Recovered bad debts" profit line). Payments split server-side: repayment first, then recovery, then rejection. Worked example 05 §10 | 05 §4, §7; 04 §3.3, §3.6; 03 S-42–S-44; TC-CRED-04, 08–12 |
+| 4 | Multi-device concurrency | One transaction per write; idempotency claim → product locks by ID → customer lock; retry on deadlock; `request_log`; constraints. Two-devices-offline scenario documented step by step | 09 §4; 06 SY-71, §8.1; 07 SEC-24–26; TC-CONC-01–07, TC-SYNC-10/11/14 |
+| 5 | Test status | Status legend and counts (94 documented, 0 implemented, 0 passed); evidence required for ✅; gates show "Not reached" | 10 §0, §10 |
+| — | Renamed | `write_off_reversal` → `write_off_undo` | All |
+
 
 ### Revision 2 (11 November 2026)
 

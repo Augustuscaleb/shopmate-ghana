@@ -1,6 +1,6 @@
 # 04 — Workflows
 
-All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function). "Stock movement" and "ledger entry" refer to the tables in [PLAN.md §6](../PLAN.md#6-database-structure).
+**Revision 3.** All writes that change money, stock or balances run as **one all-or-nothing server transaction** (a database function) with an idempotency key and fixed lock order. See [09-data-model.md §4](09-data-model.md). Table names refer to 09.
 
 ---
 
@@ -20,14 +20,14 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
 
 4. On **Charge**, the app:
    - creates the sale ID (UUID) and receipt number (see 06 §5)
-   - records a **provisional** `unit_cost` from the cached average cost, for on-phone profit only. The server assigns the authoritative cost when it records the sale (C-23, C-28)
+   - records `occurred_at` (the phone time of the sale) and a **provisional** cost from the cached average, for on-phone display only (C-28)
    - writes the sale to the **outbox**
    - updates **local** stock
    - shows **Sale complete**
 5. The sync engine sends the sale to the server function `record_sale` (see 06).
 
 **Server-side result of `record_sale`:**
-- `sales` row + `sale_items` rows, each with a **server-assigned unit cost** from the current weighted average (C-23)
+- `sales` row (status `recorded`) + `sale_items` rows. Each line is costed **as at the time the sale happened** (`occurred_at`, from the product cost history), not at upload time (C-23 – C-23c). The phone's provisional cost is stored for audit only. The cost is fixed from then on (C-29)
 - one `stock_movements` row per line (`type = sale`, negative quantity)
 - `products.stock_qty` reduced atomically
 - for a credit sale: a `customer_ledger` entry of `credit_sale` (+ total) and, if paid now > 0, a `repayment` entry (− paid now) with the same sale link
@@ -56,9 +56,46 @@ All writes that change money, stock or balances run as **one all-or-nothing serv
   - adds reversing stock movements (`type = void`, positive quantity) and re-blends the average cost using the original line cost (C-26)
   - for credit sales, adds a `void_reversal` ledger entry that cancels the **outstanding** credit from that sale (see 05 §7)
   - writes an audit entry
+  - if the void brings a product's stock back to ≥ 0, open discrepancies caused by **this sale** are resolved with resolution `sale_voided`
 - Voided sales stay visible (struck through) and are excluded from totals.
-- A pending (not yet synced) sale **cannot be voided** until it syncs. The app explains why.
+- A pending (not yet synced) sale **cannot be voided** until it syncs. Unsent sales use §1.5 instead.
 - Partial returns are **future**. In the MVP, void the sale and re-record the correct one.
+
+### 1.5 Cancel a sale that was never uploaded 🌐
+
+Replaces the earlier "DISCARD" idea. Goal: allow a genuine mistake to be removed **without** risking accidental loss or quiet manipulation of records.
+
+**When it is offered:** only for sales on this phone with status **Pending** or **Failed** (never confirmed by the server). Synced sales must be **voided** (§1.4), never cancelled.
+
+**Steps:**
+
+1. **Internet is required.** The app first asks the server for the sale's status (`get_sale_status`).
+   - **Server already has it** (the upload worked but the reply was lost): the sale is marked Synced, and the owner is told "This sale was already recorded. Use Cancel sale (void) instead." **No cancellation is possible.**
+   - **Server has it as cancelled:** marked cancelled (an earlier attempt finished).
+   - **Server doesn't have it:** continue.
+2. **Reason (required):** Entered by mistake · Duplicate of another sale · Test or practice sale · Customer didn't take the goods · Other (text required).
+3. **Review screen:** receipt number, date and time, items, total, payment method and customer (for credit). Shown with the warning in plain words: "This sale will not count in your sales, stock or customer balances. A record of the cancellation is kept."
+4. **Explicit confirmation:** the owner taps **Cancel this sale** and then **re-enters their account password** (or the phone's PIN/fingerprint if app lock is on). This stops a casual tap, or another person using the phone, from removing records.
+5. **Server records it** (`cancel_unsent_sale`, one transaction):
+   - the sale (full items and amounts) is stored with status `cancelled_unsent`, reason, note, who, which device, when
+   - **no** stock movements, ledger entries or report totals
+   - an audit log entry
+   - the sale ID is now permanently reserved: if any stale copy is uploaded later, the server answers "cancelled" (09 §4.3)
+6. **Only after the server confirms**, the phone removes the sale from the outbox, restores the locally displayed stock, and shows it in history as "Cancelled before upload".
+
+**Visibility (anti-manipulation):**
+- Cancelled-before-upload sales remain visible in Sales history (filter "Cancelled") with their reason.
+- Reports show "Cancelled before upload: N sales, GH₵ X".
+- The receipt number is never reused, so gaps are explained.
+
+**What happens to a sale that never reaches the server?**
+
+| Case | Outcome |
+|---|---|
+| Phone is still working | The sale stays **Pending or Failed** on the phone until it is uploaded, or cancelled through the steps above. It is never deleted automatically and never expires |
+| Owner cannot get internet | The sale can't be cancelled; it stays on the phone. Logout and account switching are blocked (SY-43, SY-42) |
+| Phone lost, broken or app uninstalled before upload | The sale is **lost**. This is the accepted residual risk (SY-44). It is reduced by daily-sync prompts and the "waiting to upload" banner |
+| Failed because the app is outdated | Cancellation is **not** suggested; the app asks the owner to update, then Retry |
 
 ## 2. Inventory
 
@@ -106,13 +143,17 @@ A product is low when `stock_qty ≤ low_stock_level` (and the product is active
 - Balance = sum of the customer's ledger entries (see 05 §7). It is never stored as an editable number.
 - The app may cache the balance for display; the server value is authoritative.
 
-### 3.3 Repayment (F-14) 🌐
+### 3.3 Record a payment from a customer (F-14) 🌐
 
-- Amount > 0 and ≤ current balance.
-- **Overpayment / advance payment is not supported in the MVP.** The app shows: "Kofi owes GH₵ 40.00. You can record up to that amount."
-- Method Cash or MoMo; optional MoMo reference; date (today by default; back-dating up to 30 days allowed, audit-logged).
-- The server adds a `repayment` ledger entry (negative amount).
-- A wrongly entered repayment is corrected with a **balance adjustment** (S-44) with a reason. Entries are never edited or deleted.
+- Fields: amount > 0, method Cash or MoMo, optional MoMo reference, date (default today; back-dating up to 30 days, audit-logged).
+- The **server** decides how the payment is applied, under a lock on the customer (C-79):
+  1. **Repayment** up to the current balance (`customer_ledger`, type `repayment`).
+  2. If the customer also has **written-off debt**, any remainder becomes a **recovery** (`debt_recoveries`) up to the recoverable amount (C-78).
+  3. Anything beyond that is **rejected**: "Kofi owes GH₵ 20.00 and has GH₵ 40.00 written off. The most you can record is GH₵ 60.00."
+- Before saving, the app shows the split in words: "GH₵ 20.00 clears Kofi's balance. GH₵ 15.00 is recovered from debt you wrote off earlier."
+- **Advance payments** (paying before buying) are not supported in the MVP.
+- Each payment request has an idempotency key, so a double-tap or retry never records it twice.
+- A wrongly entered repayment is corrected with **Correct a mistake** (`adjustment`) with a reason. Entries are never edited or deleted.
 
 ### 3.4 Credit limit
 
@@ -125,11 +166,20 @@ A product is low when `stock_qty ≤ low_stock_level` (and the product is active
 - Requires the customer's phone for direct WhatsApp; otherwise the share sheet is used.
 - **No automatic sending.**
 
-### 3.6 Bad debt (write-off) and recovery
+### 3.6 Bad debts: write-off, undo, and recovery
 
-- **Write off** (S-44, type `write_off`): the owner gives up some or all of a balance, with a reason. It **reduces estimated net profit** in the period it is recorded and appears in Reports as **Bad debts written off**, separate from operating expenses (C-33, C-45).
-- **Customer pays after a write-off:** first **Reverse write-off** (type `write_off_reversal`, up to the amount previously written off for that customer), then record a normal repayment. The reversal reduces bad debts in its period (C-74).
-- **Corrections** (type `adjustment`) fix typing errors and do **not** affect profit (C-34).
+Three different actions. The app never mixes them (full rules in 05 §7.2):
+
+| Action | Use it when… | Money received? | Balance | Profit |
+|---|---|---|---|---|
+| **Write off bad debt** (`write_off`) | You have given up on collecting (some of) the debt | No | Goes down | **Bad debts written off** line (−) |
+| **Undo a write-off** (`write_off_undo`) | The write-off was **a mistake** (wrong customer or amount) | No | Restored | Reduces bad debts in the period of the undo |
+| **Record a payment** that becomes a **recovery** (`debt_recoveries`) | The write-off was correct, and the customer **later pays** | **Yes** | Unchanged | **Recovered bad debts** line (+) |
+
+- **Undo** is chosen from the specific write-off in the customer's history ("Undo this write-off"). It is limited to that entry's amount not yet undone, and requires a reason.
+- **Recovery** happens automatically through **Record a payment** (§3.3) once the balance is zero. There is no separate "reverse then repay" step. This prevents double counting.
+- **Corrections** (`adjustment`) fix typing errors and do **not** affect profit (C-34).
+- **Example:** 05 §10.
 
 ## 4. Expenses (F-16) 🌐
 
@@ -142,11 +192,11 @@ A product is low when `stock_qty ≤ low_stock_level` (and the product is active
 ## 5. Cash count — close the day (F-19) 🌐
 
 1. **Opening cash:** defaults to the previous day's counted cash (editable, e.g. after money was removed for banking).
-2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments − operating expenses paid from the cash drawer (all for that day, non-voided).
+2. **Expected cash** (C-80) = opening cash + cash sales + cash "paid now" on credit sales + cash repayments + cash recoveries of written-off debt − operating expenses paid from the cash drawer (all for that day; voided and cancelled-before-upload sales excluded).
 3. The owner enters **counted cash** and an optional note.
 4. **Difference** = counted − expected. Labels: Balanced (0), Over (+), Short (−).
 5. Saved as a `cash_counts` row: date, opening, expected, counted, difference, note. One record per day; re-counting replaces it, with the earlier version kept in the audit log.
-6. **MoMo received** that day (MoMo sales + MoMo paid-now + MoMo repayments) is displayed for manual comparison with the wallet. It is not stored as a count in the MVP.
+6. **MoMo received** that day (MoMo sales + MoMo paid-now + MoMo repayments + MoMo recoveries) is displayed for manual comparison with the wallet. It is not stored as a count in the MVP.
 
 **Limitations (stated in the app help) [A]:** owners often take money out of the drawer for personal use or pay suppliers from it.
 - MVP: record supplier payments as Restock (no drawer effect) and personal withdrawals via the note.

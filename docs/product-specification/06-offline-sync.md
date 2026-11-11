@@ -35,6 +35,7 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 | SY-02 | (sending) | ⏱ spinner | Shown as Pending to the owner |
 | SY-03 | **Synced** | ✓ green | Server confirmed (including "already recorded") |
 | SY-04 | **Failed** | ⚠ red "Needs attention" | Server rejected it for a reason retrying won't fix |
+| SY-07 | **Cancelled before upload** | ⊘ grey, struck through | Owner cancelled it through the safe process (04 §1.5); recorded on the server as `cancelled_unsent`; no effect on totals |
 | SY-05 | Banner | "3 sales waiting to upload" / "1 sale needs attention" | On Today and Sell whenever there are Pending or Failed sales |
 | SY-06 | Last sync | "Last updated 10:42" in Settings and on the Products list | Shows how fresh the cached data is |
 
@@ -50,7 +51,7 @@ Builds on the approved design in [PLAN.md §4](../PLAN.md#4-offline-sales-and-sy
 | SY-15 | The server reply "already recorded" = success (duplicate prevention) |
 | SY-16 | A Failed sale never blocks later sales from sending |
 | SY-17 | After each success, the phone refreshes the affected products and customers from the server, and replaces provisional costs with server costs |
-| SY-18 | **Failed-sale recovery:** a Failed sale stays on the phone with its reason. Options: **Retry** (e.g. after an app update); **Send details to support** (owner-initiated WhatsApp message with the sale's details, so support can help); **Discard** (only if the sale did not really happen; requires typing "DISCARD"; restores local stock; logged locally and uploaded as an audit event). Failed sales are counted in the "Needs attention" banner until resolved |
+| SY-18 | **Failed-sale recovery:** a Failed sale stays on the phone with its reason, **indefinitely**. Options: **Retry** (e.g. after an app update); **Send details to support** (owner-initiated WhatsApp message with the sale's details); **Cancel this sale** using the safe process in 04 §1.5 (internet required; server status check; reason; review; password or PIN; server-side record). There is **no local-only discard**: a sale can only leave the outbox when the server has confirmed it as recorded or as cancelled. Failed sales stay in the "Needs attention" banner until resolved |
 | SY-19 | **Classification:** "needs app update" (unsupported payload version), "data problem" (validation failed), "account problem" (business mismatch or revoked device). Each has its own plain-English message |
 
 ## 5. Receipt numbers (SY-20)
@@ -85,17 +86,34 @@ Owner-only does not prevent the owner using 2–3 phones (e.g. a phone and a tab
 | ID | Rule |
 |---|---|
 | SY-70 | Each device is registered (`register_device`) and gets a unique device code. It has its own outbox and receipt counter, so receipt numbers never collide |
-| SY-71 | The server processes sales from all devices **one product row at a time**: each `record_sale` locks the products it touches, in product-ID order, inside one transaction. Simultaneous sales are therefore serialised: stock and average cost are never corrupted, and deadlocks are avoided |
+| SY-71 | **Concurrency:** each upload is one database transaction that (1) claims the sale ID (duplicate check), (2) locks the affected product rows in product-ID order, (3) locks the customer row for credit sales, then (4) updates stock with `stock_qty = stock_qty − qty`. Sales touching the same products are therefore processed one after another, never interleaved; sales touching different products run in parallel. Full design: 09 §4 |
 | SY-72 | **Online sales from two devices for the last unit:** the first succeeds; the second fails stock validation and is not queued (04 §1.2) |
-| SY-73 | **Offline sales from two devices for the last unit:** both are accepted; the sale processed second creates a discrepancy (04 §1.3) |
+| SY-73 | **Offline sales from two devices for the same remaining stock:** both are accepted; whichever is processed second takes stock negative and creates a discrepancy (see §8.1) |
 | SY-74 | Each device refreshes its cache after syncing, and every 15 minutes while online, so the devices converge. The server is authoritative |
 | SY-75 | **Stock reconciliation:** an adjustment resolves open discrepancies (04 §2.3). `check_stock_integrity()` confirms stock_qty = Σ movements and runs in tests and weekly in production; any mismatch alerts the admin |
+
+### 8.1 Two devices offline, both selling the same remaining stock
+
+**Situation:** Sardine stock is 1. Phone A and Phone B are both offline, and both show "1 left". A sells 1 at 10:05; B sells 1 at 10:20.
+
+| Step | What happens |
+|---|---|
+| 1 | Both sales complete normally. Each phone shows "0 left" locally. The customer is never refused |
+| 2 | B reconnects first, at 11:00. Its sale is processed: stock 1 → 0. No discrepancy |
+| 3 | A reconnects at 12:00. Its sale is processed (the product row is locked, so it cannot overlap with any other Sardine update): stock 0 → **−1**. A **discrepancy** is created, linked to A's sale, shortfall 1 |
+| 4 | Each sale is costed **as at its own sale time** (C-23), so upload order does not change either sale's cost |
+| 5 | Both phones refresh: Sardine shows **−1** in red, and Today shows "Needs attention: 1 stock issue" |
+| 6 | **The owner resolves it**, depending on what really happened:<br>• **There really were 2 tins** (the count was wrong): *Count and correct* → enter the real count → discrepancy resolved (no profit effect, C-32)<br>• **One sale was a mistake** (e.g. recorded on both phones): void that sale (§1.4) → stock back to 0 → discrepancy resolved as `sale_voided`<br>• **A different item was sold**: void and re-record the correct sale |
+| 7 | Nothing is deleted. Both sales, the discrepancy and its resolution stay in history and the audit log |
+
+**Which sale gets the discrepancy?** The one the server processed second, which depends on upload order, not sale time. The discrepancy screen therefore lists **all recent sales of that product from every device**, so the owner can judge which one was wrong.
 
 ## 9. Clock problems (SY-50)
 
 The server records `received_at`.
 - If `occurred_at` is more than 24 hours in the future, or more than 30 days in the past compared with `received_at`, the sale is **accepted** but flagged in Needs attention: "Check this sale's date: your phone's clock may be wrong."
 - Reports use `occurred_at`.
+- For costing, a flagged sale is costed as at `received_at` instead of `occurred_at` (C-23), and the sale detail says so.
 
 ## 10. App updates (SY-60)
 
@@ -105,4 +123,4 @@ The server records `received_at`.
 
 ## 11. Test scenarios
 
-All sync, duplicate-prevention, failed-sync recovery, multi-device and reconciliation tests are in **[10-test-plan.md §4](10-test-plan.md)** (TC-SYNC-01 to TC-SYNC-20). They are **release gate G2**: they must pass before any real business data is used.
+All sync, duplicate-prevention, failed-sync recovery, multi-device and reconciliation tests are in **[10-test-plan.md §4](10-test-plan.md)** (TC-SYNC-01 to 20), together with cancellation (TC-CANCEL) and concurrency (TC-CONC). They are **release gate G2**: they must pass, with evidence, before any real business data is used. **Current status: documented only; not implemented or run.**

@@ -1,197 +1,256 @@
 # 05 — Financial Calculations
 
-**Revision 2.** Stock losses and bad debts now reduce estimated net profit; the cost method is weighted average.
+**Revision 3.**
+- Point-in-time ("as-of") costing for offline sales.
+- Undoing a write-off is separate from recovering a written-off debt.
+- Stock losses and bad debts reduce estimated net profit.
 
-Every rule here has a matching automated test in [10-test-plan.md](10-test-plan.md). Database fields are defined in [09-data-model.md](09-data-model.md).
+Every rule here is linked to test cases in [10-test-plan.md](10-test-plan.md). **Those tests are documented only, not yet implemented or run.** Database fields are defined in [09-data-model.md](09-data-model.md).
 
 ## 1. Money representation (C-01 – C-05)
 
 | ID | Rule |
 |---|---|
 | C-01 | All **money amounts** (prices, totals, payments, expenses, balances) are stored as **integer pesewas** (GH₵1 = 100 pesewas) |
-| C-02 | **Average cost** is the only non-integer money value. It is stored as an exact decimal in pesewas with 4 decimal places (database `NUMERIC(18,4)`, e.g. `1132.7273`). **Floating-point numbers are never used for money** |
-| C-03 | Display: `GH₵ 1,240.50`; negative amounts `−GH₵ 5.00` |
-| C-04 | Input: owners type cedis (e.g. `12.5`), converted exactly to pesewas (`1250`). More than 2 decimals is rejected |
+| C-02 | **Average cost** is the only non-integer money value. It is an exact decimal in pesewas with 4 decimal places (`NUMERIC(18,4)`, e.g. `1132.7273`). **Floating-point numbers are never used for money** |
+| C-03 | Display: `GH₵ 1,240.50`; negatives `−GH₵ 5.00` |
+| C-04 | Input in cedis (e.g. `12.5`) is converted exactly to pesewas (`1250`). More than 2 decimals is rejected |
 | C-05 | Sanity limit: GH₵ 1,000,000.00 per amount |
 
-**Rounding:** **round half up** everywhere, in one shared, tested function per platform:
-- prices and discounts to whole pesewas
+**Rounding:** round half up, in one shared function per platform:
+- prices, discounts and line costs to whole pesewas
 - average cost to 4 decimal places
 
 ## 2. Sale amounts (C-10 – C-13)
 
 | ID | Formula |
 |---|---|
-| C-10 | `line_total = qty × unit_price` (exact integer) |
+| C-10 | `line_total = qty × unit_price` |
 | C-11 | `subtotal = Σ line_total` |
 | C-12 | Percentage discount: `discount = round_half_up(subtotal × percent / 100)`. Rule: `0 ≤ discount ≤ subtotal` |
 | C-13 | `total = subtotal − discount` |
 
 ## 3. Cost method: weighted average (C-20 – C-29)
 
-### 3.1 Assessment
+### 3.1 Assessment (approved in principle)
 
-**Question:** can weighted-average costing be implemented reliably in the MVP?
+Weighted-average costing is feasible in the MVP:
+- All average-cost changes happen inside server functions, under row locks (see 09 §4).
+- Arithmetic uses exact decimals.
+- Each sale's cost is fixed when it is recorded.
 
-**Conclusion: yes. Recommended for the MVP, with the documented limitations below.**
+**Fallback:** last-restock pricing (§3.6).
 
-| Factor | Assessment |
-|---|---|
-| Where cost changes happen | Only in server functions we already need (`restock`, `record_sale`, `void_sale`, `adjust_stock`, `set_cost`). No extra moving parts |
-| Concurrency | Each function locks the affected product rows (`SELECT … FOR UPDATE`, in product-ID order to avoid deadlocks), so two phones cannot corrupt the average |
-| Determinism | Exact decimal arithmetic (C-02), so results are reproducible and testable |
-| Extra effort vs last-cost | About 4 formulas, 1 extra product field, about 12 additional tests. Small compared with the sync work |
-| Accuracy benefit | Profit isn't distorted when a restock price differs from older stock still on the shelf |
-
-**Fallback:** if pilot testing shows a reliability problem, revert to last-restock pricing (§3.4). The schema supports both, because the per-sale cost snapshot is stored either way.
-
-### 3.2 Rules
+### 3.2 Average-cost changes
 
 | ID | Rule |
 |---|---|
-| C-20 | Each product has `avg_cost` (NUMERIC(18,4) pesewas, may be *unknown* = null) |
-| C-21 | **Opening stock or new product:** `avg_cost` = cost entered by the owner (or unknown) |
-| C-22 | **Restock** of `q` units at unit cost `u` (`u = total_cost / q`, exact to 4 dp), with current stock `s`:<br>• if `s > 0` and `avg_cost` is known: `avg_cost = round4((s × avg_cost + q × u) / (s + q))`<br>• otherwise (stock is zero or negative, or cost is unknown): `avg_cost = u` |
-| C-23 | **Sale:** the **server** sets each line's `unit_cost = avg_cost` at the moment it processes the sale. `line_cost = round_half_up(qty × unit_cost)` (integer pesewas). Sales do **not** change `avg_cost` |
-| C-24 | **Unknown cost:** `unit_cost = 0`, the line is flagged `cost_missing`, and reports warn "Profit may be too high — N products have no cost price." |
-| C-25 | **Stock adjustments** (in or out) do **not** change `avg_cost`. Their value is `round_half_up(qty × avg_cost)`, stored on the movement |
-| C-26 | **Void:** returned quantity is re-blended using the **original line's `unit_cost`** with the same formula as C-22 |
-| C-27 | **Manual cost correction** (`set_cost`): the owner sets `avg_cost` directly, e.g. when the cost was wrong or missing. Audit-logged. Past sales keep their recorded cost |
-| C-28 | **Phone (provisional) cost:** a pending offline sale shows profit using the phone's cached `avg_cost`. After sync, the server's cost replaces it. Today's figures may change slightly; they are always labelled "estimated" |
-| C-29 | Past sales are **never re-costed**. A sale's cost is fixed when the server records it |
+| C-20 | Each product has a current `avg_cost` (nullable = unknown). **Every change** to `avg_cost` also appends a row to `product_cost_history` (product, `effective_at` = server time, new avg_cost, cause, link to the movement or event). History rows are never edited |
+| C-21 | **Opening stock / new product:** `avg_cost` = cost entered (or unknown) |
+| C-22 | **Restock** of `q` units at unit cost `u` (`u = total_cost / q`, exact to 4 dp), current stock `s`:<br>• `s > 0` and cost known → `avg_cost = round4((s × avg_cost + q × u) / (s + q))`<br>• otherwise → `avg_cost = u` |
+| C-25 | **Stock adjustments** (in or out) do **not** change `avg_cost`. Value = `round_half_up(qty × avg_cost)` |
+| C-26 | **Void:** returned quantity is re-blended at the original line's `unit_cost` (C-22 formula) |
+| C-27 | **Manual cost correction** (`set_cost`): sets `avg_cost` directly; audit-logged |
 
-### 3.3 Limitations of weighted average (documented)
+### 3.3 Cost of a sale: point-in-time ("as-of") costing
 
-1. **Offline ordering:** an offline sale made *before* a restock but uploaded *after* it gets the post-restock average. The effect is small unless the restock price differs a lot. The sale's recorded time is unaffected.
-2. **Negative stock:** while stock is negative, sold items use the last known average. The next restock resets the average to the new unit cost (C-22). This is a simplification [A].
-3. **Unknown costs** make profit too high until the owner enters a cost (C-24 warning).
-4. **No historical re-costing:** correcting a cost does not fix profit already reported for earlier sales (C-29).
+**Problem:** an offline sale made before a restock, but uploaded after it, could be costed at the newer average. Its profit would then depend on *when the phone synced* rather than *when the sale happened*.
 
-### 3.4 Fallback method: last-restock pricing (if adopted)
-
-- `avg_cost` = the most recent restock unit cost.
-- **Effect:** when prices rise, older cheaper stock is costed at the newer, higher price, so profit is *understated*; when prices fall, profit is *overstated*.
-- For example, 10 units bought at GH₵11.00, then 12 at GH₵11.60. Selling 3 of the older units is costed at GH₵34.80 instead of about GH₵33.98 (weighted).
-- This limitation would be shown in Help.
-
-## 4. Losses (C-30 – C-34)
+**Solution:** the server costs each sale **as at the moment the sale happened**, using the cost history.
 
 | ID | Rule |
 |---|---|
-| C-30 | **Stock losses** = stock-reducing adjustments with reason *damaged*, *expired*, *missing/theft*, *own use*, or *count correction (decrease)*, valued per C-25 |
-| C-31 | **Stock found** (increasing count corrections) is **not** counted as income. It is shown for information only, a deliberate conservative choice [A]. Reason: extra items usually mean an unrecorded restock or a wrong earlier count, not profit |
-| C-32 | Resolving a **negative-stock discrepancy** with an *increasing* correction has **no profit effect**. The items' cost was already counted in cost of goods sold when they were sold |
-| C-33 | **Bad debts written off** = Σ `write_off` ledger entries (amount owed that the owner gives up), net of `write_off_reversal` entries |
-| C-34 | Ordinary **balance corrections** (`adjustment`, e.g. fixing a typing error) do **not** affect profit |
+| C-23 | **Cost basis time:** `cost_basis_at = occurred_at` (phone time of the sale), except:<br>• if `occurred_at` is later than `received_at` → use `received_at`<br>• if the sale has a clock flag (SY-50) → use `received_at`<br>The sale records which basis was used: `cost_basis` = `occurred_at` / `received_at` |
+| C-23a | **Cost lookup:** for each line, `unit_cost` = the `avg_cost` from the **latest `product_cost_history` row with `effective_at ≤ cost_basis_at`**. If no row is that early (e.g. the phone clock is minutes behind the product's creation), the **earliest** row is used and the line is marked `cost_basis_adjusted` |
+| C-23b | `line_cost = round_half_up(qty × unit_cost)` |
+| C-23c | **Phone's provisional cost:** the phone sends the cost it used for its own display (`device_unit_cost`). It is **stored for audit only** and never used for reports. If it differs from the server's cost, the difference is visible in the sale detail ("Cost updated from GH₵ X to GH₵ Y on upload: this phone's price list was out of date") |
+| C-24 | **Unknown cost** at the basis time → `unit_cost = 0`, `cost_missing = true`, report warning (C-54) |
+| C-28 | Today's figures for **pending** sales use the phone's provisional cost and are labelled "estimated" until synced |
+| C-29 | **Fixed once recorded:** a recorded sale's `unit_cost` and `line_cost` are **never recalculated**. A later restock, a cost correction or another device's late upload never changes them |
 
-## 5. Report figures for a period (C-40 – C-55)
+**Why this works:**
+- `occurred_at` is captured on the phone at the moment of sale and travels with the sale.
+- Restocks and cost corrections are online-only, so their `effective_at` is reliable server time.
+- The lookup is deterministic: re-sending the same sale (idempotent retry) returns the same stored cost.
 
-All figures exclude voided sales and deleted expenses. Periods use Ghana time (UTC+0); sales by `occurred_at`; adjustments, write-offs and expenses by their dates.
+### 3.4 Limitations of the as-of approach (documented)
+
+| # | Limitation | Effect | Mitigation |
+|---|---|---|---|
+| L1 | **Phone clock accuracy.** `occurred_at` comes from the phone | A wrong clock could select the wrong cost period | Large errors are flagged and fall back to `received_at` (C-23). Small errors (minutes) matter only for sales within minutes of a restock |
+| L2 | **The current average is not re-blended for late sales.** When a restock was blended, an offline sale made earlier had not yet reduced the stock count, so the blend used a slightly larger old-stock quantity | The *current* average (used for future sales) can be slightly off. Past recorded sales are unaffected (C-29) | Accepted for the MVP. The error shrinks as stock turns over. A prospective correction ("re-blend on late arrival") is a candidate future improvement, applied only to future costs |
+| L3 | **Negative stock.** While stock is negative, sales use the last known average; the next restock resets it (C-22) | Simplification | Discrepancy flow (04 §1.3) |
+| L4 | **Unknown cost** | Profit too high | Warning (C-54); owner sets a cost |
+| L5 | **Cost corrections are not retroactive** | Earlier profit keeps the old cost | Intentional: history is not silently changed |
+
+### 3.5 Example: offline sale before a restock (test TC-COST-11)
+
+- **09:00** Phone A goes offline. Sardine avg = GH₵11.00 (history row at 08:00).
+- **10:00** Phone A sells 3 Sardine offline (`occurred_at` = 10:00).
+- **11:00** Phone B (online) records a restock of 12 at GH₵11.60. New avg = 11.3273, history row `effective_at` = 11:00.
+- **14:00** Phone A reconnects; the sale is received at 14:00.
+
+**Result:**
+- `cost_basis_at` = 10:00, so the lookup finds the 08:00 row (11.00).
+- Line cost = 3 × 11.00 = **GH₵33.00**, not 33.98.
+- The current avg remains 11.3273 (L2).
+
+### 3.6 Fallback: last-restock pricing (only if weighted average is abandoned)
+
+- `avg_cost` = most recent restock unit cost; as-of lookup unchanged.
+- **Effect:** when prices rise, older stock is costed at the newer price and profit is understated; when prices fall, profit is overstated.
+- For example, selling 3 older units bought at GH₵11.00 after a restock at GH₵11.60 is costed at GH₵34.80, not about GH₵33.98 (weighted) or GH₵33.00 (actual older cost).
+
+## 4. Losses and recoveries (C-30 – C-36)
+
+| ID | Rule |
+|---|---|
+| C-30 | **Stock losses** = stock-reducing adjustments with reason *damaged*, *expired*, *missing/theft*, *own use*, *count correction (decrease)*, valued per C-25 |
+| C-31 | **Stock found** (increasing count corrections) is **not** income; information only (approved) |
+| C-32 | Resolving a negative-stock discrepancy by an increasing correction has no profit effect |
+| C-33 | **Bad debts written off** (period) = Σ `write_off` amounts dated in the period − Σ `write_off_undo` amounts dated in the period |
+| C-34 | Balance **corrections** (`adjustment`) do not affect profit |
+| C-35 | **Recovered bad debts** (period) = Σ `debt_recoveries` amounts dated in the period. Money received for a debt that was **correctly** written off. Shown as its own positive line |
+| C-36 | Undo and recovery are **different events** (§7.2); one payment is never counted as both |
+
+## 5. Report figures for a period (C-40 – C-56)
+
+Voided sales, sales cancelled before upload and deleted expenses are excluded. Periods use Ghana time; sales by `occurred_at`; other events by their dates.
 
 | ID | Figure | Formula |
 |---|---|---|
-| C-40 | **Sales** | Σ sale `total` (all methods, including credit) |
-| C-41 | **Cost of items sold** | Σ `line_cost` |
-| C-42 | **Gross profit** | Sales − Cost of items sold |
-| C-43 | **Operating expenses** | Σ expense amounts |
+| C-40 | **Sales** | Σ sale totals |
+| C-41 | **Cost of items sold** | Σ line_cost |
+| C-42 | **Gross profit** | C-40 − C-41 |
+| C-43 | **Operating expenses** | Σ expenses |
 | C-44 | **Stock losses** | C-30 |
 | C-45 | **Bad debts written off** | C-33 |
-| C-46 | **Total losses** | Stock losses + Bad debts written off |
-| C-47 | **Net profit (estimated)** | Gross profit − Operating expenses − Stock losses − Bad debts written off |
-| C-48 | **Cash received** | Cash sales + cash paid-now + cash repayments |
-| C-49 | **MoMo received** | MoMo sales + MoMo paid-now + MoMo repayments |
+| C-46 | **Recovered bad debts** | C-35 |
+| C-47 | **Net profit (estimated)** | Gross profit − Operating expenses − Stock losses − Bad debts written off + Recovered bad debts |
+| C-48 | **Cash received** | Cash sales + cash paid-now + cash repayments + cash recoveries |
+| C-49 | **MoMo received** | MoMo sales + MoMo paid-now + MoMo repayments + MoMo recoveries |
 | C-50 | **Credit given** | Σ (credit sale total − paid now) |
-| C-51 | **Repayments received** | Σ repayment entries (excluding paid-now at sale time) |
-| C-52 | **Credit outstanding** | Σ customer balances at the end of the period |
+| C-51 | **Repayments received** | Σ repayment entries (excluding paid-now) |
+| C-52 | **Credit outstanding** | Σ customer balances at period end |
 | C-53 | **Stock found** (info) | C-31 |
-| C-54 | **Cost-missing warning** | Count of sale lines with `cost_missing` in the period |
-| C-55 | **Stock value** (info, current) | Σ max(stock, 0) × avg_cost over active products |
+| C-54 | **Cost-missing warning** | Count of lines with `cost_missing` |
+| C-55 | **Stock value** (info) | Σ max(stock, 0) × avg_cost |
+| C-56 | **Late uploads note** | Count of sales in the period with `received_at` after the period ended |
 
-**How profit is shown** (Reports and the Today detail view), with each type of loss on its own line:
+**C-56 (late uploads):** a sale uploaded late is **added** to the period in which it happened. That is a new record, not a change to existing records. Reports state "Includes 2 sales uploaded after this period ended", so a changed total is never silent.
+
+**Profit statement layout** (Reports and the Today detail view):
 
 ```
 Sales                          GH₵ 149.75
 − Cost of items sold           GH₵ 121.48
 = Gross profit                 GH₵  28.27
-− Operating expenses           GH₵  15.00   (rent, transport, ECG…)
-− Stock losses                 GH₵   9.50   (damaged, expired, missing, own use)
+− Operating expenses           GH₵  15.00
+− Stock losses                 GH₵   9.50
 − Bad debts written off        GH₵  12.00
++ Recovered bad debts          GH₵   0.00
 = Net profit (estimated)      −GH₵   8.23
 ```
 
-**Why "estimated":** costs use weighted averages, some products may lack a cost price, and pending offline sales use provisional costs. A ⓘ link explains this in plain words.
-
-**Revenue rule:** credit sales count as Sales on the day of sale. Repayments are money received, not new sales.
-
-**Stock purchases** are not expenses (see 04 §4). They enter profit via cost of items sold, or as stock losses.
+**Revenue rule:**
+- Credit sales count as Sales on the day of sale.
+- Repayments are money received, not new sales.
+- Recoveries are a separate profit line, because the written-off amount was previously deducted.
 
 ## 6. Dashboard "Today" (C-60)
 
-- Today's figures use C-40 to C-49 for today.
-- **"Today's profit" = Net profit (estimated) for today**, including today's operating expenses, stock losses and write-offs. The card caption reads "after expenses & losses".
-- Pending sales on this phone are included using provisional costs (C-28), without double counting.
+"Today's profit" = C-47 for today. Pending sales are included with provisional costs (C-28) and the caption "after expenses & losses (estimated)".
 
-## 7. Customer ledger (C-70 – C-76)
+## 7. Customer ledger, write-offs and recoveries (C-70 – C-79)
 
-| ID | Entry type | Sign | Affects profit? |
+### 7.1 Ledger entries (these affect the balance)
+
+| ID | Entry type | Balance effect | Profit effect |
 |---|---|---|---|
-| C-70 | `credit_sale` | + (sale total) | No (the sale itself is counted in Sales) |
-| C-71 | `repayment` (including paid-now) | − | No |
-| C-72 | `adjustment` (correction, reason required) | ± | No |
-| C-73 | `write_off` | − (amount given up) | **Yes**: bad debt (C-33) |
-| C-74 | `write_off_reversal` (customer paid after all) | + (≤ amount previously written off for this customer) | **Yes**: reduces bad debts in the period it happens |
-| C-75 | `void_reversal` | − (the outstanding credit from that sale; see below) | No (the voided sale leaves Sales) |
+| C-70 | `credit_sale` | + sale total | None (sale is in Sales) |
+| C-71 | `repayment` (including paid-now) | − | None |
+| C-72 | `adjustment` (correct a mistake) | ± | None |
+| C-73 | `write_off` | − (amount given up) | Bad debt (C-33) |
+| C-74 | `write_off_undo` (write-off was **a mistake**) | + (restores balance) | Reduces bad debts in the period of the undo (C-33) |
+| C-75 | `void_reversal` | − outstanding credit from the voided sale (≤ current balance) | None |
 | C-76 | **Balance** = Σ entries; never below 0 (server-enforced) | | |
 
-**Recovering a written-off debt:**
-1. Record a `write_off_reversal` for the amount the customer will pay. This restores the balance.
-2. Record a normal `repayment`.
+### 7.2 Undo vs recovery
 
-**Void after repayments:** reverse at most the customer's current balance. If the customer had already paid towards the voided sale, the app tells the owner to settle the refund manually [A — validate in pilot].
+| | **Undo write-off** (C-74) | **Recover written-off debt** (C-77) |
+|---|---|---|
+| When | The write-off itself was an error (wrong customer, wrong amount, owner changed mind before giving up) | The write-off was correct, but the customer **later pays** some or all of it |
+| Money received? | **No** | **Yes** (cash or MoMo) |
+| Balance | Restored (+) | **Unchanged** (stays as it is; the debt was already given up) |
+| Profit | Bad debts reduced, in the period of the undo | **Recovered bad debts** line (+), in the period of payment |
+| Cash count / money received | No effect | Included (C-48, C-49, C-80) |
+| Limit | ≤ the un-undone amount of the **specific** write-off entry it references | ≤ customer's **recoverable amount** (C-78) |
+| Stored in | `customer_ledger` (`write_off_undo`, linked to the write-off entry) | `debt_recoveries` table (not the ledger, because it doesn't change the balance) |
+
+| ID | Rule |
+|---|---|
+| C-77 | **Recovery** creates a `debt_recoveries` row (customer, amount, method, MoMo reference, date) |
+| C-78 | **Recoverable amount** = Σ write_off − Σ write_off_undo − Σ debt_recoveries (for that customer). A recovery above this is rejected |
+| C-79 | **Payment larger than the balance** (customer also had written-off debt): the app proposes a split: first **repayment up to the current balance**, then **recovery up to the recoverable amount**. Anything above both is rejected ("Kofi owes GH₵ 20.00 and has GH₵ 40.00 written off. The most you can record is GH₵ 60.00"). The owner confirms the split; both parts are saved in **one transaction** with one idempotency key |
+
+**Why there are no duplicates:**
+- A payment is either a repayment (reduces the balance) or a recovery (reduces the recoverable amount), never both. The split in C-79 is computed by the server under a lock on the customer row.
+- Undo never records money, so a payment after an undo is an ordinary repayment against the restored balance.
+- Every request carries an idempotency key (09 §4), so a double-tap or retry never records the payment twice.
+
+**Void after repayments:** reverse at most the current balance; any money already paid towards the voided sale is settled manually [A — validate in pilot].
 
 ## 8. Cash count (C-80 – C-82)
 
 | ID | Formula |
 |---|---|
-| C-80 | Expected cash = opening cash + cash sales + cash paid-now + cash repayments − operating expenses paid from cash drawer (same day) |
-| C-81 | Difference = counted − expected. **Not** added to profit automatically; recorded for the owner's information [A]. Repeated shortages are highlighted in the cash count history |
-| C-82 | Voided sales and deleted expenses are excluded. A void after the day is closed does not rewrite the saved count |
+| C-80 | Expected cash = opening + cash sales + cash paid-now + cash repayments + cash recoveries − operating expenses paid from the cash drawer (same day) |
+| C-81 | Difference = counted − expected; informational, not added to profit [A] |
+| C-82 | Voided and cancelled-before-upload sales, and deleted expenses, are excluded. Late changes do not rewrite a saved count |
 
-## 9. Worked example (test case TC-FIN-01)
+## 9. Worked example (test TC-FIN-01)
 
-**Start of day:**
-
-| Product | Stock | avg_cost |
-|---|---|---|
-| Milo sachet | 40 | 400.0000 (GH₵4.00) |
-| Sugar 1kg | 20 | 950.0000 (GH₵9.50) |
-| Sardine tin | 10 | 1100.0000 (GH₵11.00) |
-| Rice 5kg | 5 | 7000.0000 (GH₵70.00) |
-
-Opening cash: GH₵200.00. Customer Yaw owes GH₵12.00.
+**Start of day:** Milo 40 @ 400.0000; Sugar 20 @ 950.0000; Sardine 10 @ 1100.0000; Rice 5 @ 7000.0000. Opening cash GH₵200.00. Yaw owes GH₵12.00. All sales are online, so the as-of cost equals the current cost.
 
 | # | Event | Calculation |
 |---|---|---|
-| 1 | Restock 12 Sardine, total GH₵139.20 → u = 1160.0000 | avg = (10×1100 + 12×1160)/22 = 24920/22 = **1132.7273** |
-| 2 | Sale: 2 Milo @5.00 + 1 Sugar @12.00 = **22.00**, Cash | cost = 2×400 + 1×950 = **17.50** |
-| 3 | Sale: 3 Sardine @15.00 = 45.00, 5% discount = 2.25 → **42.75**, MoMo | cost = round(3×1132.7273 = 3398.1819) = **33.98** |
-| 4 | Sale: 1 Rice @85.00, **Credit** to Kofi, paid now 20.00 Cash | cost = **70.00** |
-| 5 | Esi repays 30.00, MoMo | — |
-| 6 | Expense: transport 15.00, paid from cash drawer | — |
-| 7 | Adjustment: 1 Sugar damaged | loss = 1×950 = **9.50** |
-| 8 | Write off Yaw's debt of 12.00 | bad debt = **12.00** |
+| 1 | Restock 12 Sardine, total GH₵139.20 (u = 1160.0000) | avg = 24920/22 = **1132.7273** |
+| 2 | Sale 2 Milo @5.00 + 1 Sugar @12.00 = **22.00** Cash | cost 17.50 |
+| 3 | Sale 3 Sardine @15.00 = 45.00 − 5% (2.25) = **42.75** MoMo | cost round(3398.1819) = 33.98 |
+| 4 | Sale 1 Rice @85.00, **Credit** Kofi, paid now 20.00 Cash | cost 70.00 |
+| 5 | Esi repays 30.00 MoMo | — |
+| 6 | Expense: transport 15.00, cash drawer | — |
+| 7 | Adjustment: 1 Sugar damaged | loss 9.50 |
+| 8 | Write off Yaw's GH₵12.00 | bad debt 12.00 |
 
 | Result | Value |
 |---|---|
-| Sales (C-40) | 22.00 + 42.75 + 85.00 = **GH₵149.75** |
-| Cost of items sold (C-41) | 17.50 + 33.98 + 70.00 = **GH₵121.48** |
-| Gross profit (C-42) | **GH₵28.27** |
-| Operating expenses (C-43) | GH₵15.00 |
-| Stock losses (C-44) | GH₵9.50 |
-| Bad debts written off (C-45) | GH₵12.00 |
-| **Net profit (estimated)** (C-47) | 28.27 − 15.00 − 9.50 − 12.00 = **−GH₵8.23** (a loss day, shown in red) |
-| Cash received (C-48) | 22.00 + 20.00 = GH₵42.00 |
-| MoMo received (C-49) | 42.75 + 30.00 = GH₵72.75 |
-| Credit given (C-50) | 85.00 − 20.00 = GH₵65.00 |
-| Expected cash (C-80) | 200.00 + 22.00 + 20.00 − 15.00 = **GH₵227.00** |
-| End stock | Milo 38, Sugar 18, Sardine 19 (avg 1132.7273), Rice 4 |
+| Sales | **149.75** |
+| Cost of items sold | **121.48** |
+| Gross profit | 28.27 |
+| Operating expenses | 15.00 |
+| Stock losses | 9.50 |
+| Bad debts written off | 12.00 |
+| Recovered bad debts | 0.00 |
+| **Net profit (estimated)** | **−8.23** |
+| Cash received | 42.00 |
+| MoMo received | 72.75 |
+| Credit given | 65.00 |
+| Expected cash | **227.00** |
+
+## 10. Worked example: write-off undo vs recovery (test TC-CRED-08)
+
+Ama (customer) owes **GH₵100**.
+
+| Day | Event | Balance | Recoverable | Profit effect |
+|---|---|---|---|---|
+| 1 | Write off 40 (correct decision) | 60 | 40 | Bad debts +40 |
+| 2 | Write off 60 **by mistake** (meant another customer) | 0 | 100 | Bad debts +60 |
+| 3 | **Undo** the day-2 write-off (60) | 60 | 40 | Bad debts −60 (day 3) |
+| 4 | Ama pays **GH₵80** cash → split: repayment **60** + recovery **20** | 0 | 20 | Recovered bad debts +20 |
+| 5 | Ama pays **GH₵20** MoMo → recovery 20 | 0 | 0 | Recovered +20 |
+| 6 | Ama tries to pay GH₵5 more | — | — | **Rejected**: nothing owed or recoverable |
+
+**Totals:**
+- Money received = 80 + 20 = GH₵100 (each pesewa counted once).
+- Net bad-debt effect on profit over days 1–5 = +40 +60 −60 −20 −20 = **0**. Correct, because Ama paid everything.

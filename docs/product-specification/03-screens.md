@@ -52,7 +52,7 @@
 ```
 
 **Rules:**
-- "Today's profit" = **net profit (estimated)** for today: gross profit − operating expenses − stock losses − bad debts written off (C-47, C-60). The caption "after expenses & losses" is always shown. Tapping it opens a breakdown with **each type of loss on its own line** (05 §5) and a plain-words note on why it is an estimate.
+- "Today's profit" = **net profit (estimated)** for today: gross profit − operating expenses − stock losses − bad debts written off + recovered bad debts (C-47, C-60). The caption "after expenses & losses" is always shown. Tapping it opens a breakdown with **each type of loss on its own line** (05 §5) and a plain-words note on why it is an estimate.
 - Figures include **pending (unsynced) sales from this phone**, marked "includes 3 sales not yet uploaded".
 - A **date switcher** ("Today ▾") allows Yesterday / This week / This month.
 - **Empty state:** a "getting started" checklist and the New Sale button.
@@ -64,8 +64,9 @@
 | S-20 | New Sale 📴 | Search bar; "Most sold" row; product tiles (name, price, stock badge); cart drawer at the bottom showing item count and total; **Charge GH₵ X** button | Tap tile = +1; tap an item in the cart to open a simple editor with **− / +** buttons and a price field (no long-press or swipe needed); items with 0 or negative stock show a red badge but can still be sold offline (see 04 §1.3) |
 | S-21 | Payment 📴 | Total, optional sale discount (amount or %), payment method: **Cash / MoMo / Credit** | **Cash:** optional amount received → change due. **MoMo:** optional reference. **Credit:** customer picker + optional "paid now" amount and method |
 | S-22 | Sale complete 📴 | ✓ Sale saved, receipt number, sync status, **Next sale**, **Share receipt** | Share sends plain text via the Android share sheet |
-| S-23 | Sales history 📴 (view) | List grouped by day: time, total, method icon, status (✓ Synced / ⏱ Pending / ⚠ Failed); filter by status and method | Pending and failed sales appear at the top |
-| S-24 | Sale detail | Items, discount, total, method, MoMo reference, customer, recorded time, sync status; **Void sale** 🌐. **If Failed:** reason in plain words, **Retry**, **Send details to support** (owner-initiated WhatsApp message with the sale's details), **Discard** | Void requires a reason. Discard is only for a sale that did not really happen: it requires typing "DISCARD", restores local stock, and is logged and uploaded as an audit event (SY-18) |
+| S-23 | Sales history 📴 (view) | List grouped by day: time, total, method icon, status (✓ Synced / ⏱ Pending / ⚠ Failed / ⊘ Cancelled before upload / struck-through Voided); filter by status and method | Pending and failed sales appear at the top. Cancelled and voided sales stay visible with their reason |
+| S-24 | Sale detail | Items, discount, total, method, MoMo reference, customer, sale time, upload time, sync status, cost note if the cost was updated on upload (C-23c); **Void sale** 🌐 (synced sales only). **If Pending or Failed:** reason in plain words, **Retry**, **Send details to support**, **Cancel this sale** (opens S-25) | Void requires a reason. Failed sales are never removed automatically |
+| S-25 | Cancel unsent sale 🌐 | Step 1: server status check. Step 2: reason (required). Step 3: review of the full sale with the warning "This sale will not count in your sales, stock or customer balances. A record of the cancellation is kept." Step 4: **Cancel this sale** + password, or PIN/fingerprint if app lock is on | Only for sales never recorded by the server (04 §1.5). If the server already has the sale, the screen says so and offers Void instead |
 
 ## D. Products and stock
 
@@ -86,9 +87,9 @@
 |---|---|---|---|
 | S-40 | Customers 📴 (view) | Total owed at top; list sorted by amount owed: name, balance, days since last payment | Search |
 | S-41 | Customer form 🌐 | Name, phone (optional), credit limit (optional), note | Phone format checked (Ghana 10-digit or +233) |
-| S-42 | Customer detail | Balance (large), credit limit, **Record repayment**, **Send reminder**, ledger history (credit sales, repayments, adjustments, void reversals) | |
-| S-43 | Record repayment 🌐 | Amount, Cash/MoMo, MoMo reference, date | Amount must be > 0 and ≤ current balance (see 04 §3) |
-| S-44 | Balance change 🌐 | Choose one: **Correct a mistake** (± amount, reason; no profit effect) · **Write off bad debt** (amount ≤ balance, reason; reduces profit) · **Reverse a write-off** (customer paid after all; ≤ amount written off) | Audit-logged; confirmation names the customer and amount |
+| S-42 | Customer detail | Balance (large), **written-off amount still recoverable** (if any), credit limit, **Record payment**, **Send reminder**, history (credit sales, repayments, recoveries, write-offs, undos, corrections, void reversals). Each write-off row has **Undo this write-off** | |
+| S-43 | Record payment 🌐 | Amount, Cash/MoMo, MoMo reference, date. Before saving, shows how it will be applied: "GH₵ 20.00 clears the balance; GH₵ 15.00 is recovered from written-off debt" | The server applies the split (C-79); above balance + recoverable is rejected |
+| S-44 | Balance change 🌐 | Choose one: **Correct a mistake** (± amount, reason; no profit effect) · **Write off bad debt** (amount ≤ balance, reason; reduces profit). **Undo** is started from a specific write-off row in S-42 (amount ≤ not-yet-undone, reason required) | Audit-logged; confirmation names the customer and amount. Recovering money from written-off debt is **not** done here: it happens through Record payment (S-43) |
 
 ## F. Expenses — S-50 to S-51
 
@@ -101,8 +102,8 @@
 
 | ID | Screen | Contents |
 |---|---|---|
-| S-60 | Reports 🌐 | Period picker (Today, This week, This month, Last month, Custom). Profit statement (05 §5): Sales → Cost of items sold → Gross profit → **Operating expenses** → **Stock losses** → **Bad debts written off** → **Net profit (estimated)**, each loss type on its own line with a tap-through breakdown (expenses by category; stock losses by reason and product; write-offs by customer). Also: Money received (Cash / MoMo / Repayments), Credit given, Credit outstanding, Stock found (info), Stock value (info), cost-missing warning, Best sellers (top 10 by quantity and by profit), Voided sales count |
-| S-61 | Close the day 🌐 | Opening cash, + cash sales, + cash repayments, − cash expenses, **= expected cash**; counted cash input; difference; note; MoMo received today (for comparison) |
+| S-60 | Reports 🌐 | Period picker (Today, This week, This month, Last month, Custom). Profit statement (05 §5): Sales → Cost of items sold → Gross profit → **Operating expenses** → **Stock losses** → **Bad debts written off** → **+ Recovered bad debts** → **Net profit (estimated)**, each loss type on its own line with a tap-through breakdown (expenses by category; stock losses by reason and product; write-offs by customer). Also: Money received (Cash / MoMo / Repayments), Credit given, Credit outstanding, Stock found (info), Stock value (info), cost-missing warning, Best sellers (top 10 by quantity and by profit), Voided sales count, **Cancelled before upload (count and value)**, **late uploads note** (C-56) |
+| S-61 | Close the day 🌐 | Opening cash, + cash sales and paid-now, + cash repayments, + cash recoveries, − cash-drawer expenses, **= expected cash** (C-80); counted cash input; difference; note; MoMo received today (for comparison) |
 | S-62 | Cash count history | Past days: expected, counted, difference |
 | S-63 | Export data 🌐 | Choose what to export (all / products / sales / customers / expenses), date range → CSV files shared via the share sheet | Warning: "This file contains customer names and phone numbers. Share it only with people you trust." |
 

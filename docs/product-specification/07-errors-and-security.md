@@ -24,10 +24,13 @@
 | Validation (e.g. empty name) | Inline under the field: "Enter the product name" | No pop-up |
 | Duplicate product name | "You already have a product called 'Milo sachet'." | Link to existing product |
 | Insufficient stock (online) | "Only 2 Sardine in stock. Correct the stock, or reduce the quantity." | Buttons: Correct stock / Edit cart |
-| Repayment > balance | "Kofi owes GH₵ 40.00. You can record up to that amount." | |
+| Payment > balance + recoverable | "Kofi owes GH₵ 20.00 and has GH₵ 40.00 written off. The most you can record is GH₵ 60.00." | Server-enforced (C-79) |
+| Undo more than was written off | "Only GH₵ 25.00 of this write-off can still be undone." | |
+| Cancel a sale the server already has | "This sale was already recorded. Use Cancel sale (void) instead." | Sale marked Synced (04 §1.5) |
+| Cancel attempted offline | "Cancelling needs internet, so we can check the sale wasn't already uploaded. The sale is safe on this phone." | |
 | Credit limit exceeded | "This takes Kofi above the credit limit of GH₵ 100.00. Continue anyway?" | Warning only |
 | Discount > subtotal | "Discount can't be more than the sale amount." | |
-| Sync failed (permanent) | "1 sale couldn't upload. Tap to see it." | Failed status; Retry / Contact support |
+| Sync failed (permanent) | "1 sale couldn't upload. Tap to see it." | Failed status; Retry / Send details to support / Cancel this sale (safe process); never removed automatically |
 | Logout with pending sales | "3 sales haven't uploaded yet. Connect to the internet first so you don't lose them." | Logout blocked |
 | Low phone storage | "Your phone is almost full. ShopMate may not save new sales. Free some space." | Shown when free space < 50 MB |
 | Plan limit reached (after launch) | "Starter plan includes up to 50 products. Upgrade to add more — your existing data stays safe." | Never blocks selling existing products, or viewing and exporting |
@@ -57,19 +60,22 @@ Builds on [PLAN.md §8](../PLAN.md#8-authentication-and-security).
 | SEC-10 | **Row Level Security on every table**; every row carries `business_id`; policies allow access only to members of that business |
 | SEC-11 | Money, stock and ledger changes happen **only** through server functions (full list in [09-data-model.md §3](09-data-model.md)). Direct table writes for these tables are denied |
 | SEC-12 | Server functions validate everything again: business membership, positive quantities, amounts within limits (C-04), discount ≤ subtotal, repayment ≤ balance, field lengths, allowed values |
-| SEC-13 | The client is never trusted for totals or costs. The server **recalculates** subtotal and total from the lines, rejects mismatches with the client's total, and **assigns unit costs itself** (C-23), ignoring the phone's provisional cost. Unit prices as charged are accepted (owner-only) and recorded |
+| SEC-13 | The client is never trusted for totals or costs. The server **recalculates** subtotal and total from the lines, rejects mismatches with the client's total, and **assigns unit costs itself** from the product cost history as at the sale time (C-23 – C-23c). The phone's provisional cost is stored for audit only. Unit prices as charged are accepted (owner-only) and recorded |
 | SEC-14 | Automated tests prove that Business A cannot read or change Business B's data, for every table and function |
 | SEC-15 | The service-role key is never in the app or the repository. Only the public anon key ships in the app |
 | SEC-16 | Admin actions (confirming subscription payments) are performed by a separate admin role, never through the shop app |
 
-### B3. Integrity and audit (SEC-20 – SEC-23)
+### B3. Integrity, concurrency and audit (SEC-20 – SEC-26)
 
 | ID | Requirement |
 |---|---|
 | SEC-20 | Ledgers (stock movements, customer ledger) are **append-only**. Corrections are new entries |
-| SEC-21 | Audit log for: price changes, voids, adjustments, balance adjustments, write-offs, back-dated entries, expense edits and deletes, cash count changes, plan changes |
-| SEC-22 | Unique constraints: `sales.id`, `(business_id, receipt_no)`, `subscription_payments.momo_transaction_id` |
-| SEC-23 | Soft delete only; nothing financial is hard-deleted by the app |
+| SEC-21 | Audit log for: price and cost changes, voids, **cancellations before upload**, stock adjustments, balance corrections, write-offs, **write-off undos**, **debt recoveries**, back-dated entries, expense edits and deletes, cash count changes, plan changes, device registration and revocation |
+| SEC-22 | Database constraints as listed in 09 §4.4 (sale ID, receipt number, device code, request ID, MoMo transaction ID, positive amounts, same-business foreign keys) |
+| SEC-23 | Soft delete only; nothing financial is hard-deleted by the app. A sale leaves a phone's outbox **only** after the server confirms it as recorded or cancelled |
+| SEC-24 | **Idempotency:** every write function takes a client-generated key (sale ID or request ID). Repeats return the original result and write nothing (09 §4.3) |
+| SEC-25 | **Transactions and locks:** every write function is one transaction with the fixed lock order (claim → products by ID → customer). Deadlock or serialisation errors roll back fully and are retried by the client (09 §4.2) |
+| SEC-26 | **Re-authentication** (account password, or PIN/fingerprint when app lock is on) is required to cancel an unsent sale (04 §1.5) |
 
 ### B4. Privacy and personal data (SEC-30 – SEC-36)
 

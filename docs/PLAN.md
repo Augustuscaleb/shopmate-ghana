@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v4 — v3 approved; v4 updates for final review (research-led Stage 0, product specification revision 2)
+**Status:** v5 — for final review as the implementation baseline (product specification revision 3)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -136,6 +136,7 @@ Offline features beyond this are added only if pilot evidence shows they are nee
 Rules:
 
 - Failed sales are **never silently discarded**. They stay on the phone until resolved.
+- A sale that never reached the server can only be removed through the **safe cancellation process**: internet status check, reason, review, re-authentication, and a server-side `cancelled_unsent` record and audit entry (specification 04 §1.5). There is no local-only discard.
 - Logging out, or anything else that would clear local data, is **blocked or strongly warned against** while Pending or Failed sales exist.
 - A sales history filter lets the owner see Pending/Failed sales at any time.
 
@@ -199,18 +200,18 @@ The full, authoritative data model (tables, fields, server functions) is in **[p
 | Area | Tables |
 |---|---|
 | Business and access | `businesses`, `profiles`, `business_members`, `devices` |
-| Products and stock | `categories`, `products` (with `avg_cost`), `stock_movements`, `stock_discrepancies` |
+| Products and stock | `categories`, `products` (with `avg_cost`), `product_cost_history`, `stock_movements`, `stock_discrepancies` |
 | Sales | `sales` (phone-generated ID, MoMo reference, paid-now amount, online/offline mode), `sale_items` (server-assigned unit cost) |
-| Customers and credit | `customers`, `customer_ledger` (credit_sale, repayment, adjustment, write_off, write_off_reversal, void_reversal) |
+| Customers and credit | `customers`, `customer_ledger` (credit_sale, repayment, adjustment, write_off, write_off_undo, void_reversal), `debt_recoveries` |
 | Expenses and cash | `expense_categories`, `expenses` (paid_from), `cash_counts` |
-| Subscription and audit | `subscriptions` (incl. `pilot` plan), `subscription_payments`, `audit_log` |
+| Subscription and audit | `subscriptions` (incl. `pilot` plan), `subscription_payments`, `audit_log`, `request_log` (idempotency) |
 
 **Report formulas** (full rules in specification 05):
 
 - **Sales** = Σ non-voided sale totals, including credit sales
 - **Cost of items sold** = Σ server-assigned line costs (weighted average)
 - **Gross profit** = Sales − Cost of items sold
-- **Net profit (estimated)** = Gross profit − Operating expenses − Stock losses − Bad debts written off. Each is shown on its own line
+- **Net profit (estimated)** = Gross profit − Operating expenses − Stock losses − Bad debts written off + Recovered bad debts. Each is shown on its own line
 - **Cash / MoMo received** = sales + paid-now + repayments, by method
 - **Credit outstanding** = Σ customer balances
 
@@ -370,7 +371,7 @@ Timelines are estimates for part-time work.
 - Weighted-average costing, stock losses and write-offs in reports, cash count, CSV export, optional MoMo reference
 - Weekly encrypted backup workflow and a **demonstrated, successful test restore**
 - Automated tests per [10-test-plan.md](product-specification/10-test-plan.md)
-- **Exit criteria:** release gate **G2** passed: calculations, all sync tests (duplicates, failed-sync recovery, multi-device, reconciliation), all security tests and all backup/restore tests
+- **Exit criteria:** release gate **G2** passed, i.e. every listed test ✅ Passed with evidence: calculations, all sync tests (duplicates, failed-sync recovery, multi-device, reconciliation), cancellation, concurrency, all security tests and all backup/restore tests
 
 ### Stage 2 — Pilot (30–60 days, all features free)
 
@@ -423,7 +424,10 @@ Timelines are estimates for part-time work.
 
 | Risk | Mitigation |
 |---|---|
-| Duplicate sales from retries | Sale ID generated on the phone + unique constraint + idempotent `record_sale()` |
+| Duplicate sales from retries | Sale ID generated on the phone + primary key + idempotent `record_sale()`; idempotency keys on every other write (spec 09 §4) |
+| Concurrent uploads from several phones | One transaction per write; row locks in a fixed order (products by ID, then customer); retry on deadlock; tests TC-CONC |
+| Offline sale costed at a later average | Point-in-time costing from product cost history (spec 05 §3.3) |
+| Manipulation by removing unsent sales | Safe cancellation with reason, re-authentication and a permanent server record (spec 04 §1.5) |
 | Lost sales (crash, battery) | Written to local storage before confirmation is shown; removed only after server confirmation |
 | Half-saved sales | Single all-or-nothing database transaction |
 | Unsynced data on a lost or wiped phone | Visible pending counter, logout blocked or warned, encourage daily connection; residual risk explained to pilot shops |
@@ -498,12 +502,18 @@ Timelines are estimates for part-time work.
 | 15 | Deferred: automated WhatsApp reports, staff management, automated subscription payments | Approved |
 | 16 | Positioning: simplicity, reliable offline use, Ghanaian operations, affordability, local support | Approved |
 | 17 | Stock losses and written-off debts reduce estimated net profit; shown separately from operating expenses | Approved |
-| 18 | Weighted-average costing in the MVP (assessed feasible); last-restock pricing as documented fallback | Proposed — for final review |
+| 18 | Weighted-average costing in the MVP; last-restock pricing as documented fallback | Approved in principle |
 | 19 | Pricing hypotheses: Starter free, Standard about GH₵30, Plus about GH₵60 (not final) | Approved |
 | 20 | Pilot: 5–10 shops, all features free for 30–60 days | Approved |
 | 21 | Backup counts as implemented only after a demonstrated restore (gate G2) | Approved |
 | 22 | Visual design (colours, typography, layout) | Provisionally approved |
 | 23 | Verified / reported / assumption labelling in all documentation | Approved |
+| 24 | Not counting stock found in recounts as profit | Approved |
+| 25 | Point-in-time costing: sales costed as at their sale time from product cost history; recorded costs never change | Proposed — for final review |
+| 26 | Safe cancellation of unsent sales (server check, reason, re-authentication, permanent record); no local-only discard | Proposed — for final review |
+| 27 | Write-off undo (mistake, no money) is separate from debt recovery (money received, own profit line); payments split server-side | Proposed — for final review |
+| 28 | Transactions, fixed lock order and idempotency keys for every write | Proposed — for final review |
+| 29 | Test status reported as Documented / Implemented / Passed, with evidence; currently all Documented | Proposed — for final review |
 
 ### References
 
