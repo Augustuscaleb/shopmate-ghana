@@ -1,12 +1,14 @@
 # 05 — Financial Calculations
 
-**Revision 5.**
+**Revision 5.1.**
+- Partial supplier payments confirmed (§12.1).
+- Proportional allocation of purchase-cost corrections (§12.2).
 - Purchases at full acquisition cost, with supplier credit (§12).
 - Anchor-based sale-time design (§3.6).
 - Visible cost adjustments with Needs attention items (§3.4).
 - Original daily closing plus separate adjustments (§11).
 - A precise conservation statement (§3.2).
-- Own use shown separately (§4).
+- Own use shown separately below net profit, at cost (§4, approved).
 
 Revision 4 introduced the value-pool weighted average with sale-time costing.
 - Unchanged from revision 3: undo vs recovery of write-offs; losses and bad debts reduce estimated net profit.
@@ -67,7 +69,7 @@ The future average was wrong because the restock was blended against a stock cou
 Closing stock value
   = Opening stock value (start of period; for a new product, its opening-stock entry)
   + Purchases at full acquisition cost (paid and unpaid)
-  ± Purchase corrections (price or quantity errors in recorded purchases)
+  ± Purchase price corrections: remaining-stock share only (the already-sold, loss and own-use shares appear in those lines, §12.2)
   + Customer returns (voids, at original sale cost)
   + Stock found (count increases, at average)
   ± Owner cost corrections
@@ -236,7 +238,7 @@ Last-restock pricing:
 | C-34 | Balance **corrections** (`adjustment`) do not affect profit |
 | C-35 | **Recovered bad debts** (period) = Σ `debt_recoveries` amounts dated in the period. Money received for a debt that was **correctly** written off. Shown as its own positive line |
 | C-36 | Undo and recovery are **different events** (§7.2); one payment is never counted as both |
-| C-37 | **Goods taken for own use** = own-use adjustments at average. **Not a business cost:** like the owner paying themselves. Shown below net profit as "Goods taken for own use", so the owner sees it, without reducing business profit (proposed change, see README revision 5) |
+| C-37 | **Goods taken for own use** = own-use adjustments at average. **Not a business cost:** like the owner paying themselves. Shown below estimated net profit as "Goods taken for own use", with stock reduced at cost (average), without reducing business profit (**approved**, decision 39) |
 
 ## 5. Report figures for a period (C-40 – C-59)
 
@@ -420,10 +422,10 @@ Ama (customer) owes **GH₵100**.
 | C-110 | **Recording a purchase (restock)** captures: quantity; **purchase cost** (the full agreed price of the goods, required); **amount paid now** (0 to purchase cost); paid from (cash drawer / MoMo / other); supplier name (optional free text); date |
 | C-111 | **Stock value** increases by the **purchase cost** (C-21), e.g. goods worth GH₵500 with GH₵300 paid → stock value **+GH₵500** |
 | C-112 | **Unpaid amount** of a purchase = purchase cost − amount paid now − later payments ± purchase cost corrections. It must stay ≥ 0 |
-| C-113 | **Paying for an earlier purchase** ("Pay supplier") is linked to that purchase: amount ≤ unpaid; paid from. It changes **no stock value and no profit**, only cash/MoMo out and the amount owed |
+| C-113 | **Paying for an earlier purchase** ("Pay supplier") is linked to that purchase. **Any number of partial payments** are allowed, each ≤ the amount still owed (§12.1); paid from. It changes **no stock value and no profit**, only cash/MoMo out and the amount owed |
 | C-114 | **Reports (information, not profit):** Stock purchased (Σ purchase cost); Paid to suppliers (by method, including paid-now); **Owed to suppliers** (Σ unpaid, with a list of unpaid purchases) |
 | C-115 | **Cash count:** purchase payments and supplier payments **from the cash drawer** reduce expected cash; supplier refunds received in cash increase it (C-80) |
-| C-116 | **Purchase correction** (wrong price or quantity entered): recorded against the original purchase, never by editing it. Quantity corrections are valued at that purchase's unit cost. If stock is above 0, the value change goes to the pool; if stock is 0 or below (the goods have been sold), it is posted as a visible cost adjustment (C-122). The unpaid amount is updated |
+| C-116 | **Purchase correction:** price corrections are split between goods already sold or used and remaining stock (§12.2); quantity corrections change quantity only (C-116f). Never by editing the original purchase |
 | C-117 | **Return to supplier:** stock − qty, value − (qty × average). The supplier's credit is recorded as a refund (cash/MoMo in) **or** a reduction of a chosen purchase's unpaid amount. Any difference between the credit and the value removed is a visible cost adjustment (C-25c) |
 | C-118 | **Delivery and transport costs** are **not** added to stock cost in the MVP; they are recorded as an operating expense ("Stock transport") |
 
@@ -436,10 +438,88 @@ Ama (customer) owes **GH₵100**.
 | Owed to suppliers | +200.00 |
 | Profit today | 0 (the cost reaches profit only as the goods are sold) |
 
-A week later, "Pay supplier" GH₵200 by MoMo → owed 0; MoMo out 200; stock value and profit unchanged.
+Later payments, including partial ones, reduce the amount owed only (§12.1).
+
+### 12.1 Partial supplier payments (C-113 confirmed)
+
+A purchase can be paid in **any number of partial payments**. Each payment must be ≤ the amount still owed. The amount owed never goes below zero.
+
+| Step | Event | Paid so far | Owed | Stock value | Expected cash / MoMo | Profit |
+|---|---|---|---|---|---|---|
+| 1 | Purchase: goods GH₵500, paid GH₵300 from cash drawer | 300 | **200** | **+500** | cash −300 | 0 |
+| 2 | Pay supplier GH₵100 by MoMo | 400 | **100** | unchanged | MoMo −100 | 0 |
+| 3 | Pay supplier GH₵100 cash | 500 | **0** | unchanged | cash −100 | 0 |
+| 4 | Try to pay GH₵50 more | — | — | — | — | **Rejected:** "Nothing is owed on this purchase." |
+
+**Rules that keep payments from being counted twice:**
+- Supplier payments are **never operating expenses**. They are stored in `supplier_payments`, not `expenses`, and appear only in "Paid to suppliers" and in cash/MoMo out.
+- The cost of the goods reaches profit **once**: through cost of items sold, losses or own use, as the goods leave stock.
+- The expense form has **no "stock purchase" category**. If the owner types words like "stock", "goods" or "supplier" in the note, the app suggests: "Buying stock or paying a supplier? Use Restock or Pay supplier instead, so it isn't counted twice."
+- Each payment request is idempotent, and payments on the same purchase are processed one at a time under a lock, so double-taps or two phones can't overpay.
+
+### 12.2 Purchase-cost corrections when some goods are already sold (C-116, C-116a – C-116e)
+
+**Problem:** a purchase of 10 units was entered as GH₵100 but really cost GH₵120. By the time the error is found, some of those units have been sold, some taken for own use, and some are still on the shelf. Putting the whole GH₵20 into remaining stock would understate the cost of goods already sold, and overstate the cost of goods sold later.
+
+**Solution: proportional allocation using the value pool's own history.** Under weighted-average costing, whenever units leave stock, they take the same fraction of **every** purchase's value still in the pool. So the share of a purchase still on the shelf can be calculated exactly from the product's movement history since that purchase.
+
+| ID | Rule |
+|---|---|
+| C-116 | **Price correction** of ΔC (± pesewas) to a purchase is recorded against the original purchase (never edited), with a reason. It is processed and dated **now** |
+| C-116a | **Remaining fraction:** start with f = 1 at the purchase. Walk through every stock movement since that purchase, in recorded order:<br>• for each **outflow** (sale, stock loss, own use, return to supplier) of q units when stock before was Q > 0: that outflow's share = f × q ÷ Q, and f becomes f × (Q − q) ÷ Q<br>• **inflows** (later purchases, stock found, voids) don't change f<br>• if an outflow takes stock to 0 or below, its share is all of the remaining f, and f becomes 0<br>Fractions are exact decimals (no floating point) |
+| C-116b | **Allocation of ΔC:**<br>• **Remaining stock:** f × ΔC is added to stock value<br>• **Already sold:** Σ sale shares × ΔC is posted as a cost adjustment ("Correction to purchase of 12 Nov: goods already sold")<br>• **Stock losses:** Σ loss shares × ΔC is added to stock losses<br>• **Own use:** Σ own-use shares × ΔC is added to "Goods taken for own use"<br>• **Returns to supplier:** Σ return shares × ΔC is posted as a supplier-return difference |
+| C-116c | **Rounding:** each part is rounded half up to the pesewa. Any leftover pesewa goes to the remaining-stock part (or, if f = 0, to the already-sold part), so the parts add up to ΔC exactly |
+| C-116d | **No history is rewritten:** recorded sale costs, past reports and closed days stay as they are. All parts are dated when the correction is made, and shown in a Needs attention item listing each part (C-122) |
+| C-116e | **Unpaid amount** changes by ΔC. If a reduction would make it negative (the owner already paid more than the corrected cost), the owner must record how the supplier settled it: **refund received** (cash/MoMo, included in the cash count) in the same step. "Supplier owes you" balances aren't kept in the MVP |
+| C-116f | **Quantity correction** (received a different quantity than entered, with the total cost unchanged): stock qty changes by the difference with **no value change**, so the purchase's total cost stays in the pool and the average adjusts. If stock reaches 0 or below, the normal visible rules apply (C-25a, C-120). A Needs attention item explains the effect |
+
+**Worked example (test TC-PUR-12):**
+
+Start: 10 units in stock worth GH₵80. Purchase P: 10 units entered at **GH₵100** (true cost GH₵120).
+
+| Event after P | Stock before → after | Share of P taken | f after |
+|---|---|---|---|
+| P recorded | 10 → 20 | — | 1.00 |
+| Sale of 5 | 20 → 15 | 1.00 × 5/20 = **0.25** (sold) | 0.75 |
+| Own use 1 | 15 → 14 | 0.75 × 1/15 = **0.05** (own use) | 0.70 |
+| Purchase of 6 more | 14 → 20 | — (inflow) | 0.70 |
+| Sale of 4 | 20 → 16 | 0.70 × 4/20 = **0.14** (sold) | **0.56** |
+
+*Only quantities are needed to work out the shares.*
+
+Correction ΔC = **+GH₵20.00**:
+
+| Part | Share | Amount | Reported as |
+|---|---|---|---|
+| Already sold | 0.25 + 0.14 = 0.39 | **GH₵7.80** | Cost of items sold → cost adjustment (today) |
+| Own use | 0.05 | **GH₵1.00** | Goods taken for own use (today) |
+| Remaining stock | 0.56 | **GH₵11.20** | Added to stock value |
+| **Total** | 1.00 | **GH₵20.00** | |
+
+**Check:** recalculating the whole history as if P had been entered at GH₵120 from the start gives exactly the same split. The two sales would have cost GH₵5.00 + GH₵2.80 = GH₵7.80 more, own use GH₵1.00 more, and the remaining 16 units would be worth GH₵160.00 instead of GH₵148.80 (+11.20).
+
+Full figures, as entered (P at 100):
+- pool 20 / 180
+- sale of 5 costs 45.00 → 15 / 135
+- own use 9.00 → 14 / 126
+- +6 for 60.00 → 20 / 186
+- sale of 4 costs 37.20 → 16 / 148.80
+
+After the correction: 16 / **160.00**, which is what it would have been had P been entered at 120 from the start.
+
+**The allocation is exact** whenever the movements since the purchase were recorded in time order, with no negative stock and no voids in between. Because weighted averaging is proportional, the share method equals a full recalculation, without rewriting anything.
+
+**Where it is an approximation (limitation L8):**
+- Offline sales that happened before the purchase but were uploaded after it are counted as if they came after it.
+- Voids are treated as new inflows rather than as returning a share of the original purchase.
+- A period of negative stock ends the purchase's share.
+
+In these cases the split between "already sold" and "remaining stock" can be slightly off. The **total is always exact** (ΔC), and only timing between periods is affected.
+
+**Timing effect on profit (all cases):** the "already sold" part reduces profit **in the period of the correction**, not in the earlier periods when the goods were sold. Those periods, and any closed days, are not restated. Reports label the line "Correction to earlier purchase", so the owner can see why profit moved.
 
 **Limitations (documented):**
 - **L6:** no full supplier accounts. There are no supplier records, statements or balances across purchases. Each unpaid amount belongs to one purchase, with supplier name as free text. A supplier ledger is a future feature.
 - **L7:** transport costs are expensed immediately rather than included in item cost. Gross profit per item is slightly higher, and net profit is the same over time, with a timing difference.
-- **L8:** purchase corrections after some goods have sold spread the change over the remaining stock rather than re-costing past sales. The total is conserved.
+- **L8:** purchase price corrections are split proportionally (§12.2): exact for in-order history; an approximation when late uploads, voids or negative stock occur after the purchase; the already-sold share is reported in the period of the correction (no restatement). The total is conserved.
 - **L9:** no settlement discounts or supplier credit notes beyond returns. A supplier forgiving part of a debt is recorded as a purchase cost correction (lower cost), which is economically correct.

@@ -1,6 +1,6 @@
 # ShopMate Ghana — Development Plan
 
-**Status:** v7 — for final approval as the implementation baseline (product specification revision 5)
+**Status:** v7.1 — for final approval as the implementation baseline (product specification revision 5.1)
 **Last updated:** 11 November 2026
 
 > Detailed product rules live in [docs/product-specification/](product-specification/README.md). Where this plan summarises them, the specification is authoritative: [09-data-model.md](product-specification/09-data-model.md) for the database, [05-financial-calculations.md](product-specification/05-financial-calculations.md) for money rules and [10-test-plan.md](product-specification/10-test-plan.md) for tests.
@@ -182,7 +182,9 @@ Rules:
 - Details: specification 05 §3, §11.
 - Limitations and the fallback (last-restock pricing) are documented in specification 05 §3.
 - **Purchases** add their **full acquisition cost** to stock value, whatever was paid. Unpaid amounts are tracked per purchase (no full supplier accounts in the MVP).
-- **Goods taken for own use** are shown separately, below net profit (proposed: not a business cost).
+- **Goods taken for own use** are shown separately, below estimated net profit, with stock reduced at cost (approved).
+- **Supplier payments** can be partial, any number of times; they never change stock value and are never expenses.
+- **Purchase-cost corrections** are split proportionally between goods already sold or used and remaining stock (specification 05 §12.2).
 - **Every automatic cost adjustment is visible**, with a Needs attention item showing its GH₵ effect and the action required.
 - **Daily closing** keeps the original figures; later changes are separate adjustments.
 - **Stock losses** (damaged, expired, missing, count corrections down) and **bad debts written off** **reduce estimated net profit**. They are shown separately from operating expenses.
@@ -526,16 +528,18 @@ Timelines are estimates for part-time work.
 | 27 | Write-off undo (mistake, no money) is separate from debt recovery (money received, own profit line); payments split server-side | Approved |
 | 28 | Transactions, fixed lock order and idempotency keys for every write | Approved |
 | 29 | Test status reported as Documented / Implemented / Passed, with evidence; currently all Documented | Approved |
-| 30 | **Value-pool weighted average** (stock value in pesewas; average = value ÷ qty; sales remove their sale-time cost; edge cases posted as visible cost adjustments) | Proposed — for final review |
-| 31 | Sale-time verification with elapsed-time clock and time confidence; low confidence uses upload time | Proposed — for final review |
-| 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Proposed — for final review |
-| 33 | Immutable day snapshots on Close the day; late changes shown separately | Proposed — for final review |
-| 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Proposed — for final review |
-| 35 | Purchases at **full acquisition cost**; amount paid recorded separately; per-purchase unpaid amounts, Pay supplier, purchase corrections, supplier returns; no full supplier accounts in MVP | Proposed — for final review |
-| 36 | Sale time from **server anchors + same-session elapsed time**; reboot and clock-change detection; bounds; low confidence → upload time, flagged | Proposed — for final review (supersedes 31) |
-| 37 | Never adjust quantities automatically; every automatic value change is a visible cost adjustment with a Needs attention item | Proposed — for final review |
-| 38 | **One immutable original closing per day**; later changes as itemised day adjustments; current adjusted total shown alongside (supersedes 33) | Proposed — for final review |
-| 39 | **Goods taken for own use are not a business cost:** shown below net profit (changes the earlier rule that counted own use as a stock loss) | Proposed — for final review |
+| 30 | **Value-pool weighted average** (stock value in pesewas; average = value ÷ qty; sales remove their sale-time cost; edge cases posted as visible cost adjustments) | Approved |
+| 31 | Sale-time verification with elapsed-time clock and time confidence; low confidence uses upload time | Superseded by 36 |
+| 32 | Restocks, adjustments, voids and cost corrections remain **online-only** as an accounting safeguard | Proposed — for final approval |
+| 33 | Immutable day snapshots on Close the day; late changes shown separately | Superseded by 38 |
+| 34 | Full chronological replay of in-between sales **not** in MVP; misallocation logged during pilot to decide | Proposed — for final approval |
+| 35 | Purchases at **full acquisition cost**; amount paid recorded separately; per-purchase unpaid amounts, Pay supplier, purchase corrections, supplier returns; no full supplier accounts in MVP | Approved |
+| 36 | Sale time from **server anchors + same-session elapsed time**; reboot and clock-change detection; bounds; low confidence → upload time, flagged | Approved |
+| 37 | Never adjust quantities automatically; every automatic value change is a visible cost adjustment with a Needs attention item | Approved |
+| 38 | **One immutable original closing per day**; later changes as itemised day adjustments; current adjusted total shown alongside (supersedes 33) | Approved |
+| 39 | **Goods taken for own use are not a business cost:** shown below estimated net profit, inventory reduced at cost (changes the earlier rule that counted own use as a stock loss) | Approved |
+| 40 | Partial supplier payments against a purchase, any number of times; never stock value, never expenses | Proposed — for final approval |
+| 41 | Purchase-cost corrections split proportionally (already sold / losses / own use / remaining stock) from movement history; dated on the correction day; no restatement | Proposed — for final approval |
 
 ### References
 

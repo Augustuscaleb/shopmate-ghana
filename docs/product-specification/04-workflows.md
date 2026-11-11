@@ -130,13 +130,15 @@ Replaces the earlier "DISCARD" idea. Goal: allow a genuine mistake to be removed
 If the product has open discrepancies, the app asks: "Was the stock count wrong before this restock?" and links to an adjustment. It does **not** auto-resolve.
 
 **Pay supplier** (from the **Unpaid purchases** list, S-38) 🌐:
-- Amount (≤ unpaid), paid from, date.
-- Changes cash/MoMo out and the amount owed only. **No effect on stock value or profit** (C-113).
+- Amount (≤ amount still owed), paid from, date. **Partial payments are supported, any number of times.** For example, GH₵500 purchase, GH₵300 paid at purchase, GH₵100 paid later → GH₵100 still owed (05 §12.1).
+- Changes cash/MoMo out and the amount owed only. **No effect on stock value or profit, and never recorded as an expense** (C-113).
 
 **Correct a purchase** (from the purchase in product history) 🌐:
-- Choose a price or quantity correction, enter the corrected value and a reason (required).
+- Choose **Correct the cost** or **Correct the quantity received**; enter the corrected value and a reason (required).
 - Recorded as a `purchase_correction` linked to the original, which is never edited.
-- If the product still has stock, the value change goes into the stock value. Otherwise it is posted as a visible cost adjustment. The unpaid amount is updated (C-116).
+- **Cost correction:** before saving, the app shows the split (05 §12.2). For example: "+GH₵20.00 → GH₵7.80 for goods already sold (added to cost today), GH₵1.00 own use, GH₵11.20 added to the stock you still have." The amount owed changes by the same total; if it would go below zero, the owner records the supplier's refund in the same step (C-116e).
+- **Quantity correction:** quantity changes, value doesn't (C-116f).
+- A Needs attention item records the effect.
 
 **Return to supplier** 🌐:
 - Quantity, reason, and the supplier's credit: refund received (cash/MoMo) **or** reduce the unpaid amount of a chosen purchase.
@@ -216,7 +218,7 @@ Three different actions. The app never mixes them (full rules in 05 §7.2):
 - **Edit:** allowed; the change is audit-logged.
 - **Delete:** soft delete with a confirmation.
 - Expenses "paid from cash drawer" reduce expected cash in Close the day.
-- **Stock purchases are not expenses.** They are recorded as **Restock**, and their cost reaches profit through cost of goods sold when items are sold. The app explains this on the expense form: "Buying stock? Use Restock instead." This prevents double-counting (see 05 §4).
+- **Stock purchases and supplier payments are not expenses.** There is no expense category for them; the form suggests Restock or Pay supplier when the note mentions stock, goods or a supplier (05 §12.1). Purchases are recorded as **Restock**, and their cost reaches profit through cost of goods sold when items are sold. The app explains this on the expense form: "Buying stock? Use Restock instead." This prevents double-counting (see 05 §4).
 
 ## 5. Cash count — close the day (F-19) 🌐
 

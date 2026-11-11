@@ -39,7 +39,7 @@
 | `stock_movements` | product_id, type (`opening`/`restock`/`purchase_correction`/`supplier_return`/`sale`/`void`/`adjustment`/`cost_adjustment`/`value_correction`), qty_change, **value** (signed BIGINT, exact change to stock_value), unit_cost (info), reason (adjustments: `damaged`/`expired`/`missing`/`own_use`/`count_correction`/`other`; cost adjustments: `negative_stock_revaluation`/`zero_stock_residue`/`negative_value_correction`/`supplier_return_difference`/`purchase_correction_after_sale`), purchase_id, sale_id, note, user_id, occurred_at |
 | `purchases` | product_id, movement_id, qty, **purchase_cost** (BIGINT, full acquisition cost), paid_now, paid_now_from (`cash_drawer`/`momo`/`other`), supplier_name (text, optional), purchased_on, note. **Unpaid** = purchase_cost − paid_now − Σ supplier_payments ± Σ cost corrections − Σ return credits applied (≥ 0, C-112) |
 | `supplier_payments` | purchase_id, amount (> 0), paid_from, paid_on, note — C-113 |
-| `purchase_corrections` | purchase_id, qty_change, cost_change, reason, movement_id(s) — C-116 |
+| `purchase_corrections` | purchase_id, type (`cost`/`quantity`), qty_change, cost_change, reason, **allocation** (JSON: remaining fraction f and the pesewa amounts for remaining stock / already sold / losses / own use / supplier returns), refund_amount, refund_method, movement_id(s) — C-116 – C-116f |
 | `supplier_returns` | product_id, movement_id, qty, value_removed, credit_amount, credit_type (`refund_cash`/`refund_momo`/`reduce_unpaid`), purchase_id (if reducing unpaid), reason — C-117 |
 | `attention_items` | type (`negative_stock`/`cost_adjustment`/`cost_check`/`cost_missing`/`time_uncertain`/`closed_day_changed`/`stock_discrepancy`), entity, message_data (JSON: what happened, GH₵ effect), status (`open`/`acknowledged`/`resolved`), acknowledged_by/at, resolved_by_ref — 05 C-120 – C-126 |
 | `stock_discrepancies` | product_id, sale_id, shortfall_qty, status (`open`/`resolved`), resolution (`adjustment`/`sale_voided`), resolved_by_movement_id, resolved_at |
@@ -92,8 +92,8 @@ All functions run in **one database transaction**, take a client-generated **ide
 | `create_product` / `update_product` | products, stock_movements, product_cost_history | Unique name; price > 0 |
 | `set_cost(product, cost, reason)` | products (stock_value), stock_movements (`value_correction`), product_cost_history, audit_log | C-27 |
 | `restock(product, qty, purchase_cost, paid_now, paid_from, supplier_name)` | stock_movements (incl. any C-25 cost adjustment), products, product_cost_history, purchases, attention_items | qty ≥ 1; purchase_cost ≥ 0; 0 ≤ paid_now ≤ purchase_cost |
-| `pay_supplier(purchase, amount, paid_from, date)` | supplier_payments | amount ≤ unpaid; locks the purchase row |
-| `correct_purchase(purchase, qty_change, cost_change, reason)` | purchase_corrections, stock_movements, products, product_cost_history, attention_items | Reason required; unpaid ≥ 0 |
+| `pay_supplier(purchase, amount, paid_from, date)` | supplier_payments | Partial payments allowed; amount ≤ amount still owed; locks the purchase row; never writes `expenses` |
+| `correct_purchase(purchase, type, qty_change or cost_change, reason, refund?)` | purchase_corrections, stock_movements (value correction for the remaining share; cost adjustment, loss and own-use entries for consumed shares), products, product_cost_history, attention_items | Reason required; allocation computed from movements since the purchase with exact decimals (C-116a – C-116c); unpaid ≥ 0, or refund recorded |
 | `return_to_supplier(product, qty, credit_amount, credit_type, purchase?, reason)` | supplier_returns, stock_movements, products, product_cost_history, attention_items | qty ≥ 1; credit ≥ 0 |
 | `acknowledge_attention(item)` | attention_items | Changes no figures |
 | `adjust_stock(product, count or change, reason)` | stock_movements, products (qty and value), product_cost_history, stock_discrepancies | Reason required |
@@ -154,7 +154,7 @@ All functions run in **one database transaction**, take a client-generated **ide
 | CHECK `qty > 0`, `amount > 0` where applicable | Invalid entries |
 | Foreign keys with `business_id` matching (composite) | Cross-business references |
 
-## 5. Changes in revision 5
+## 5. Changes in revision 5 (and 5.1)
 
 | Change | Reason |
 |---|---|
@@ -163,6 +163,7 @@ All functions run in **one database transaction**, take a client-generated **ide
 | `attention_items`; cost-adjustment reasons extended | Visible, explained adjustments (05 §3.4) |
 | `day_closings` (one, immutable) + `day_adjustments` replace versioned `day_snapshots`; recounts are adjustments | Original closing preserved (05 §11) |
 | Adjustment reason `own_use` reported separately | C-37 |
+| 5.1: `purchase_corrections.type`, `allocation`, refund fields; `pay_supplier` partial payments stated explicitly | 05 §12.1, §12.2 |
 
 ## 6. Changes in revision 4
 

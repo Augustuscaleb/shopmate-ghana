@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 5.**
+**Revision 5.1.**
 
 ## 0. Test status (read this first)
 
@@ -19,7 +19,7 @@
 | Cost (TC-COST) | 21 | 21 | 0 | 0 |
 | Sale time (TC-TIME) | 10 | 10 | 0 | 0 |
 | Daily closing (TC-CLOSE) | 9 | 9 | 0 | 0 |
-| Purchases (TC-PUR) | 9 | 9 | 0 | 0 |
+| Purchases (TC-PUR) | 16 | 16 | 0 | 0 |
 | Needs attention (TC-ATTN) | 7 | 7 | 0 | 0 |
 | Losses (TC-LOSS) | 3 | 3 | 0 | 0 |
 | Credit (TC-CRED, TC-CASH) | 13 | 13 | 0 | 0 |
@@ -29,7 +29,7 @@
 | Security (TC-SEC) | 9 | 9 | 0 | 0 |
 | Backup (TC-BAK) | 5 | 5 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 |
-| **Total** | **134** | **134** | **0** | **0** |
+| **Total** | **141** | **141** | **0** | **0** |
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.
@@ -117,13 +117,20 @@
 |---|---|---|---|
 | TC-PUR-01 | Goods worth GH₵500, paid GH₵300 from the cash drawer → stock value +500; owed 200; expected cash −300; profit 0 | C-110 – C-115 | 📝 |
 | TC-PUR-02 | Paid now > purchase cost rejected | C-110 | 📝 |
-| TC-PUR-03 | Pay supplier 200 by MoMo → owed 0; MoMo out 200; stock value and profit unchanged; paying more than owed rejected | C-113 | 📝 |
+| TC-PUR-03 | **Partial payments:** GH₵500 purchase, 300 paid at purchase, then 100 by MoMo → owed **100**; then 100 cash → owed 0; a further 50 rejected. Stock value and profit unchanged throughout | C-113, §12.1 | 📝 |
 | TC-PUR-04 | Same Pay supplier request twice → recorded once; two parallel payments exceeding unpaid → one rejected | SEC-24, 09 §4.2 | 📝 |
-| TC-PUR-05 | Price correction with stock remaining → value goes into the pool; unpaid updated; original purchase unchanged | C-116 | 📝 |
-| TC-PUR-06 | Correction after all goods were sold → visible cost adjustment with an attention item | C-116, C-122 | 📝 |
+| TC-PUR-05 | Price correction with **no** units consumed since the purchase → f = 1; all of ΔC to stock value; unpaid updated; original purchase unchanged | C-116a, C-116b | 📝 |
+| TC-PUR-06 | Price correction after stock reached 0 → f = 0; all of ΔC to the already-sold/used parts; attention item lists them | C-116a, C-122 | 📝 |
 | TC-PUR-07 | Return to supplier: value removed at average; refund in cash increases expected cash; credit vs value difference → cost adjustment | C-117, C-25c | 📝 |
 | TC-PUR-08 | Return credited against a purchase's unpaid amount → unpaid reduced; never below 0 | C-117 | 📝 |
-| TC-PUR-09 | Own use → own-use line below net profit; not in stock losses; stock value reduced | C-37 | 📝 |
+| TC-PUR-09 | Own use → own-use line below estimated net profit, at cost; not in stock losses; stock value reduced | C-37 | 📝 |
+| TC-PUR-10 | Supplier payments never appear in operating expenses or stock value, in any report; expense form suggests Pay supplier when the note mentions stock or supplier | §12.1 | 📝 |
+| TC-PUR-11 | Partial payments are idempotent; two phones paying the same purchase at once cannot exceed the amount owed | §12.1, 09 §4.2 | 📝 |
+| TC-PUR-12 | **Worked example 05 §12.2:** +GH₵20 correction → 7.80 already sold (cost adjustment), 1.00 own use, 11.20 remaining stock; final pool 16 / 160.00 | C-116a – C-116c | 📝 |
+| TC-PUR-13 | **Equivalence:** for random in-order histories (no late uploads, voids or negative stock), the proportional split equals a full recalculation with the corrected cost, to the pesewa (allowing ≤ 1 pesewa per part from rounding) | C-116a | 📝 |
+| TC-PUR-14 | Parts always add up to ΔC exactly; recorded sale costs, past reports and closed days are unchanged; all parts dated on the correction day | C-116c, C-116d | 📝 |
+| TC-PUR-15 | Cost reduction below the amount already paid → requires a refund entry; refund in cash increases expected cash | C-116e | 📝 |
+| TC-PUR-16 | Quantity correction changes quantity only; stock value unchanged; attention item raised; stock reaching 0 applies C-25a | C-116f | 📝 |
 
 ## 2d. Needs attention (visibility)
 

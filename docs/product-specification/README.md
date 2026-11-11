@@ -1,6 +1,6 @@
 # ShopMate Ghana — MVP Product Specification
 
-**Status:** Revision 5 — for final approval as the implementation baseline
+**Status:** Revision 5.1 — for final approval as the implementation baseline
 **Date:** 11 November 2026
 **Depends on:** [docs/PLAN.md](../PLAN.md) (approved) and [Stage 0 research](../market-research/STAGE-0-REPORT.md) (approved direction)
 
@@ -38,7 +38,7 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 
 **Money:** all amounts are stored as integer pesewas and displayed as GH₵ (see 05).
 
-**Test status:** all 134 test cases in 10 are currently **📝 Documented only**. None is implemented or passed. See 10 §0.
+**Test status:** all 141 test cases in 10 are currently **📝 Documented only**. None is implemented or passed. See 10 §0.
 
 ## Decisions reflected in this specification
 
@@ -50,6 +50,15 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 6. The verified / reported / assumption distinction is preserved throughout.
 
 ## Revision log
+
+### Revision 5.1 (11 November 2026)
+
+| # | Clarification | Resolution | Where |
+|---|---|---|---|
+| 1 | Partial supplier payments | Confirmed: any number of partial payments per purchase, each ≤ amount still owed (GH₵500 − 300 − 100 = **100 owed**). Never change stock value; never stored or reported as expenses; expense form steers to Pay supplier; idempotent and locked | 05 §12.1; 04 §2.2, §4; 03 S-38; 09; TC-PUR-03, 10, 11 |
+| 2 | Purchase-cost corrections after some goods were sold | **Proportional split** from movement history: already sold → cost adjustment; losses → stock losses; own use → own use; remaining → stock value. Exact (equals full recalculation) for in-order histories; approximate with late uploads, voids or negative stock, but the total is always exact. Dated on the correction day; no restatement. Quantity corrections change quantity only | 05 §12.2 (C-116 – C-116f), L8; 04 §2.2; 03 S-39; 09; TC-PUR-05, 06, 12–16 |
+| — | Decision 39 approved | Own use below estimated net profit, inventory reduced at cost | 05 C-37 |
+
 
 ### Revision 5 (11 November 2026)
 
