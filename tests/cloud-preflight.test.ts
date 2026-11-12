@@ -141,4 +141,22 @@ describe('Cloud target preflight', () => {
       expect(r.output, part).toMatch(new RegExp(`${part} is not correctly encoded`));
     }
   });
+
+  it('TC-CLOUD-00o: direct connection accepts only "postgres" or postgres.<matching-ref> as the username', () => {
+    const directAs = (user: string, hostRef: string) =>
+      join('postgresql://', user, ':', PASSWORD, '@db.', hostRef, '.supabase.co:5432/postgres');
+    // accepted
+    expect(preflight(directAs('postgres', REF), REF).code).toBe(0);
+    expect(preflight(directAs(join('postgres.', REF), REF), REF).code).toBe(0);
+    // unexpected usernames refused with the fixed message
+    for (const user of ['admin', 'postgres_admin', 'Postgres', join('postgres.', REF, 'x'), 'postgres.short']) {
+      const r = preflight(directAs(user, REF), REF);
+      expect(r.code, user).toBe(1);
+      expect(r.output, user).toMatch(/direct-connection URL username is not "postgres" or postgres\.<project-ref>/);
+    }
+    // a valid-format but different project ref in the username is refused
+    const other = preflight(directAs(join('postgres.', OTHER), REF), REF);
+    expect(other.code).toBe(1);
+    expect(other.output).toMatch(/does NOT match/);
+  });
 });

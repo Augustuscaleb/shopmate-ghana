@@ -61,8 +61,12 @@ if (pooler) {
   refs.push(m[1]);
 } else if (direct) {
   refs.push(direct[1]);
-  const m = username.match(/^postgres\.([a-z0-9]{20})$/);
-  if (m) refs.push(m[1]);
+  // Only "postgres" or "postgres.<project-ref>" are accepted; any other username is refused.
+  if (username !== 'postgres') {
+    const m = username.match(/^postgres\.([a-z0-9]{20})$/);
+    if (!m) fail('direct-connection URL username is not "postgres" or postgres.<project-ref>');
+    refs.push(m[1]);
+  }
 } else {
   fail('the database host is not a Supabase pooler or direct database host');
 }

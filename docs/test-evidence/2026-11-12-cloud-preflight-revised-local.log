@@ -1,0 +1,33 @@
+ShopMate Ghana — revised cloud-verification preflight tests (LOCAL only; fake refs and passwords; no cloud access)
+Generated: 2026-11-12T17:31:24Z   Base commit: f22ab13 + uncommitted direct-connection username correction (owner-approved)
+scripts/check-cloud-target.mjs sha256: c29e9b49279bc29d01d2489e504bf3d8ae6ef884209e60f8b7a9dbae03e18200
+tests/cloud-preflight.test.ts  sha256: ba3e405697f148195b3a04d622be3d9c6ecefa79b3bb42846c64b3b2daba613b
+Node v22.23.4; vitest vitest/5.1.0 linux-x64 node-v22.23.4
+NOT yet run in CI or in the cloud. The successful cloud run 43260965124 used the earlier version (sha256 fb29d758aece3a23ae92c10ce70f2787a999007a8a841e14c39d21f89625b764).
+
+=== 1. Preflight tests (revised implementation) ===
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00e: passes when the pooler URL username carries the declared project ref 39ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00f: passes for a direct-connection URL of the declared project 38ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00g: refuses when the database URL belongs to a different project 70ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00h: refuses missing, malformed or non-Supabase values 290ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00i: a password with URL-encoded special characters is handled and never printed 44ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00j: accepts legitimate pooler hostnames across AWS regions and pool numbers 264ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00k: rejects unexpected hostnames under (or imitating) pooler.supabase.com 374ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00l: rejects a valid pooler hostname whose username carries a different project ref 31ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00m: rejects a direct connection whose username ref differs from the host ref 67ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00n: rejects malformed URL-encoded credentials 166ms
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00o: direct connection accepts only "postgres" or postgres.<matching-ref> as the username 310ms
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+
+=== 2. Negative control: the same tests against the PREVIOUS script (commit f22ab13) ===
+     × TC-CLOUD-00o: direct connection accepts only "postgres" or postgres.<matching-ref> as the username 116ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: admin: expected +0 to be 1 // Object.is equality
+Expected: TC-CLOUD-00o fails because the previous script accepted the username 'admin'. Revised script restored; sha256 now c29e9b49279bc29d01d2489e504bf3d8ae6ef884209e60f8b7a9dbae03e18200
+
+=== 3. Typecheck (tests and app) ===
+typecheck: passed (exit 0)
+
+=== 4. Repository secret scan ===
+Secret scan passed: 106 files checked, no keys, tokens or passwords found.

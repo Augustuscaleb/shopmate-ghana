@@ -375,9 +375,9 @@ Timelines are estimates for part-time work.
 | Sub-stage | Scope | Status |
 |---|---|---|
 | **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Approved by owner (11 Nov 2026) |
-| 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ **Approved by owner** (11 Nov 2026), subject to release requirements R-1 – R-6 ([RELEASE-READINESS.md](RELEASE-READINESS.md)) |
+| 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ **Approved by owner** (11 Nov 2026), subject to release requirements R-1 – R-6 ([RELEASE-READINESS.md](RELEASE-READINESS.md)). R-1 cloud verification ✅ completed 12 Nov 2026 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); R-2 – R-6 not yet closed |
 | 1C | Inventory foundations: categories, products, purchases, supplier credit, weighted-average (value-pool) costing, adjustments; within the approved specification only | 📋 **Plan prepared, awaiting owner approval** ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md)). Implementation **not started**; by default waits for the device journey (R-2) |
-| Ops-1 | Backup and restore implementation and first restore drill (mandatory gate, R-3) | Designed ([operations/BACKUP-AND-RESTORE.md](operations/BACKUP-AND-RESTORE.md)); starts after the cloud project exists, with owner approval |
+| Ops-1 | Backup and restore implementation and first restore drill (mandatory gate, R-3) | Designed ([operations/BACKUP-AND-RESTORE.md](operations/BACKUP-AND-RESTORE.md)); the cloud project now exists and is verified (R-1); starts only with owner approval. **R-3 remains open** |
 | 1D onwards | Sales and offline sync, credit, expenses, closing, reports | Not started |
 
 Original Stage 1 scope:

@@ -9,7 +9,7 @@
 |---|---|---|
 | E-1 | Stage 1B approved | ✅ 11 Nov 2026 |
 | E-2 | This plan approved by the owner, with answers to §6 | ⏳ |
-| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ⛔ Needs the cloud project first (R-1, R-2) |
+| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ⛔ Waiting for the owner's phone journey (R-2). R-1 cloud verification ✅ completed 12 Nov 2026 |
 
 > If the owner prefers, Stage 1C could start before E-3 with the device fixes slotted in first. That's the owner's choice; by default Claude waits for E-3.
 

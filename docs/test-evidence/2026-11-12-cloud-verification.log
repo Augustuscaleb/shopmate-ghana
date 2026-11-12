@@ -1,0 +1,50 @@
+ShopMate Ghana — Cloud verification (R-1) on the actual Supabase DEVELOPMENT project
+Fictitious data only. Excerpt copied from the GitHub Actions job log; GitHub masks every secret as ***.
+Absent from this file (public repository): the full database connection URL, the database username and
+password, the project ref and the API keys. GitHub masked them as *** in the source log.
+Present: the generic regional pooler hostname aws-0-eu-north-1.pooler.supabase.com, printed by the
+Supabase CLI under TC-CLOUD-02 below. It is shared by Supabase projects in that region and contains no
+project ref or credential.
+
+Workflow:  Cloud verification (development project)  (.github/workflows/cloud-verify.yml)
+Run:       https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124  (run 2, attempt 1)
+Job:       https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124/job/131331829993
+Commit:    f22ab13970cc408a76a97f4e102d436f278bd898  (branch claude/elegant-babbage-a2rfd2)
+Started:   2026-11-12T16:39:01Z by the owner (workflow_dispatch, protected environment cloud-dev)
+Result:    success (all steps)
+Region:    North EU (Stockholm), eu-north-1
+Preflight: scripts/check-cloud-target.mjs as committed in f22ab13 (sha256 fb29d758aece3a23ae92c10ce70f2787a999007a8a841e14c39d21f89625b764).
+           The later direct-connection username correction was NOT part of this run.
+
+--- Preflight (TC-CLOUD-00): scripts/check-cloud-target.mjs ---
+  SUPABASE_DB_URL: ***
+  SUPABASE_DEV_PROJECT_REF: ***
+Cloud target preflight passed: database URL belongs to the declared development project (session pooler).
+
+--- TC-CLOUD-01: scripts/verify-cloud-migrations.mjs (PGSSLMODE=require) ---
+Repository migrations: 5; applied in cloud: 5
+Cloud migrations match the repository.
+
+--- TC-CLOUD-02: npx supabase test db --remote="$SUPABASE_DB_URL" --yes (PGSSLMODE=require) ---
+Target: custom Postgres (aws-0-eu-north-1.pooler.supabase.com:5432)
+Confirmed by --yes: Run pgTAP tests on custom Postgres (aws-0-eu-north-1.pooler.supabase.com:5432)
+supabase/tests/database/01_structure_and_constraints.test.sql .... ok
+supabase/tests/database/02_rls_isolation_and_functions.test.sql .. ok
+All tests successful.
+Files=2, Tests=77, 23 wallclock secs
+Result: PASS
+
+--- TC-CLOUD-03: vitest (cloud mode) tests/security.api.test.ts tests/target.test.ts ---
+  SHOPMATE_TEST_TARGET: cloud
+  SHOPMATE_CONFIRM_DEV_PROJECT: fictitious-data-only
+  SHOPMATE_DEV_PROJECT_REF: ***
+  SUPABASE_TEST_API_URL: https://***.supabase.co
+  SUPABASE_TEST_ANON_KEY: ***
+  SUPABASE_TEST_SERVICE_ROLE_KEY: ***
+ ✓ tests/security.api.test.ts (14 tests)
+ ✓ tests/target.test.ts (4 tests)
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+
+Summary: TC-CLOUD-00 passed; TC-CLOUD-01 5/5; TC-CLOUD-02 77/77; TC-CLOUD-03 18/18.  R-1 completed.
+Only warning: GitHub's Node.js 20 deprecation notice for actions/checkout@v4 and actions/setup-node@v4 (unrelated to the result).

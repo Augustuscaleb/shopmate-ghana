@@ -1,26 +1,32 @@
 # Cloud setup log (development project): requirement R-1
 
-Each step is **Reported** (the owner says it's done) or **Verified** (evidence seen: command output, the SQL check table, or a workflow run). Only verified steps count.
+Each step records two kinds of evidence, kept separate:
+- **Owner-reported** 🟡: the owner states the step was done and what it showed. Claude can't reach supabase.com or the GitHub settings pages from its environment, so it hasn't seen these screens or outputs itself.
+- **Independently verified** ✅: evidence Claude has examined itself, such as a workflow run and its log. A step is marked verified only to the extent that this evidence shows it.
 
 **Project:** `shopmate-ghana`, region **North EU (Stockholm)**, AWS `eu-north-1`. Treated as the **development** project: fictitious data only. A separate production project will be created before real users (to be planned).
 
-| # | Step | Status | Evidence / date |
+| # | Step | Owner-reported | Independently verified |
 |---|---|---|---|
-| C-1 | Project created, status Healthy | 🟡 Reported by owner (11 Nov 2026) | Owner's message; Claude can't reach supabase.com from its environment |
-| C-1a | **Region: North EU (Stockholm)**. The initial report said "London"; corrected | ✅ **Confirmed by owner (12 Nov 2026)** and consistent with the database host `aws-0-eu-north-1.pooler.supabase.com` printed in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) | Owner's message + run log |
-| C-1b | **Project ref** confirmed: Dashboard project ref = ref in the session-pooler username (`postgres.<ref>`) = `SUPABASE_DEV_PROJECT_REF` secret. The value is deliberately not written here (public repository); it lives in the GitHub secret | ✅ **Confirmed by owner (12 Nov 2026)** | Owner's message. From the next run, also checked automatically by the workflow preflight step |
-| C-2 | Email authentication on; minimum password length 8; email confirmation on | 🟡 Reported by owner | Owner's message |
-| C-3 | Redirect URLs `shopmate://auth-callback`, `shopmate://reset-password` | 🟡 Reported by owner | Owner's message |
-| C-4 | `supabase link` done; `git status` shows no new files | ⬜ Not done | |
-| C-5 | `migration list` before push: Local 5, Remote empty; `db push --dry-run` lists the 5 migrations | ⬜ Not done | |
-| C-6 | `db push` applied without errors | ⬜ Not done | |
-| C-7 | `migration list` after push: Local and Remote both show all 5 | ⬜ Not done | |
-| C-8 | `scripts/sql/verify-cloud-schema.sql` in the SQL Editor: **12/12 PASS** | ⬜ Not done | |
-| C-9 | GitHub environment `cloud-dev` with required reviewer and branch restriction | ⬜ Not done | |
-| C-10 | Exactly 4 environment secrets with the documented names | ⬜ Not done | |
-| C-11 | Cloud verification run: TC-CLOUD-01, 02, 03 all green → ☁️ Cloud passed | ⬜ **Not done** | First run, [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) (12 Nov 2026), **failed** at TC-CLOUD-02: the Supabase CLI needed consent (`--yes`) to run tests on a hosted database and couldn't ask in CI; nothing was changed. TC-CLOUD-01 completed in that run ("Repository migrations: 5; applied in cloud: 5"), but it is **not** counted as cloud-passed until a complete run (with the new preflight) succeeds. Fixes: `21a11e9` (`--remote` + `--yes`) and the preflight + `PGSSLMODE=require` commit |
+| C-1 | Project created, status Healthy | 🟡 Owner-reported (11 Nov 2026) | ⬜ Not independently verified (Claude can't reach supabase.com from its environment) |
+| C-1a | **Region: North EU (Stockholm)**. The initial report said "London"; corrected | 🟡 Confirmed by owner (12 Nov 2026) | ✅ Consistent with the database host `aws-0-eu-north-1.pooler.supabase.com` printed in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) |
+| C-1b | **Project ref** confirmed: Dashboard project ref = ref in the session-pooler username (`postgres.<ref>`) = `SUPABASE_DEV_PROJECT_REF` secret. The value is deliberately not written here (public repository); it lives in the GitHub secret | 🟡 Confirmed by owner (12 Nov 2026) | From the next run, also checked automatically by the workflow preflight step |
+| C-2 | Email authentication on; minimum password length 8; email confirmation on | 🟡 Owner-reported (11 Nov 2026) | ⬜ Not independently verified; to be verified by the phone journey (R-2) |
+| C-3 | Redirect URLs `shopmate://auth-callback`, `shopmate://reset-password` | 🟡 Owner-reported (11 Nov 2026) | ⬜ Not independently verified; to be verified by the phone journey (R-2) |
+| C-4 | `supabase link` done; `git status` shows no new files | 🟡 Owner-reported (earlier ShopMate discussions): the Supabase project setup and connection steps were completed. The `git status` sub-check was **not separately reported** | ⬜ Not independently verified (done on the owner's computer) |
+| C-5 | `migration list` before push: Local 5, Remote empty; `db push --dry-run` lists the 5 migrations | ⬜ **Not separately reported** (the pre-push migration list and the dry run) | ⬜ Not independently verified |
+| C-6 | `db push` applied without errors | 🟡 Owner-reported (earlier ShopMate discussions): all five migrations were successfully applied using `supabase db push --remote` | ✅ The outcome: TC-CLOUD-01 in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) found all 5 repository migrations applied in the cloud |
+| C-7 | `migration list` after push: Local and Remote both show all 5 | 🟡 Owner-reported (earlier ShopMate discussions): all five migrations appeared under both Local and Remote after the push | ✅ Separate, independent evidence: TC-CLOUD-01 in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), "Repository migrations: 5; applied in cloud: 5" (5/5). This is the workflow's own check, not the owner's `migration list` output |
+| C-8 | `scripts/sql/verify-cloud-schema.sql` in the SQL Editor: **12/12 PASS** | 🟡 Owner-reported (earlier ShopMate discussions): all 12 checks returned PASS | ⬜ Not independently verified (the SQL Editor output hasn't been seen) |
+| C-9 | GitHub environment `cloud-dev` with required reviewer and branch restriction | 🟡 Owner-reported (earlier ShopMate discussions): the `cloud-dev` environment, required reviewer and branch restriction were configured | ✅ Partly: the run executed in the `cloud-dev` environment and received its secrets ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)). The required-reviewer and branch-restriction settings haven't been seen |
+| C-10 | Exactly 4 environment secrets with the documented names | 🟡 Owner-reported (earlier ShopMate discussions): all four documented environment secret names were saved and visible | ✅ Partly: all four secrets were present and worked in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) (preflight: database URL and project ref; TC-CLOUD-03: anon and service-role keys). That there are *exactly* four, with no extras, hasn't been seen |
+| C-11 | Cloud verification run: TC-CLOUD-01, 02, 03 all green → ☁️ Cloud passed | 🟡 Started and approved by the owner (12 Nov 2026) | ✅ **Verified**: [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), commit `f22ab13`: preflight passed (session pooler; `f22ab13` version of the preflight script, before the later username correction); TC-CLOUD-01 **5/5**; TC-CLOUD-02 **77/77**; TC-CLOUD-03 **18/18**. Evidence: [log excerpt](../test-evidence/2026-11-12-cloud-verification.log). Earlier [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) failed at TC-CLOUD-02 (CLI consent; nothing changed) and is not counted |
 
 C-2 and C-3 will additionally be **verified** by the phone journey (R-2): confirmation email received; the link returns to the app.
 
 ## Notes
-- C-4 – C-10 remain unverified by Claude. The first run shows the `cloud-dev` environment and the database secret were usable (the workflow reached the cloud database), but the owner hasn't yet shared the `migration list` outputs, the 12-row SQL check, or the secret-name list.
+- **R-1 is completed** by C-11, which is independently verified: TC-CLOUD-01, 02 and 03 all passed in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124).
+- The owner confirmed C-4 and C-6 to C-10 in earlier ShopMate discussions. They are recorded above as **owner-reported**, not independently verified; Claude hasn't seen the owner's `migration list` output, the SQL Editor table or the GitHub settings pages. Where the cloud run independently shows part of a step, that is listed separately. This doesn't affect R-1.
+- **Not separately reported:** the `git status` sub-check (C-4) and the pre-push migration list and dry run (C-5). C-6 and C-7 (owner-reported) and TC-CLOUD-01 (independent) cover the outcome.
+- After the successful run, the preflight script was tightened (direct connections: username only `postgres` or `postgres.<project-ref>`). The revised version hasn't run in the cloud yet; it will be checked at the next cloud verification run. This doesn't change C-11 or R-1.
+- The cloud tests leave two fictitious test owners (with one test shop each) in the development project; they are reused on every run.

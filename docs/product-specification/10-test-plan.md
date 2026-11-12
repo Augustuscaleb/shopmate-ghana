@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 5.1** · test status updated for Stage 1 (11 November 2026).
+**Revision 5.1** · test status updated for Stage 1 (11 November 2026) and for the first successful cloud verification (12 November 2026).
 
 ## 0. Test status (read this first)
 
@@ -20,14 +20,14 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 - CI and local passes say nothing about the cloud project or a real phone. Tests that need those environments (TC-CLOUD, TC-DEV, TC-UX) stay below ☁️ / 📱 until that evidence exists.
 - A test whose code or rules change returns to 🛠 until re-run.
 
-**Current status (11 November 2026: Stage 1B approved; Stage 1C plan awaiting approval):**
+**Current status (12 November 2026: Stage 1B approved; cloud verification passed, [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); Stage 1C plan awaiting approval):**
 
 | Area | Tests | 📝 | 🛠 | 🟢 Local only | ✅ CI | ☁️ Cloud | 📱 Device |
 |---|---|---|---|---|---|---|---|
 | Financial (TC-FIN) | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
 | Cost (TC-COST) | 21 | 21 | 0 | 0 | 0 | 0 | 0 |
 | Sale time (TC-TIME) | 10 | 10 | 0 | 0 | 0 | 0 | 0 |
-| Daily closing (TC-CLOSE) | 9 | 8 | 0 | 0 | 1 | 0 | 0 |
+| Daily closing (TC-CLOSE) | 9 | 8 | 0 | 0 | 0 | 1 | 0 |
 | Purchases (TC-PUR) | 16 | 16 | 0 | 0 | 0 | 0 | 0 |
 | Needs attention (TC-ATTN) | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
 | Losses (TC-LOSS) | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
@@ -35,15 +35,15 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
 | Cancellation (TC-CANCEL) | 9 | 9 | 0 | 0 | 0 | 0 | 0 |
 | Concurrency (TC-CONC) | 7 | 6 | 1 | 0 | 0 | 0 | 0 |
-| Security (TC-SEC) | 9 | 3 | 3 | 0 | 3 | 0 | 0 |
+| Security (TC-SEC) | 9 | 3 | 3 | 0 | 1 | 2 | 0 |
 | Backup (TC-BAK), **mandatory gate** | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
-| **Cloud verification (TC-CLOUD), required** | 3 | 0 | 3 (first run failed at TC-CLOUD-02; none passed) | 0 | 0 | **0** | — |
+| **Cloud verification (TC-CLOUD-00 – 03), required** | 4 | 0 | 1 (TC-CLOUD-00: preflight revised after the cloud run) | 0 | 0 | **3** | — |
 | **Physical device (TC-DEV), required** | 3 | 3 | 0 | 0 | 0 | — | **0** |
-| **Total (planned)** | **147** | **136** | **7** | **0** | **4** | **0** | **0** |
-| Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 91 | 0 | — |
-| Stage 1B tests (§0b) | 21 | 0 | 0 | 0 | 21 | 0 | — |
-| Cloud preflight tests (§0b, TC-CLOUD-00e – n) | 10 | 0 | 0 | 10 | 0 | 0 | — |
+| **Total (planned)** | **148** | **136** | **5** | **0** | **1** | **6** | **0** |
+| Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 0 | 91 | — |
+| Stage 1B tests (§0b) | 21 | 0 | 0 | 0 | 17 | 4 | — |
+| Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 11 | 0 | 0 | — |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
 
@@ -51,13 +51,13 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | Group | IDs | Count | Where | Status |
 |---|---|---|---|---|
-| Structure and security setup: 30 tables, RLS on every table, no anon access, writes only on 4 tables, policies everywhere, function privileges, append-only triggers | TC-DB-01 – 08 | 8 | `supabase/tests/database/01_structure_and_constraints.test.sql` | ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1-local.log), [CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749); re-passed in [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
-| Constraints: duplicate sale ID and receipt, totals and discounts, credit needs customer, cross-business references, low-confidence costing, line totals, device codes, ledger signs and reasons, paid-now ≤ cost, approximate corrections must be flagged with reasons, movement reasons, unique names, one closing per day, one original cash count, MoMo transaction IDs, phone format | TC-DB-10 – 34 | 25 | same file | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
-| Append-only and immutability: movements, ledger, closings, adjustments, audit log, purchases, business_id; customer archive rule; request log | TC-DB-40 – 53 | 13 | same file | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
-| Functions: create_business and register_device, including idempotency, request-ID reuse, foreign business, internal helpers | TC-FN-01 – 09 | 9 | `supabase/tests/database/02_rls_isolation_and_functions.test.sql` | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
-| Isolation and privileges as real database roles (fixtures in **every** business table; A↔B in both directions; writes; anonymous) | TC-SEC-00, 01a–l, 03a–f, 04a–c | 22 | same file | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
-| End-to-end through the real API (Auth + PostgREST): password rule, profiles, isolation, server-function-only writes, idempotency incl. 5 parallel duplicates, anonymous access | TC-API-01 – 14 | 14 | `tests/security.api.test.ts` | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
-| **Total** | | **91** | | **91 ✅ CI passed** (none ☁️ cloud) |
+| Structure and security setup: 30 tables, RLS on every table, no anon access, writes only on 4 tables, policies everywhere, function privileges, append-only triggers | TC-DB-01 – 08 | 8 | `supabase/tests/database/01_structure_and_constraints.test.sql` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1-local.log), [CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749); re-passed in [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
+| Constraints: duplicate sale ID and receipt, totals and discounts, credit needs customer, cross-business references, low-confidence costing, line totals, device codes, ledger signs and reasons, paid-now ≤ cost, approximate corrections must be flagged with reasons, movement reasons, unique names, one closing per day, one original cash count, MoMo transaction IDs, phone format | TC-DB-10 – 34 | 25 | same file | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
+| Append-only and immutability: movements, ledger, closings, adjustments, audit log, purchases, business_id; customer archive rule; request log | TC-DB-40 – 53 | 13 | same file | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
+| Functions: create_business and register_device, including idempotency, request-ID reuse, foreign business, internal helpers | TC-FN-01 – 09 | 9 | `supabase/tests/database/02_rls_isolation_and_functions.test.sql` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
+| Isolation and privileges as real database roles (fixtures in **every** business table; A↔B in both directions; writes; anonymous) | TC-SEC-00, 01a–l, 03a–f, 04a–c | 22 | same file | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
+| End-to-end through the real API (Auth + PostgREST): password rule, profiles, isolation, server-function-only writes, idempotency incl. 5 parallel duplicates, anonymous access | TC-API-01 – 14 | 14 | `tests/security.api.test.ts` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) |
+| **Total** | | **91** | | **91 ☁️ Cloud passed** (77 database tests in TC-CLOUD-02, 14 API tests in TC-CLOUD-03) |
 
 **Checks that the tests can fail (negative controls, 11 November 2026):**
 - With the append-only trigger removed, the immutability test reported **not ok**.
@@ -65,6 +65,8 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 - With a fake key planted, the secret scan **failed**.
 
 **CI:** `.github/workflows/ci.yml` runs the secret scan, typecheck, all database tests and API tests on every push, using a local Supabase stack inside the GitHub runner. First CI run, 11 November 2026, commit `634206b`: **✅ 77/77 database and 14/14 API tests passed** ([run 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)). The 91 Stage 1 tests therefore have both local and CI evidence.
+
+**Cloud:** 12 November 2026, commit `f22ab13`, on the actual Supabase development project (North EU, Stockholm): **☁️ 77/77 database tests (TC-CLOUD-02) and 14/14 API tests (TC-CLOUD-03) passed** ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)). Fictitious data only.
 
 ## 0b. Stage 1B tests (login, onboarding, secure storage, cloud tooling)
 
@@ -78,9 +80,9 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | **Real login against local Supabase: session only in secure storage, restored after restart, cleared on sign-out** | TC-AUTH-13 | 1 | `tests/session.storage.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Onboarding: create shop; lost reply → no second shop; device registered once, survives lost reply | TC-AUTH-14 – 16 | 3 | `tests/onboarding.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
-| Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
-| **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; output never contains the URL, password, host, username or refs | TC-CLOUD-00e – n | 10 | `tests/cloud-preflight.test.ts` | 🟢 **Local passed** 2026-11-12 ([log](../test-evidence/2026-11-12-cloud-preflight-local.log), incl. 2 negative controls). Not yet in CI or cloud |
-| **Total** | | **21** | | **21 ✅ CI passed** (none ☁️ cloud or 📱 device) |
+| Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), run in cloud mode within TC-CLOUD-03); ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
+| **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; a direct connection accepts only the username `postgres` or `postgres.<project-ref>` (TC-CLOUD-00o); output never contains the URL, password, host, username or refs | TC-CLOUD-00e – o | 11 | `tests/cloud-preflight.test.ts` | 🟢 **Local passed** 2026-11-12 for the **revised** implementation (script `c29e9b49…`): 11/11, plus a negative control in which TC-CLOUD-00o fails against the previous script ([revised local log](../test-evidence/2026-11-12-cloud-preflight-revised-local.log)). **CI verification pending** for the revised implementation. *History:* the previous version (script `fb29d758…`, commit `f22ab13`, tests 00e – n) was ✅ CI passed in [CI 43259802553](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43259802553) ([local log](../test-evidence/2026-11-12-cloud-preflight-local.log)). These unit tests use fake values only |
+| **Total** (excluding the preflight row, counted separately in §0) | | **21** | | **17 ✅ CI passed, 4 ☁️ Cloud passed** (TC-CLOUD-00a – d); none 📱 device |
 
 **CI:** Stage 1B commit `1aee353`: ✅ all 21 tests above passed on GitHub Actions ([run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)), together with all Stage 1A tests and the bundle secret scan.
 
@@ -90,9 +92,10 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | ID | Test | How | Status |
 |---|---|---|---|
-| TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` (now with `PGSSLMODE=require`, after the preflight step) | 🛠 Implemented. Ran in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) ("5 of 5 applied"), but that run failed at TC-CLOUD-02, so it is **not counted as ☁️ Cloud passed**. Will count only after a complete successful run that includes the preflight |
-| TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --remote="$SUPABASE_DB_URL" --yes` with `PGSSLMODE=require` | 🛠 Implemented. **Failed** in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) before any test ran (CLI needed `--yes`; nothing changed). Fixed in `21a11e9`; not re-run. Known risk: cloud may not allow test rows in `auth.users`; if so, the test is adapted, not skipped |
-| TC-CLOUD-03 | Business-data isolation **through the cloud API** (two fictitious owners) | `cloud-verify.yml` → `tests/security.api.test.ts` in cloud mode | 🛠 Implemented, **not run** |
+| TC-CLOUD-00 | Preflight: the database URL secret belongs to the declared development project (project ref matches `SUPABASE_DEV_PROJECT_REF`; exact Supabase host form) before any cloud step runs | `cloud-verify.yml` → `scripts/check-cloud-target.mjs` | 🛠 **Revised after the cloud run** (direct-connection username check, script `c29e9b49…`); the revised version has **not** run in the cloud. *Evidence for the previous version:* ☁️ **Cloud passed** 2026-11-12 with the `f22ab13` script (`fb29d758…`) in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) ([cloud log](../test-evidence/2026-11-12-cloud-verification.log)): "preflight passed … (session pooler)"; no URL, password or ref printed. That result applies to that version only. The revised preflight is cloud-checked at the next cloud verification run |
+| TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` (now with `PGSSLMODE=require`, after the preflight step) | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): "Repository migrations: 5; applied in cloud: 5" (**5/5**), with `PGSSLMODE=require`. (The earlier 5/5 in failed [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) is not counted) |
+| TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --remote="$SUPABASE_DB_URL" --yes` with `PGSSLMODE=require` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): "Files=2, Tests=77 … Result: PASS" (**77/77**), with `PGSSLMODE=require`; each test file rolled back. The `auth.users` risk did not occur. (Earlier [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) failed before any test ran; fixed in `21a11e9`) |
+| TC-CLOUD-03 | Business-data isolation **through the cloud API** (two fictitious owners) | `cloud-verify.yml` → `tests/security.api.test.ts` + `tests/target.test.ts` in cloud mode | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): **18/18** (14 API security and isolation tests TC-API-01 – 14, 4 cloud safeguards TC-CLOUD-00a – d) |
 | TC-DEV-01 | On the owner's Android phone: registration, **email confirmation**, login, shop setup, logout, login again (and a wrong-password attempt) | Manual, development build; see `docs/testing/DEVICE-TEST-LOG.md` | 📝 Documented; **required before moving beyond the authentication foundation** |
 | TC-DEV-02 | Email confirmation and password-reset links open the app (needs a development build; Expo Go can't receive `shopmate://` links) | Manual | 📝 Documented |
 | TC-DEV-03 | Readability at 130% font size; ₵ renders (TC-UX-04, partial) | Manual | 📝 Documented |
@@ -174,7 +177,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | TC-CLOSE-05 | Cash recount after closing → adjustment; original count kept; adjusted expected/counted/difference correct | C-102 | 📝 |
 | TC-CLOSE-06 | Cost adjustments and purchase corrections are dated on the processing day, never on a closed day | C-103 | 📝 |
 | TC-CLOSE-07 | For every closed day: original + Σ adjustments = fresh recalculation from records | C-105 | 📝 |
-| TC-CLOSE-08 | Direct UPDATE/DELETE on `day_closings` and `day_adjustments` via the API is denied | SEC-27 | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) (TC-DB-04, TC-DB-43–45); ☁️ cloud not yet verified |
+| TC-CLOSE-08 | Direct UPDATE/DELETE on `day_closings` and `day_adjustments` via the API is denied | SEC-27 | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)) (TC-DB-04, TC-DB-43–45); ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), TC-CLOUD-02) |
 | TC-CLOSE-09 | Weekly and monthly reports show adjusted totals plus the count and value of closed-day adjustments | C-106 | 📝 |
 
 ## 2c. Purchases and supplier credit
@@ -288,9 +291,9 @@ Run with several parallel database connections, repeated at least 100 times to e
 
 | ID | Test | Status |
 |---|---|---|
-| TC-SEC-01 | Every table: Business A cannot select, insert, update or delete Business B rows | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)): all 30 current tables; **☁️ cloud not yet verified** (TC-CLOUD-02/03) |
+| TC-SEC-01 | Every table: Business A cannot select, insert, update or delete Business B rows | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)): all 30 current tables; ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), TC-CLOUD-02 and 03) |
 | TC-SEC-02 | Every function: another business's IDs rejected | 🛠 Implemented, partial: covers the 2 Stage 1 functions; extend with each new function |
-| TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1-local.log), [CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749); re-passed in [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
+| TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), TC-CLOUD-02 and 03); ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1-local.log), [CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749); re-passed in [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
 | TC-SEC-04 | Invalid inputs rejected server-side | 🛠 Implemented, partial: table constraints done (TC-DB-10–34); function inputs in later stages |
 | TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)): repository scan, plus Android bundle scan (exact-match deny list + decoded service-role check; 2 negative controls failed as expected) |
 | TC-SEC-06 | Crash reports contain no personal or business data | 📝 |
