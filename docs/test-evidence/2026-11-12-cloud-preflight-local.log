@@ -1,0 +1,31 @@
+ShopMate Ghana — cloud-verification preflight tests (LOCAL only; fake refs and passwords; no cloud access)
+Date (UTC): 2026-11-12T16:30:05Z   Node: v22.23.4   Base commit: 21a11e9 + uncommitted preflight files (committed with this log)
+scripts/check-cloud-target.mjs sha256: fb29d758aece3a23ae92c10ce70f2787a999007a8a841e14c39d21f89625b764
+
+== 1. Preflight tests
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00e: passes when the pooler URL username carries the declared project ref
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00f: passes for a direct-connection URL of the declared project
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00g: refuses when the database URL belongs to a different project
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00h: refuses missing, malformed or non-Supabase values
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00i: a password with URL-encoded special characters is handled and never printed
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00j: accepts legitimate pooler hostnames across AWS regions and pool numbers
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00k: rejects unexpected hostnames under (or imitating) pooler.supabase.com
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00l: rejects a valid pooler hostname whose username carries a different project ref
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00m: rejects a direct connection whose username ref differs from the host ref
+ ✓ tests/cloud-preflight.test.ts > Cloud target preflight > TC-CLOUD-00n: rejects malformed URL-encoded credentials
+      Tests  10 passed (10)
+
+== 2. Negative control A: old loose pooler pattern (TC-CLOUD-00k must fail)
+     × TC-CLOUD-00k: rejects unexpected hostnames under (or imitating) pooler.supabase.com 53ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 9 passed (10)
+
+== 3. Negative control B: password-encoding check removed (TC-CLOUD-00n must fail)
+     × TC-CLOUD-00n: rejects malformed URL-encoded credentials 107ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 9 passed (10)
+
+== 4. Script restored; sha256: fb29d758aece3a23ae92c10ce70f2787a999007a8a841e14c39d21f89625b764
+      Tests  10 passed (10)
+
+Not covered here: behaviour against the real cloud database (requires a Cloud verification run).

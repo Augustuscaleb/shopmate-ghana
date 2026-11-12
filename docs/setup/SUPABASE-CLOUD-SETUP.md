@@ -122,9 +122,12 @@ GitHub → **Actions** → "Cloud verification (development project)" → **Run 
 
 | Test | What it proves |
 |---|---|
+| Preflight | Before anything touches the cloud: the database URL secret belongs to the project in `SUPABASE_DEV_PROJECT_REF` (exact Supabase host forms only). If not, the run stops without printing the URL, password or ref |
 | TC-CLOUD-01 | Every repository migration is applied in the cloud, and nothing unexpected is there |
 | TC-CLOUD-02 | The database tests pass **on the cloud database**: 30 tables, RLS on every table, no anonymous access, write restrictions, append-only protection, isolation between two businesses. Each test file runs in a transaction that is rolled back |
 | TC-CLOUD-03 | Business-data isolation **through the cloud API**: two fictitious owners can't read or change each other's data |
+
+Both database steps run with `PGSSLMODE=require`, so they refuse to connect without encryption.
 
 The cloud tests create two fictitious owners (`shopmate.cloudtest.a@example.test`, `...b@...`) with one test shop each. They are reused on every run, so data doesn't pile up.
 

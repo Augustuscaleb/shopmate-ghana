@@ -6,6 +6,12 @@ Stage 1A: ✅ approved (11 Nov 2026). Stage 1B: ✅ approved (11 Nov 2026), subj
 
 Test status is tracked in [product-specification/10-test-plan.md](product-specification/10-test-plan.md) (§0 and §0a). This page summarises it.
 
+## Cloud verification status (12 Nov 2026)
+- Development project: `shopmate-ghana`, North EU (Stockholm); project ref confirmed by the owner.
+- First run ([run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512)): **failed** at TC-CLOUD-02 (CLI consent); TC-CLOUD-01 ran, but isn't counted. Nothing in the cloud was changed.
+- Workflow hardening: `--remote` + `--yes` (`21a11e9`); preflight project-ref check; `PGSSLMODE=require` on both database steps. Preflight tests 🟢 local only.
+- **No ☁️ cloud-passed test yet.** Requirement R-1 remains open.
+
 ## Stage 1B: what was built
 
 | Item | Status | Where |

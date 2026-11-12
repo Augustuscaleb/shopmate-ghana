@@ -38,11 +38,12 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 | Security (TC-SEC) | 9 | 3 | 3 | 0 | 3 | 0 | 0 |
 | Backup (TC-BAK), **mandatory gate** | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
-| **Cloud verification (TC-CLOUD), required** | 3 | 0 | 3 (never run) | 0 | 0 | **0** | — |
+| **Cloud verification (TC-CLOUD), required** | 3 | 0 | 3 (first run failed at TC-CLOUD-02; none passed) | 0 | 0 | **0** | — |
 | **Physical device (TC-DEV), required** | 3 | 3 | 0 | 0 | 0 | — | **0** |
 | **Total (planned)** | **147** | **136** | **7** | **0** | **4** | **0** | **0** |
 | Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 91 | 0 | — |
 | Stage 1B tests (§0b) | 21 | 0 | 0 | 0 | 21 | 0 | — |
+| Cloud preflight tests (§0b, TC-CLOUD-00e – n) | 10 | 0 | 0 | 10 | 0 | 0 | — |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
 
@@ -78,6 +79,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | Onboarding: create shop; lost reply → no second shop; device registered once, survives lost reply | TC-AUTH-14 – 16 | 3 | `tests/onboarding.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
+| **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; output never contains the URL, password, host, username or refs | TC-CLOUD-00e – n | 10 | `tests/cloud-preflight.test.ts` | 🟢 **Local passed** 2026-11-12 ([log](../test-evidence/2026-11-12-cloud-preflight-local.log), incl. 2 negative controls). Not yet in CI or cloud |
 | **Total** | | **21** | | **21 ✅ CI passed** (none ☁️ cloud or 📱 device) |
 
 **CI:** Stage 1B commit `1aee353`: ✅ all 21 tests above passed on GitHub Actions ([run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)), together with all Stage 1A tests and the bundle secret scan.
@@ -88,8 +90,8 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | ID | Test | How | Status |
 |---|---|---|---|
-| TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` | 🛠 Implemented, **not run**: no cloud project yet |
-| TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --db-url` | 🛠 Implemented, **not run**. Known risk: cloud may not allow test rows in `auth.users`; if so, the test is adapted, not skipped |
+| TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` (now with `PGSSLMODE=require`, after the preflight step) | 🛠 Implemented. Ran in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) ("5 of 5 applied"), but that run failed at TC-CLOUD-02, so it is **not counted as ☁️ Cloud passed**. Will count only after a complete successful run that includes the preflight |
+| TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --remote="$SUPABASE_DB_URL" --yes` with `PGSSLMODE=require` | 🛠 Implemented. **Failed** in [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) before any test ran (CLI needed `--yes`; nothing changed). Fixed in `21a11e9`; not re-run. Known risk: cloud may not allow test rows in `auth.users`; if so, the test is adapted, not skipped |
 | TC-CLOUD-03 | Business-data isolation **through the cloud API** (two fictitious owners) | `cloud-verify.yml` → `tests/security.api.test.ts` in cloud mode | 🛠 Implemented, **not run** |
 | TC-DEV-01 | On the owner's Android phone: registration, **email confirmation**, login, shop setup, logout, login again (and a wrong-password attempt) | Manual, development build; see `docs/testing/DEVICE-TEST-LOG.md` | 📝 Documented; **required before moving beyond the authentication foundation** |
 | TC-DEV-02 | Email confirmation and password-reset links open the app (needs a development build; Expo Go can't receive `shopmate://` links) | Manual | 📝 Documented |
