@@ -59,7 +59,9 @@ jobs:
       - name: TC-CLOUD-02 Database tests against the cloud database (structure, RLS, privileges, isolation; each file rolls back)
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DEV_DB_URL }}
-        run: npx supabase test db --db-url "$SUPABASE_DB_URL"
+        # --yes: the CLI asks for consent before running tests on a hosted database and can't ask in CI.
+        # Every test file runs in a transaction that is rolled back, so the database is left unchanged.
+        run: npx supabase test db --remote="$SUPABASE_DB_URL" --yes
 
       - name: TC-CLOUD-03 Business-data isolation through the cloud API
         env:
