@@ -42,7 +42,7 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 | **Physical device (TC-DEV), required** | 3 | 3 | 0 | 0 | 0 | — | **0** |
 | **Total (planned)** | **148** | **136** | **5** | **0** | **1** | **6** | **0** |
 | Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 0 | 91 | — |
-| Stage 1B tests (§0b) | 21 | 0 | 0 | 0 | 17 | 4 | — |
+| Stage 1B tests (§0b) | 22 | 0 | 0 | 4 | 14 | 4 | — |
 | Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 11 | 0 | 0 | — |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
@@ -72,7 +72,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | Group | IDs | Count | Where | Status |
 |---|---|---|---|---|
-| Password rules: minimum 8, 2,087 common passwords, repeated characters, email, 72-byte maximum | TC-AUTH-01 – 03 | 3 | `app/src/auth/passwordPolicy.test.ts` | ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1b-local.log), [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
+| Password rules: minimum 8, 2,087 common passwords, **a listed password followed only by numbers or symbols** (e.g. `password123`; TC-AUTH-18, added 2026-11-14 after device test TC-DEV-01 step 2), repeated characters, email, 72-byte maximum | TC-AUTH-01 – 03, 18 | 4 | `app/src/auth/passwordPolicy.test.ts` | 🟢 **Local passed** 2026-11-14 for the revised rules: 4/4, plus a negative control in which TC-AUTH-18 fails against the previous code ([local log](../test-evidence/2026-11-14-password-policy-local.log)). **CI pending.** *History:* TC-AUTH-01 – 03 were ✅ CI passed 2026-11-11 with the previous rules ([local log](../test-evidence/2026-11-11-stage1b-local.log), [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Validation (Ghana phone formats matching the database, shop name/type, email) | TC-AUTH-04 – 05 | 2 | `app/src/auth/validation.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Error messages (no account enumeration; network, rate-limit) | TC-AUTH-06 – 07 | 2 | `app/src/auth/messages.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Deep links (confirmation and reset; rejects foreign and malformed links) | TC-AUTH-08 | 1 | `app/src/auth/deepLinks.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
@@ -82,7 +82,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), run in cloud mode within TC-CLOUD-03); ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; a direct connection accepts only the username `postgres` or `postgres.<project-ref>` (TC-CLOUD-00o); output never contains the URL, password, host, username or refs | TC-CLOUD-00e – o | 11 | `tests/cloud-preflight.test.ts` | 🟢 **Local passed** 2026-11-12 for the **revised** implementation (script `c29e9b49…`): 11/11, plus a negative control in which TC-CLOUD-00o fails against the previous script ([revised local log](../test-evidence/2026-11-12-cloud-preflight-revised-local.log)). **CI verification pending** for the revised implementation. *History:* the previous version (script `fb29d758…`, commit `f22ab13`, tests 00e – n) was ✅ CI passed in [CI 43259802553](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43259802553) ([local log](../test-evidence/2026-11-12-cloud-preflight-local.log)). These unit tests use fake values only |
-| **Total** (excluding the preflight row, counted separately in §0) | | **21** | | **17 ✅ CI passed, 4 ☁️ Cloud passed** (TC-CLOUD-00a – d); none 📱 device |
+| **Total** (excluding the preflight row, counted separately in §0) | | **22** | | **4 🟢 local passed** (password rules, revised 2026-11-14; CI pending), **14 ✅ CI passed, 4 ☁️ Cloud passed** (TC-CLOUD-00a – d); none 📱 device |
 
 **CI:** Stage 1B commit `1aee353`: ✅ all 21 tests above passed on GitHub Actions ([run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)), together with all Stage 1A tests and the bundle secret scan.
 
