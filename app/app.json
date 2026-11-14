@@ -26,6 +26,12 @@
     "scheme": "shopmate",
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4674a291-981c-4a31-b720-41569cdba5bb"
+      }
+    },
+    "owner": "topboy654"
   }
 }
