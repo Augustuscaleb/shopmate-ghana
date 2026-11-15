@@ -20,7 +20,7 @@
 | 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | ✅ Development build (Samsung Galaxy A06; date not recorded) | The app showed exactly: "Email or password is not correct." (owner-reported) |
 | 6 | Log in correctly | "Your shop" setup screen | | |
 | 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
-| 8 | Home screen | Shop name, reference `SM-…`, the registered device identifier, "Pilot" | | |
+| 8 | Home screen | Shop name, reference `SM-…`, the registered device identifier, "Pilot" | ✅ Development build (15 Nov 2026) | All four details were visible: shop name `Topboy`, reference `SM-0006`, device `Device B`, plan `Pilot` (Samsung Galaxy A06, Android 16; owner-reported) |
 | 9 | Close the app completely and reopen it | Still logged in, Home screen (session restored from secure storage) | ✅ Development build (15 Nov 2026) | Two successful full cold restarts in the development build; details below under "Development build attempts". Earlier Expo Go failures remain recorded as issue #2 |
 | 10 | Log out | Welcome screen | ✅ Development build (15 Nov 2026) | Tapping "Log out" returned the app to the Welcome screen (Samsung Galaxy A06, Android 16; owner-reported) |
 | 11 | Log in again | Home screen with the same shop and the **same device identifier as before logout** (whatever its label, e.g. "Device A" or "Device B"); no second shop or device | ✅ Development build (15 Nov 2026) | The existing account logged in again after logout: shop `Topboy`, reference `SM-0006` and device `Device B` were unchanged, and no duplicate shop or device was observed. See "Development build attempts" |
@@ -28,7 +28,7 @@
 
 **Phone model and Android version:** Samsung Galaxy A06, Android 16  **App build:** EAS development build  **Date:** 15 November 2026
 
-*These details apply to the development-build tests recorded in this log (steps 1 and 5, the step 2 re-check, steps 9, 10 and 11, TC-DEV-02, the TC-DEV-03 font-size check and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
+*These details apply to the development-build tests recorded in this log (steps 1 and 5, the step 2 re-check, steps 8, 9, 10 and 11, TC-DEV-02, the TC-DEV-03 font-size check and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
 
 ## Development build attempts
 
@@ -40,6 +40,7 @@
 | 15 Nov 2026 | Step 10: log out | Tapped "Log out" | ✅ **PASS**: the app returned to the Welcome screen |
 | 15 Nov 2026 | TC-DEV-03: readability at about 130% font size | Increased the phone's font size to about 130%, checked the login screen, then restored the phone's original font setting | ✅ **PASS**: login-screen text, buttons and input fields stayed readable, with no clipping or overlapping. Only the login screen was checked |
 | 15 Nov 2026 | Step 11: log in again after logout | Samsung Galaxy A06 (SM-A065F), Android 16. Logged out, then logged in with the existing account | ✅ **PASS**: shop name stayed `Topboy`, reference stayed `SM-0006`, device stayed `Device B`; no duplicate shop or device observed |
+| 15 Nov 2026 | Step 8: Home screen details | Samsung Galaxy A06 (SM-A065F), Android 16. Checked the Home screen | ✅ **PASS**: shop name `Topboy`, reference `SM-0006`, device `Device B` and plan `Pilot` all visible |
 
 ## TC-DEV-02: email links and password reset (development build)
 
@@ -56,7 +57,7 @@
 
 **Still pending in the development build:**
 - Step 4 / TC-DEV-02: the real sign-up **confirmation** email link opening ShopMate automatically and completing account confirmation (Android routing of `shopmate://auth-callback` already passed in the ADB simulation)
-- Steps 3, 6–8 and 12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
+- Steps 3, 6, 7 and 12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
 - TC-DEV-03:
   - Readability at 130% font size: ✅ **passed in the development build** on the login screen (15 Nov 2026; see "Development build attempts"). Also passed in earlier testing (owner-reported; date not recorded). Other screens not yet checked at 130%
   - Ghana cedi (GH₵) display: **pending** until a screen that displays money is implemented (no current screen shows amounts)
