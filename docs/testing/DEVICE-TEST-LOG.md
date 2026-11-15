@@ -22,13 +22,13 @@
 | 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
 | 8 | Home screen | Shop name, reference `SM-…`, "Device A", "Pilot" | | |
 | 9 | Close the app completely and reopen it | Still logged in, Home screen (session restored from secure storage) | ✅ Development build (15 Nov 2026) | Two successful full cold restarts in the development build; details below under "Development build attempts". Earlier Expo Go failures remain recorded as issue #2 |
-| 10 | Log out | Welcome screen | | |
+| 10 | Log out | Welcome screen | ✅ Development build (15 Nov 2026) | Tapping "Log out" returned the app to the Welcome screen (Samsung Galaxy A06, Android 16; owner-reported) |
 | 11 | Log in again | Home screen with the same shop and "Device A" (no second shop or device) | | |
 | 12 | Readability check | Text readable at arm's length; buttons easy to tap | | |
 
 **Phone model and Android version:** Samsung Galaxy A06, Android 16  **App build:** EAS development build  **Date:** 15 November 2026
 
-*These details apply to the development-build tests recorded in this log (the step 2 re-check, steps 5 and 9, TC-DEV-02 and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
+*These details apply to the development-build tests recorded in this log (the step 2 re-check, steps 5, 9 and 10, TC-DEV-02, the TC-DEV-03 font-size check and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
 
 ## Development build attempts
 
@@ -37,6 +37,8 @@
 | Date | Test | Procedure | Result |
 |---|---|---|---|
 | 15 Nov 2026 | Step 9: session restoration after a full app closure (cold restart), attempt 2 | Opened ShopMate and confirmed the `Topboy` home screen; swiped the app away from Recent Apps; waited about 10 seconds; reopened it from the app icon | ✅ **PASS**: opened directly into `Topboy` without asking to log in. Owner reports this is the **second** successful full cold-restart test on the development build (details of the first attempt not recorded here) |
+| 15 Nov 2026 | Step 10: log out | Tapped "Log out" | ✅ **PASS**: the app returned to the Welcome screen |
+| 15 Nov 2026 | TC-DEV-03: readability at about 130% font size | Increased the phone's font size to about 130%, checked the login screen, then restored the phone's original font setting | ✅ **PASS**: login-screen text, buttons and input fields stayed readable, with no clipping or overlapping. Only the login screen was checked |
 
 ## TC-DEV-02: email links and password reset (development build)
 
@@ -52,9 +54,9 @@
 
 **Still pending in the development build:**
 - Step 4 / TC-DEV-02: the sign-up **confirmation** email link opening ShopMate automatically and continuing in the app
-- Steps 1, 3, 6–8 and 10–12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
+- Steps 1, 3, 6–8, 11 and 12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
 - TC-DEV-03:
-  - Readability at 130% font size: passed in earlier testing (owner-reported; date not recorded), but **not yet rechecked in the development build**
+  - Readability at 130% font size: ✅ **passed in the development build** on the login screen (15 Nov 2026; see "Development build attempts"). Also passed in earlier testing (owner-reported; date not recorded). Other screens not yet checked at 130%
   - Ghana cedi (GH₵) display: **pending** until a screen that displays money is implemented (no current screen shows amounts)
 
 ## Issues found
