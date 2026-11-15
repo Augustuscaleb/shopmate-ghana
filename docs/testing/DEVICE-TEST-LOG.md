@@ -14,26 +14,43 @@
 | # | Step | Expected result | Result (✅ / ❌) | Notes / screenshot |
 |---|---|---|---|---|
 | 1 | Open the app | Welcome screen: "ShopMate Ghana", two buttons | | |
-| 2 | Create account with a common password (e.g. `password123`, or `password`) | Refused: "This password is too common…"; no account created in Supabase | | |
+| 2 | Create account with a common password (e.g. `password123`, or `password`) | Refused: "This password is too common…"; no account created in Supabase | ✅ Development build (Samsung Galaxy A06; date not recorded) | Common-password rejection re-tested on the phone after the fix in `6e4ba2c` and refused (owner-reported; date not recorded). See issue #1 |
 | 3 | Create account with a strong password | "Check your email" screen (if email confirmation is on) | | |
 | 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | |
 | 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | | |
 | 6 | Log in correctly | "Your shop" setup screen | | |
 | 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
 | 8 | Home screen | Shop name, reference `SM-…`, "Device A", "Pilot" | | |
-| 9 | Close the app completely and reopen it | Still logged in, Home screen (session restored from secure storage) | | |
+| 9 | Close the app completely and reopen it | Still logged in, Home screen (session restored from secure storage) | ✅ Development build (15 Nov 2026) | Two successful full cold restarts in the development build; details below under "Development build attempts". Earlier Expo Go failures remain recorded as issue #2 |
 | 10 | Log out | Welcome screen | | |
 | 11 | Log in again | Home screen with the same shop and "Device A" (no second shop or device) | | |
 | 12 | Readability check | Text readable at arm's length; buttons easy to tap | | |
 
-**Phone model and Android version:** ______  **App build:** ______  **Date:** ______
+**Phone model and Android version:** Samsung Galaxy A06, Android 16  **App build:** EAS development build  **Date:** 15 November 2026
+
+*These details apply to the development-build tests recorded in this log (the step 2 re-check, step 9 and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
+
+## Development build attempts
+
+**Device:** Samsung Galaxy A06, Android 16. **App build:** EAS development build (profile `development`). Fictitious data only (shop `Topboy`).
+
+| Date | Test | Procedure | Result |
+|---|---|---|---|
+| 15 Nov 2026 | Step 9: session restoration after a full app closure (cold restart), attempt 2 | Opened ShopMate and confirmed the `Topboy` home screen; swiped the app away from Recent Apps; waited about 10 seconds; reopened it from the app icon | ✅ **PASS**: opened directly into `Topboy` without asking to log in. Owner reports this is the **second** successful full cold-restart test on the development build (details of the first attempt not recorded here) |
+
+**Email links in the development build (not yet verified):** the password-reset email was received and its link was tapped, but ShopMate was then opened manually from the app icon (date not recorded). That doesn't show the link opening the app by itself, so **automatic deep-link routing remains unverified**.
+
+**Still pending in the development build:**
+- Step 4 / TC-DEV-02: an email link (confirmation or password reset) opening ShopMate automatically and continuing in the app
+- Password reset completion (setting a new password from the reset link)
+- Logging in with the new password
 
 ## Issues found
 
 | # | Date | Step | What happened | Severity (blocker / major / minor) | Fix (commit) | Re-checked on phone (date) |
 |---|---|---|---|---|---|---|
-| 1 | 2026-11-14 | 2 | `password123` was accepted and the "Check your email" screen appeared (Expo Go, Android). Cause: the app's common-password check matched exact list entries only, and `password123` isn't on the list | Major (weak password allowed; app-side rule only) | Rule extended: a listed password followed by numbers or symbols is also rejected (`app/src/auth/passwordPolicy.ts`, TC-AUTH-18). Local tests pass; **not yet committed** | Pending |
-| 2 | 2026-11-14 | 9 | **Intermittent session restoration (open).** Two earlier attempts at closing Expo Go completely and reopening it returned to the login screen. Logging in again showed the same shop and "Device A", confirming that the shop and device registration were retained. Later attempts restored the session, after about 2–3 minutes and after more than 70 minutes. A reload (`r`) also restored it. Cause unknown; not reproduced in the latest attempts. Fails safe (the owner logs in again; no data exposed) | Major | None yet (no code change). Keep open until step 9 is re-checked in a **development build** (and, if useful, with development-only diagnostics that log event names only) | Pending (development build) |
+| 1 | 2026-11-14 | 2 | `password123` was accepted and the "Check your email" screen appeared (Expo Go, Android). Cause: the app's common-password check matched exact list entries only, and `password123` isn't on the list | Major (weak password allowed; app-side rule only) | Rule extended: a listed password followed by numbers or symbols is also rejected (`app/src/auth/passwordPolicy.ts`, TC-AUTH-18). **Committed in `6e4ba2c`**; CI passed ([run 43637374568](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43637374568)) | ✅ **Passed**: common-password rejection re-tested on the phone and refused (owner-reported; date not recorded) |
+| 2 | 2026-11-14 | 9 | **Intermittent session restoration (open).** Two earlier attempts at closing Expo Go completely and reopening it returned to the login screen. Logging in again showed the same shop and "Device A", confirming that the shop and device registration were retained. Later attempts restored the session, after about 2–3 minutes and after more than 70 minutes. A reload (`r`) also restored it. Cause unknown; not reproduced in the latest attempts. Fails safe (the owner logs in again; no data exposed) | Major | None yet (no code change). **Development build:** two full cold-restart session-restoration tests passed (Samsung Galaxy A06, Android 16; see "Development build attempts"). The earlier Expo Go failures **remain unexplained**. **Kept open pending further assessment** (if useful, with development-only diagnostics that log event names only) | Development build: ✅ 2 passes (latest 15 Nov 2026). Issue **still open** |
 
 All issues must be fixed and re-checked on the phone before work moves beyond the authentication foundation (owner condition, Stage 1B approval).
 
