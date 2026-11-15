@@ -16,7 +16,7 @@
 | 1 | Open the app | Welcome screen: "ShopMate Ghana", two buttons | | |
 | 2 | Create account with a common password (e.g. `password123`, or `password`) | Refused: "This password is too common…"; no account created in Supabase | ✅ Development build (Samsung Galaxy A06; date not recorded) | Common-password rejection re-tested on the phone after the fix in `6e4ba2c` and refused (owner-reported; date not recorded). See issue #1 |
 | 3 | Create account with a strong password | "Check your email" screen (if email confirmation is on) | | |
-| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | **Confirmation-link routing not yet tested in the development build.** (The password-reset link was confirmed opening the app; see TC-DEV-02 below) |
+| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | **Real confirmation email not yet tested in the development build.** Android routing of `shopmate://auth-callback` into the app passed in an ADB simulation with a fake code (15 Nov 2026); the password-reset link was confirmed opening the app. See TC-DEV-02 below |
 | 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | ✅ Development build (Samsung Galaxy A06; date not recorded) | The app showed exactly: "Email or password is not correct." (owner-reported) |
 | 6 | Log in correctly | "Your shop" setup screen | | |
 | 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
@@ -50,10 +50,11 @@
 | Password reset completion | A new password can be set from the reset link | ✅ PASS (date not recorded) | New password set successfully |
 | Previous password rejected | Logging in with the old password fails | ✅ PASS (date not recorded) | Login with the previous password was rejected |
 | Log in with the new password | Logging in with the new password succeeds | ✅ PASS (date not recorded) | Login with the newly set password succeeded |
-| Email **confirmation** link opens the app (step 4) | Tapping the sign-up confirmation link opens ShopMate and continues | ⏳ **Not yet tested** in the development build | Only the password-reset link has been confirmed so far |
+| Sign-up callback deep-link routing (**ADB simulation**) | Android opens ShopMate for `shopmate://auth-callback` and the app processes the callback | ✅ PASS (15 Nov 2026) | Samsung Galaxy A06 (SM-A065F), Android 16. Wireless ADB targeted to the A06, opening `shopmate://auth-callback?code=TESTONLY12345`. ShopMate opened automatically and showed its expired/invalid-link message, confirming Android routed the URI into the installed app and the app processed the callback. **Limitation:** a simulated callback with a deliberately fake code. It does **not** verify that Supabase's real sign-up confirmation email contains the correct redirect URL, or that it completes account confirmation |
+| Email **confirmation** link opens the app (step 4) | Tapping the sign-up confirmation link opens ShopMate and continues | ⏳ **Not yet tested** in the development build | The real sign-up confirmation email is still pending (earlier sign-up attempts were refused with "Too many attempts. Please wait a few minutes and try again."; the exact Supabase rate-limit category hasn't been confirmed). The ADB simulation above covers Android routing only |
 
 **Still pending in the development build:**
-- Step 4 / TC-DEV-02: the sign-up **confirmation** email link opening ShopMate automatically and continuing in the app
+- Step 4 / TC-DEV-02: the real sign-up **confirmation** email link opening ShopMate automatically and completing account confirmation (Android routing of `shopmate://auth-callback` already passed in the ADB simulation)
 - Steps 1, 3, 6–8, 11 and 12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
 - TC-DEV-03:
   - Readability at 130% font size: ✅ **passed in the development build** on the login screen (15 Nov 2026; see "Development build attempts"). Also passed in earlier testing (owner-reported; date not recorded). Other screens not yet checked at 130%
