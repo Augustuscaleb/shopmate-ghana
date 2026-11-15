@@ -15,11 +15,11 @@
 |---|---|---|---|---|
 | 1 | Open the app | Welcome screen: "ShopMate Ghana", two buttons | ✅ Development build (15 Nov 2026) | The Welcome screen displayed before logging in (Samsung Galaxy A06, Android 16; owner-reported) |
 | 2 | Create account with a common password (e.g. `password123`, or `password`) | Refused: "This password is too common…"; no account created in Supabase | ✅ Development build (Samsung Galaxy A06; date not recorded) | Common-password rejection re-tested on the phone after the fix in `6e4ba2c` and refused (owner-reported; date not recorded). See issue #1 |
-| 3 | Create account with a strong password | "Check your email" screen (if email confirmation is on) | | |
-| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | **Real confirmation email not yet tested in the development build.** Android routing of `shopmate://auth-callback` into the app passed in an ADB simulation with a fake code (15 Nov 2026); the password-reset link was confirmed opening the app. See TC-DEV-02 below |
+| 3 | Create account with a strong password | "Check your email" screen (if email confirmation is on) | ✅ Development build (15 Nov 2026) | A new fictitious account with a strong password reached the "Check your email" screen (Samsung Galaxy A06, Android 16; owner-reported). Test email address not recorded. See "Development build attempts" |
+| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | ✅ Development build (15 Nov 2026) | Tapping the link in the real sign-up confirmation email opened the browser briefly, then redirected automatically into ShopMate; the confirmation succeeded (owner-reported). See TC-DEV-02 below |
 | 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | ✅ Development build (Samsung Galaxy A06; date not recorded) | The app showed exactly: "Email or password is not correct." (owner-reported) |
-| 6 | Log in correctly | "Your shop" setup screen | | |
-| 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
+| 6 | Log in correctly | "Your shop" setup screen | | Immediately after the successful email confirmation (step 4), the newly confirmed account, which had no shop, reached the "Your shop" setup screen (owner-reported). This was **not** a separate manual-login test, so step 6 remains pending. Logging in with the correct password was verified in step 11 with the existing `Topboy` account. Accounts that already have a shop go to Home instead (see steps 8 and 11) |
+| 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | ✅ Development build (15 Nov 2026) | Phone `12345` was refused with the message "Enter a Ghana phone number". A valid Ghana phone number was then accepted (number not recorded) and the fictitious shop `Test Shop` was created. Home showed reference `SM-0008`, device `Device A` and plan `Pilot` (owner-reported) |
 | 8 | Home screen | Shop name, reference `SM-…`, the registered device identifier, "Pilot" | ✅ Development build (15 Nov 2026) | All four details were visible: shop name `Topboy`, reference `SM-0006`, device `Device B`, plan `Pilot` (Samsung Galaxy A06, Android 16; owner-reported) |
 | 9 | Close the app completely and reopen it | Still logged in, Home screen (session restored from secure storage) | ✅ Development build (15 Nov 2026) | Two successful full cold restarts in the development build; details below under "Development build attempts". Earlier Expo Go failures remain recorded as issue #2 |
 | 10 | Log out | Welcome screen | ✅ Development build (15 Nov 2026) | Tapping "Log out" returned the app to the Welcome screen (Samsung Galaxy A06, Android 16; owner-reported) |
@@ -28,11 +28,11 @@
 
 **Phone model and Android version:** Samsung Galaxy A06, Android 16  **App build:** EAS development build  **Date:** 15 November 2026
 
-*These details apply to the development-build tests recorded in this log (steps 1 and 5, the step 2 re-check, steps 8, 9, 10, 11 and 12, TC-DEV-02, the TC-DEV-03 font-size check and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
+*These details apply to the development-build tests recorded in this log (steps 1, 3, 4, 5 and 7, the step 2 re-check, steps 8, 9, 10, 11 and 12, TC-DEV-02, the TC-DEV-03 font-size check and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
 
 ## Development build attempts
 
-**Device:** Samsung Galaxy A06, Android 16. **App build:** EAS development build (profile `development`). Fictitious data only (shop `Topboy`).
+**Device:** Samsung Galaxy A06, Android 16. **App build:** EAS development build (profile `development`). Fictitious data only (shops `Topboy` and `Test Shop`).
 
 | Date | Test | Procedure | Result |
 |---|---|---|---|
@@ -42,6 +42,7 @@
 | 15 Nov 2026 | Step 11: log in again after logout | Samsung Galaxy A06 (SM-A065F), Android 16. Logged out, then logged in with the existing account | ✅ **PASS**: shop name stayed `Topboy`, reference stayed `SM-0006`, device stayed `Device B`; no duplicate shop or device observed |
 | 15 Nov 2026 | Step 8: Home screen details | Samsung Galaxy A06 (SM-A065F), Android 16. Checked the Home screen | ✅ **PASS**: shop name `Topboy`, reference `SM-0006`, device `Device B` and plan `Pilot` all visible |
 | 15 Nov 2026 | TC-DEV-03 / step 12: readability at about 130% font size, expanded | Samsung Galaxy A06 (SM-A065F), Android 16. Set the phone's font size to about 130%; checked the Welcome, Login and Home (`Topboy`) screens; restored the original font setting | ✅ **PASS**: all three screens readable and usable; no clipping, overlapping or usability problems observed |
+| 15 Nov 2026 | Steps 3, 4, 6 and 7: new-account journey | Samsung Galaxy A06 (SM-A065F), Android 16. Signed up a new fictitious account with a strong password; tapped the real confirmation link in the email; reached shop setup; entered phone `12345` and tapped save; then entered a valid Ghana phone number and saved the fictitious shop `Test Shop`. The test email address and phone number are not recorded | ✅ **PASS**: "Check your email" shown; the confirmation link opened the browser briefly, then redirected automatically into ShopMate and the confirmation succeeded; the account with no shop reached "Your shop"; `12345` refused with "Enter a Ghana phone number"; the valid number was accepted and the shop created; Home showed `SM-0008`, `Device A` and `Pilot` |
 
 ## TC-DEV-02: email links and password reset (development build)
 
@@ -54,11 +55,10 @@
 | Previous password rejected | Logging in with the old password fails | ✅ PASS (date not recorded) | Login with the previous password was rejected |
 | Log in with the new password | Logging in with the new password succeeds | ✅ PASS (date not recorded) | Login with the newly set password succeeded |
 | Sign-up callback deep-link routing (**ADB simulation**) | Android opens ShopMate for `shopmate://auth-callback` and the app processes the callback | ✅ PASS (15 Nov 2026) | Samsung Galaxy A06 (SM-A065F), Android 16. Wireless ADB targeted to the A06, opening `shopmate://auth-callback?code=TESTONLY12345`. ShopMate opened automatically and showed its expired/invalid-link message, confirming Android routed the URI into the installed app and the app processed the callback. **Limitation:** a simulated callback with a deliberately fake code. It does **not** verify that Supabase's real sign-up confirmation email contains the correct redirect URL, or that it completes account confirmation |
-| Email **confirmation** link opens the app (step 4) | Tapping the sign-up confirmation link opens ShopMate and continues | ⏳ **Not yet tested** in the development build | The real sign-up confirmation email is still pending (earlier sign-up attempts were refused with "Too many attempts. Please wait a few minutes and try again."; the exact Supabase rate-limit category hasn't been confirmed). The ADB simulation above covers Android routing only |
+| Email **confirmation** link opens the app (step 4) | Tapping the sign-up confirmation link opens ShopMate and continues | ✅ PASS (15 Nov 2026) | Real sign-up confirmation email: tapping the link opened the browser briefly, then redirected automatically into ShopMate, and the confirmation succeeded. *Earlier sign-up attempts (date not recorded) were refused with "Too many attempts. Please wait a few minutes and try again."; the exact Supabase rate-limit category wasn't confirmed* |
 
 **Still pending in the development build:**
-- Step 4 / TC-DEV-02: the real sign-up **confirmation** email link opening ShopMate automatically and completing account confirmation (Android routing of `shopmate://auth-callback` already passed in the ADB simulation)
-- Steps 3, 6 and 7 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
+- Step 6: manual login with a newly confirmed account that has no shop has not yet been separately tested in the development build. The account reached shop setup immediately after email confirmation, but this does not verify the separate manual-login procedure.
 - TC-DEV-03:
   - Readability at 130% font size: ✅ **passed in the development build** on the Welcome, Login and Home screens (15 Nov 2026; see "Development build attempts"). Also passed in earlier testing (owner-reported; date not recorded). Screens not covered by these checks (sign-up, forgot password, check email, set new password, shop setup) have not been checked at 130%
   - Ghana cedi (GH₵) display: **pending** until a screen that displays money is implemented (no current screen shows amounts)
