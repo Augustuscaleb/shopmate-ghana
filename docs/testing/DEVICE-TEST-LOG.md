@@ -16,8 +16,8 @@
 | 1 | Open the app | Welcome screen: "ShopMate Ghana", two buttons | | |
 | 2 | Create account with a common password (e.g. `password123`, or `password`) | Refused: "This password is too common…"; no account created in Supabase | ✅ Development build (Samsung Galaxy A06; date not recorded) | Common-password rejection re-tested on the phone after the fix in `6e4ba2c` and refused (owner-reported; date not recorded). See issue #1 |
 | 3 | Create account with a strong password | "Check your email" screen (if email confirmation is on) | | |
-| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | |
-| 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | | |
+| 4 | Open the confirmation email and tap the link | Email confirmed. Development build: app opens and continues. Expo Go: a browser page; then return to the app | | **Confirmation-link routing not yet tested in the development build.** (The password-reset link was confirmed opening the app; see TC-DEV-02 below) |
+| 5 | Log in with the wrong password | "Email or password is not correct." (doesn't say which) | ✅ Development build (Samsung Galaxy A06; date not recorded) | The app showed exactly: "Email or password is not correct." (owner-reported) |
 | 6 | Log in correctly | "Your shop" setup screen | | |
 | 7 | Enter shop details (try an invalid phone like `12345` first) | Invalid phone refused with a clear message; valid details saved | | |
 | 8 | Home screen | Shop name, reference `SM-…`, "Device A", "Pilot" | | |
@@ -28,7 +28,7 @@
 
 **Phone model and Android version:** Samsung Galaxy A06, Android 16  **App build:** EAS development build  **Date:** 15 November 2026
 
-*These details apply to the development-build tests recorded in this log (the step 2 re-check, step 9 and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
+*These details apply to the development-build tests recorded in this log (the step 2 re-check, steps 5 and 9, TC-DEV-02 and "Development build attempts" below), not necessarily to every step of the original journey. Earlier Expo Go testing was on an Android phone whose model wasn't recorded. Where a test's date wasn't recorded, it is marked "date not recorded".*
 
 ## Development build attempts
 
@@ -38,12 +38,24 @@
 |---|---|---|---|
 | 15 Nov 2026 | Step 9: session restoration after a full app closure (cold restart), attempt 2 | Opened ShopMate and confirmed the `Topboy` home screen; swiped the app away from Recent Apps; waited about 10 seconds; reopened it from the app icon | ✅ **PASS**: opened directly into `Topboy` without asking to log in. Owner reports this is the **second** successful full cold-restart test on the development build (details of the first attempt not recorded here) |
 
-**Email links in the development build (not yet verified):** the password-reset email was received and its link was tapped, but ShopMate was then opened manually from the app icon (date not recorded). That doesn't show the link opening the app by itself, so **automatic deep-link routing remains unverified**.
+## TC-DEV-02: email links and password reset (development build)
+
+**Device:** Samsung Galaxy A06, Android 16. **App build:** EAS development build. Owner-reported results; fictitious data only.
+
+| Check | Expected result | Result | Notes |
+|---|---|---|---|
+| Password-reset email link opens the app | Tapping the link in the email opens ShopMate automatically | ✅ PASS (date not recorded) | ShopMate opened automatically from the reset link, without opening the app manually. *Earlier attempt (date not recorded): the link was tapped but ShopMate was then opened manually from the app icon, so routing wasn't shown at that time* |
+| Password reset completion | A new password can be set from the reset link | ✅ PASS (date not recorded) | New password set successfully |
+| Previous password rejected | Logging in with the old password fails | ✅ PASS (date not recorded) | Login with the previous password was rejected |
+| Log in with the new password | Logging in with the new password succeeds | ✅ PASS (date not recorded) | Login with the newly set password succeeded |
+| Email **confirmation** link opens the app (step 4) | Tapping the sign-up confirmation link opens ShopMate and continues | ⏳ **Not yet tested** in the development build | Only the password-reset link has been confirmed so far |
 
 **Still pending in the development build:**
-- Step 4 / TC-DEV-02: an email link (confirmation or password reset) opening ShopMate automatically and continuing in the app
-- Password reset completion (setting a new password from the reset link)
-- Logging in with the new password
+- Step 4 / TC-DEV-02: the sign-up **confirmation** email link opening ShopMate automatically and continuing in the app
+- Steps 1, 3, 6–8 and 10–12 of TC-DEV-01 as recorded rows (several were done earlier in Expo Go but aren't recorded in the table above)
+- TC-DEV-03:
+  - Readability at 130% font size: passed in earlier testing (owner-reported; date not recorded), but **not yet rechecked in the development build**
+  - Ghana cedi (GH₵) display: **pending** until a screen that displays money is implemented (no current screen shows amounts)
 
 ## Issues found
 
