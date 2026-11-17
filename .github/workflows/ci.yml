@@ -32,10 +32,8 @@ jobs:
       - name: Secret scan (TC-SEC-05)
         run: npm run check:secrets
 
-      - name: Dependency audit (fails on high or critical; moderate tracked in docs/security/DEPENDENCY-ADVISORIES.md)
-        run: |
-          npm audit --audit-level=high
-          npm audit --audit-level=high --prefix app
+      - name: Dependency audit (fails on high or critical, except owner-approved time-limited exceptions; see docs/security/DEPENDENCY-ADVISORIES.md)
+        run: npm run check:audit
 
       - name: Typecheck (tests and app)
         run: npm run typecheck
