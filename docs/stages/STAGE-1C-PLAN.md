@@ -54,12 +54,18 @@
 
 Each test is recorded with its true evidence level (📝 / 🛠 / 🟢 / ✅ / ☁️ / 📱).
 
+**Requirement: dashboard counts at scale (owner-approved, 23 Nov 2026).** The Today dashboard (`app/src/services/dashboard.ts`) currently reads product rows and counts them on the phone. The Supabase API returns at most 1,000 rows per request (`max_rows = 1000` in `supabase/config.toml`), so beyond 1,000 active products the **product count** and **low-stock count** would silently undercount. Before this stage is complete:
+- these dashboard counts must use **server-side aggregation** (an exact count or aggregate query, or a read-only database function), not rows totalled on the phone;
+- tests must cover **more than 1,000 products**, and check the exact count and low-stock count;
+- **raising Supabase's `max_rows` limit is not an acceptable workaround.**
+
 ## 5. Exit criteria
 1. Every in-scope test is ✅ **CI passed**, with a local evidence log and a CI link.
 2. `check_stock_integrity()` and the conservation statement (TC-COST-20) pass after every test.
 3. If the cloud project exists by then: the new migrations are applied, and **cloud verification is re-run** (☁️). Otherwise this is listed as outstanding under R-1.
 4. Screens work end-to-end against the local stack. Screens are 📱 device-verified only when the owner tests them on the phone.
 5. Test tracker, implementation status and release-readiness pages updated; report presented for review before the next stage.
+6. The dashboard product and low-stock counts use server-side aggregation and pass tests with more than 1,000 products (see the requirement in §4).
 
 ## 6. Questions for the owner (clarifications only; no rule changes proposed)
 

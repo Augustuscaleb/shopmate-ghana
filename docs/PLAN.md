@@ -380,6 +380,16 @@ Timelines are estimates for part-time work.
 | Ops-1 | Backup and restore implementation and first restore drill (mandatory gate, R-3) | Designed ([operations/BACKUP-AND-RESTORE.md](operations/BACKUP-AND-RESTORE.md)); the cloud project now exists and is verified (R-1); starts only with owner approval. **R-3 remains open** |
 | 1D onwards | Sales and offline sync, credit, expenses, closing, reports | Not started |
 
+**Requirement for Stages 1C and 1D: dashboard totals and counts at scale (owner-approved, 23 Nov 2026).** The Today dashboard (`app/src/services/dashboard.ts`) currently reads rows and totals them on the phone. The Supabase API returns at most 1,000 rows per request (`max_rows = 1000` in `supabase/config.toml`), so the figures would silently undercount beyond 1,000 rows. Before each stage is complete:
+- **1C (Inventory): product count and low-stock count** must use **exact database-side counts** or equivalent server-side aggregation;
+- **1D (Sales): today's sales count** must use an **exact database-side count** or equivalent server-side aggregation;
+- **1D (Sales): today's revenue** must use a **server-side aggregate query or read-only database function that calculates the revenue sum**. An exact count alone is not sufficient;
+- none of these figures may be calculated by fetching rows and totalling them on the phone;
+- tests must cover **more than 1,000 records** (products for 1C, sales in one day for 1D) and check the exact figures;
+- **raising Supabase's `max_rows` limit is not an acceptable workaround.**
+
+The 1C plan carries this as a test requirement and an exit criterion ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §4–5). No separate 1D plan exists yet; it must include the same requirement when written.
+
 Original Stage 1 scope:
 
 - Project setup, database schema, RLS policies and automated security tests
