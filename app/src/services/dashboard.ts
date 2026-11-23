@@ -90,9 +90,27 @@ export function summariseTodaySales(rows: { total: unknown }[]): { count: number
   return { count: rows.length, revenuePesewas: revenue };
 }
 
-/** A product is low when stock_qty <= low_stock_level (04 §2.4). Only active products are passed in. */
+/**
+ * A product is low when stock_qty <= low_stock_level (04 §2.4). Only active products are passed in.
+ * Reference definition only: the dashboard's counts come from the database (inventory_summary),
+ * which applies the same rule; the API tests check that both agree.
+ */
 export function countLowStock(rows: { stock_qty: unknown; low_stock_level: unknown }[]): number {
   return rows.filter((r) => typeof r.stock_qty === 'number' && typeof r.low_stock_level === 'number' && r.stock_qty <= r.low_stock_level).length;
+}
+
+/**
+ * Validates the inventory_summary result: two non-negative whole numbers, low stock never more
+ * than the product count. Anything else is rejected rather than displayed wrongly.
+ */
+export function parseInventorySummary(value: unknown): { productCount: number; lowStockCount: number } {
+  const v = value as { product_count?: unknown; low_stock_count?: unknown } | null;
+  const count = (n: unknown) => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
+  if (!v || typeof v !== 'object' || !count(v.product_count) || !count(v.low_stock_count)
+      || (v.low_stock_count as number) > (v.product_count as number)) {
+    throw new Error('invalid inventory summary');
+  }
+  return { productCount: v.product_count as number, lowStockCount: v.low_stock_count as number };
 }
 
 const METHODS = ['cash', 'momo', 'credit'] as const;
@@ -105,21 +123,23 @@ function toRecentSale(row: Record<string, unknown>): RecentSale | null {
 }
 
 /**
- * KNOWN LIMIT — REQUIREMENT FOR THE SALES (1D) AND INVENTORY (1C) STAGES.
- * The Supabase API returns at most 1,000 rows per request (`max_rows = 1000` in
- * supabase/config.toml). Today's sales and the product list below are fetched as rows and
- * totalled on the phone, so beyond 1,000 sales in a day or 1,000 active products the count,
- * revenue and low-stock figures would silently undercount. This cannot happen yet (both tables
- * are empty until those stages), but before either stage ships these figures must be computed
- * on the server (an exact count / aggregate query or a read-only function), with tests at
- * more than 1,000 rows. Do not raise max_rows as a workaround.
+ * Product and low-stock counts come from the read-only database function inventory_summary
+ * (Stage 1C, decision D7): PostgreSQL counts exactly and returns two numbers, so the API's
+ * 1,000-row limit (`max_rows = 1000` in supabase/config.toml) cannot affect them.
+ *
+ * KNOWN LIMIT — REQUIREMENT FOR THE SALES STAGE (1D).
+ * Today's sales are still fetched as rows and totalled on the phone (unchanged until 1D, D12),
+ * so beyond 1,000 sales in one day the count and revenue would silently undercount. This cannot
+ * happen yet (no sales exist until 1D), but before 1D ships the sales count must be an exact
+ * database-side count and the revenue a server-side sum, with tests at more than 1,000 sales.
+ * Do not raise max_rows as a workaround.
  */
 export class DashboardService {
   constructor(private readonly client: SupabaseClient) {}
 
   async fetchOverview(businessId: string, now: Date = new Date()): Promise<DashboardOverview> {
     const { start, end } = todayRange(now);
-    const [profile, today, recent, products] = await Promise.all([
+    const [profile, today, recent, inventory] = await Promise.all([
       this.client.from('profiles').select('full_name').limit(1).maybeSingle(),
       this.client
         .from('sales')
@@ -135,23 +155,18 @@ export class DashboardService {
         .in('status', ['recorded', 'voided'])
         .order('occurred_at', { ascending: false })
         .limit(5),
-      this.client
-        .from('products')
-        .select('stock_qty, low_stock_level')
-        .eq('business_id', businessId)
-        .eq('active', true)
-        .is('deleted_at', null),
+      this.client.rpc('inventory_summary', { p_business_id: businessId }),
     ]);
-    for (const r of [profile, today, recent, products]) if (r.error) throw r.error;
+    for (const r of [profile, today, recent, inventory]) if (r.error) throw r.error;
 
     const sales = summariseTodaySales((today.data ?? []) as { total: unknown }[]);
-    const productRows = (products.data ?? []) as { stock_qty: unknown; low_stock_level: unknown }[];
+    const stock = parseInventorySummary(inventory.data);
     return {
       ownerName: (profile.data as { full_name?: string | null } | null)?.full_name ?? null,
       todaySalesCount: sales.count,
       todayRevenuePesewas: sales.revenuePesewas,
-      productCount: productRows.length,
-      lowStockCount: countLowStock(productRows),
+      productCount: stock.productCount,
+      lowStockCount: stock.lowStockCount,
       recentSales: ((recent.data ?? []) as Record<string, unknown>[]).map(toRecentSale).filter((s): s is RecentSale => s !== null),
     };
   }

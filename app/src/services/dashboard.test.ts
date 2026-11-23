@@ -9,12 +9,20 @@ import {
   formatTime,
   greetingFor,
   initials,
+  parseInventorySummary,
   summariseTodaySales,
   todayRange,
 } from './dashboard';
+import { loadFailed, loadSucceeded, revenueCaption, type DashboardLoad } from '../screens/dashboardState';
 
-/** A stand-in for the Supabase query builder: records each call and resolves to the given rows. */
-function fakeClient(tables: Record<string, { data?: unknown; error?: unknown }>, calls: string[] = []) {
+type Result = { data?: unknown; error?: unknown };
+const EMPTY_SUMMARY = { product_count: 0, low_stock_count: 0 };
+
+/**
+ * A stand-in for the Supabase client: records each call and resolves to the given rows.
+ * RPC results are given by function name; inventory_summary defaults to an empty shop.
+ */
+function fakeClient(tables: Record<string, Result>, calls: string[] = [], rpcs: Record<string, Result> = {}) {
   const builder = (table: string) => {
     const result = { data: tables[table]?.data ?? [], error: tables[table]?.error ?? null };
     const chain: Record<string, unknown> = {};
@@ -25,7 +33,12 @@ function fakeClient(tables: Record<string, { data?: unknown; error?: unknown }>,
     chain.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
     return chain;
   };
-  return { from: builder } as unknown as SupabaseClient;
+  const rpc = (fn: string, args: unknown) => {
+    calls.push(`rpc(${JSON.stringify([fn, args])})`);
+    const r = rpcs[fn] ?? (fn === 'inventory_summary' ? { data: EMPTY_SUMMARY } : { error: new Error(`unexpected rpc ${fn}`) });
+    return Promise.resolve({ data: r.data ?? null, error: r.error ?? null });
+  };
+  return { from: builder, rpc } as unknown as SupabaseClient;
 }
 
 describe('Dashboard figures (S-10)', () => {
@@ -80,10 +93,12 @@ describe('Dashboard figures (S-10)', () => {
       .fetchOverview('biz-1', new Date(2026, 10, 23, 10));
     expect(overview).toEqual({ ownerName: 'Ama Mensah', todaySalesCount: 0, todayRevenuePesewas: 0, productCount: 0, lowStockCount: 0, recentSales: [] });
     // Every shop table query is limited to this business; only reads are issued
-    for (const table of ['sales', 'products']) {
-      expect(calls.some((c) => c.startsWith(`${table}.eq(["business_id","biz-1"])`))).toBe(true);
-    }
+    expect(calls.some((c) => c.startsWith('sales.eq(["business_id","biz-1"])'))).toBe(true);
     expect(calls.every((c) => !/^\w+\.(insert|update|delete|upsert|rpc)\(/.test(c))).toBe(true);
+    // The only RPC is the read-only inventory_summary for this business (D7), called exactly once,
+    // and product rows are never fetched to the phone
+    expect(calls.filter((c) => c.startsWith('rpc('))).toEqual(['rpc(["inventory_summary",{"p_business_id":"biz-1"}])']);
+    expect(calls.some((c) => c.startsWith('products.'))).toBe(false);
     // Only recorded sales count towards today's figures
     expect(calls).toContain('sales.eq(["status","recorded"])');
   });
@@ -94,15 +109,55 @@ describe('Dashboard figures (S-10)', () => {
       { id: 's2', receipt_no: 'A-000002', total: 800, payment_method: 'cash', occurred_at: '2026-11-23T10:00:00Z', status: 'voided' },
       { id: 's3', receipt_no: 'A-000003', total: 100, payment_method: 'bitcoin', occurred_at: '2026-11-23T11:00:00Z', status: 'recorded' },
     ];
-    const overview = await new DashboardService(fakeClient({
-      sales: { data: rows },
-      products: { data: [{ stock_qty: 1, low_stock_level: 5 }, { stock_qty: 9, low_stock_level: 5 }] },
-    })).fetchOverview('biz-1');
+    const overview = await new DashboardService(fakeClient(
+      { sales: { data: rows } }, [], { inventory_summary: { data: { product_count: 2, low_stock_count: 1 } } },
+    )).fetchOverview('biz-1');
     expect(overview.productCount).toBe(2);
     expect(overview.lowStockCount).toBe(1);
     expect(overview.recentSales.map((s) => s.id)).toEqual(['s1', 's2']);
     expect(overview.ownerName).toBeNull();
 
-    await expect(new DashboardService(fakeClient({ products: { error: new Error('network') } })).fetchOverview('biz-1')).rejects.toThrow('network');
+    await expect(new DashboardService(fakeClient({}, [], { inventory_summary: { error: new Error('network') } })).fetchOverview('biz-1')).rejects.toThrow('network');
+    await expect(new DashboardService(fakeClient({ sales: { error: new Error('sales down') } })).fetchOverview('biz-1')).rejects.toThrow('sales down');
+  });
+
+  it('TC-DASH-10: inventory counts come from the server summary, exactly, and malformed summaries are rejected', async () => {
+    // Counts beyond the API's 1,000-row limit pass through unchanged
+    const big = await new DashboardService(fakeClient({}, [], { inventory_summary: { data: { product_count: 1500, low_stock_count: 1001 } } }))
+      .fetchOverview('biz-1');
+    expect([big.productCount, big.lowStockCount]).toEqual([1500, 1001]);
+    // Sales figures are unaffected by the summary (D12)
+    expect([big.todaySalesCount, big.todayRevenuePesewas]).toEqual([0, 0]);
+
+    expect(parseInventorySummary({ product_count: 0, low_stock_count: 0 })).toEqual({ productCount: 0, lowStockCount: 0 });
+    expect(parseInventorySummary({ product_count: 7, low_stock_count: 7 })).toEqual({ productCount: 7, lowStockCount: 7 });
+    for (const bad of [
+      null, undefined, 'x', [], {}, { product_count: 3 }, { low_stock_count: 1 },
+      { product_count: -1, low_stock_count: 0 }, { product_count: 2.5, low_stock_count: 0 },
+      { product_count: '3', low_stock_count: 1 }, { product_count: 3, low_stock_count: 4 },
+      { product_count: Number.MAX_SAFE_INTEGER + 1, low_stock_count: 0 },
+    ]) {
+      expect(() => parseInventorySummary(bad)).toThrow('invalid inventory summary');
+    }
+    // A malformed summary fails the whole load (shown as an error), never wrong figures
+    await expect(new DashboardService(fakeClient({}, [], { inventory_summary: { data: { product_count: 1, low_stock_count: 2 } } }))
+      .fetchOverview('biz-1')).rejects.toThrow('invalid inventory summary');
+  });
+
+  it('TC-DASH-11: a failed summary on first load is an error; on refresh the last figures stay with a notice', async () => {
+    const at = new Date(2026, 10, 23, 14, 5);
+    let load = { kind: 'loading' } as DashboardLoad;   // reassigned in callbacks below
+    const failing = new DashboardService(fakeClient({}, [], { inventory_summary: { error: new Error('offline') } }));
+    await failing.fetchOverview('biz-1').then((d) => { load = loadSucceeded(d, at); }, () => { load = loadFailed(load); });
+    expect(load).toEqual({ kind: 'error' });
+    expect(revenueCaption(load)).toBe('Not available');
+
+    const working = new DashboardService(fakeClient({}, [], { inventory_summary: { data: { product_count: 1500, low_stock_count: 1001 } } }));
+    await working.fetchOverview('biz-1').then((d) => { load = loadSucceeded(d, at); }, () => { load = loadFailed(load); });
+    expect(load.kind === 'ready' && [load.data.productCount, load.data.lowStockCount]).toEqual([1500, 1001]);
+
+    await failing.fetchOverview('biz-1').then((d) => { load = loadSucceeded(d, at); }, () => { load = loadFailed(load); });
+    expect(load.kind === 'ready' && load.refreshFailed).toBe(true);
+    expect(load.kind === 'ready' && [load.data.productCount, load.data.lowStockCount]).toEqual([1500, 1001]);
   });
 });
