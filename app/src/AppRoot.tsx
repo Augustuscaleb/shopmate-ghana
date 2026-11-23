@@ -8,6 +8,7 @@ import { expoSecureStore } from './lib/expoSecureStore';
 import { newRequestId } from './lib/requestId';
 import { parseAuthRedirect } from './auth/deepLinks';
 import { AccountService, type Business, type Device } from './services/account';
+import { DashboardService } from './services/dashboard';
 import { Loading, Notice, Screen, Button } from './ui/components';
 import { ConfigErrorScreen } from './screens/ConfigErrorScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
@@ -34,6 +35,7 @@ function ConfiguredApp({ cfg }: { cfg: { supabaseUrl: string; supabaseAnonKey: s
 
 function SignedApp({ client }: { client: SupabaseClient }) {
   const account = useMemo(() => new AccountService(client, expoSecureStore, newRequestId), [client]);
+  const dashboard = useMemo(() => new DashboardService(client), [client]);
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = still loading
   const [recovery, setRecovery] = useState(false);
   const [linkError, setLinkError] = useState<string>();
@@ -76,7 +78,7 @@ function SignedApp({ client }: { client: SupabaseClient }) {
   if (session && recovery) {
     return <SetNewPasswordScreen client={client} email={session.user.email ?? ''} onDone={() => setRecovery(false)} />;
   }
-  if (session) return <OwnerArea account={account} onSignOut={signOut} />;
+  if (session) return <OwnerArea account={account} dashboard={dashboard} onSignOut={signOut} />;
 
   return (
     <>
@@ -104,7 +106,7 @@ type OwnerState =
   | { name: 'setup' }
   | { name: 'ready'; business: Business; device: Device };
 
-function OwnerArea({ account, onSignOut }: { account: AccountService; onSignOut: () => void }) {
+function OwnerArea({ account, dashboard, onSignOut }: { account: AccountService; dashboard: DashboardService; onSignOut: () => void }) {
   const [state, setState] = useState<OwnerState>({ name: 'loading' });
 
   const finish = useCallback(async (business: Business) => {
@@ -139,6 +141,6 @@ function OwnerArea({ account, onSignOut }: { account: AccountService; onSignOut:
     case 'setup':
       return <ShopSetupScreen account={account} onSignOut={onSignOut} onCreated={(b) => finish(b).catch(load)} />;
     case 'ready':
-      return <HomeScreen business={state.business} device={state.device} onSignOut={onSignOut} />;
+      return <HomeScreen business={state.business} device={state.device} dashboard={dashboard} onSignOut={onSignOut} />;
   }
 }
