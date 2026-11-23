@@ -1,11 +1,11 @@
 # Implementation status
 
 **Baseline:** product specification revision 5.1 and PLAN v7.1 (approved 11 November 2026).
-**Current stage:** Stage 1C **plan approved** by the owner (23 Nov 2026; [stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a). **Checkpoint 1C-1 (database) in progress**, task T1 (shared inventory helpers). The device-journey criterion E-3 is waived for 1C-1 only; it remains open (TC-DEV-01 step 6, issue #2, 130% checks) and must close before 1C-2 (screens).
+**Current stage:** Stage 1C **plan approved** by the owner (23 Nov 2026; [stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a). **Checkpoint 1C-1 (database) in progress**, task T1 (shared inventory helpers). The device-journey criterion **E-3 is CLOSED by owner-approved exception (23 Nov 2026)**: all device checks passed, and issue #2 (intermittent session restoration in Expo Go only, **not fixed**, cause unexplained) is accepted as an Expo Go-only limitation and monitored as KI-1 ([KNOWN-ISSUES.md](KNOWN-ISSUES.md)). 1C-2 (screens) is no longer blocked by E-3 but has not started; it needs the owner's go-ahead.
 **Today dashboard** (`4b8bb6d`, CI ✅ [run 45173572606](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45173572606)): tested by the owner on the Android phone, working, figures verified as accurate (23 Nov 2026; owner-reported; build type and the individual checks run were not recorded).
 Stage 1A: ✅ approved (11 Nov 2026). Cloud verification (R-1): ✅ **completed** 12 Nov 2026, based on TC-CLOUD-01, 02 and 03 in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124). Stage 1B: ✅ approved (11 Nov 2026), subject to the outstanding release requirements in [RELEASE-READINESS.md](RELEASE-READINESS.md): physical-device journey, backup/restore gate, password investigation decision, Dependabot PRs.
 
-**Real shop data is still not allowed.** Release gate **G2 ("real data allowed")**, which must be passed before any real shop data is used, has **not** been reached. It needs, among other things, R-1 (✅ completed), **R-2 physical Android journey (⛔ open)** and **R-3 backup and restore (⛔ open)**. See [RELEASE-READINESS.md](RELEASE-READINESS.md) and test plan §10 (release gates).
+**Real shop data is still not allowed.** Release gate **G2 ("real data allowed")**, which must be passed before any real shop data is used, has **not** been reached. It needs, among other things, R-1 (✅ completed), R-2 physical Android journey (✅ closed by owner-approved exception, 23 Nov 2026) and **R-3 backup and restore (⛔ open)**. See [RELEASE-READINESS.md](RELEASE-READINESS.md) and test plan §10 (release gates).
 
 Test status is tracked in [product-specification/10-test-plan.md](product-specification/10-test-plan.md) (§0 and §0a). This page summarises it.
 
@@ -37,6 +37,10 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 
 ### Stage 1B test results
 
+*Snapshot at Stage 1B approval (11 Nov 2026), verified on 23 Nov 2026 against the [local log](test-evidence/2026-11-11-stage1b-local.log) (database `Files=2, Tests=77`; API `4 files, 22 tests`; app `6 files, 13 tests`) and [CI run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) on commit `1aee353` (same counts). These are not the current totals.*
+
+**Current totals (latest CI, verified 23 Nov 2026):** [CI run #40, 45240599452](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45240599452) on commit `91f084a` passed every step: database tests **316/316** (6 files), API security and integration tests **76/76** (9 files), app unit tests **25/25** (8 files); typecheck, secret scan, dependency gate, Android bundle export and bundle secret scan all passed. The growth since Stage 1B comes from the dashboard (app tests), the password-rule revision, the audit gate and cloud-preflight tests, and Stage 1C-1 tasks T1–T3 plus the idempotency fix.
+
 | Suite | Result | Evidence |
 |---|---|---|
 | Database tests | ✅ 77/77 (local) | [log](test-evidence/2026-11-11-stage1b-local.log) |
@@ -45,7 +49,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | Repository and bundle secret scans; dependency gate; typecheck | ✅ (local) | same |
 | CI (GitHub Actions) | ✅ Passed: 77 DB, 22 integration, 13 app unit tests; secret, dependency and bundle scans | [run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
 | **Cloud verification** (actual Supabase development project) | ☁️ Passed: migrations 5/5; database tests 77/77; API security and isolation 18/18; preflight passed with the `f22ab13` version (revised since: 🛠, CI pending) | [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) |
-| On-device checks (TC-DEV-01–03) | 📝 Not done: needs your phone (now unblocked by R-1) | |
+| On-device checks (TC-DEV-01–03) | 📱 Device verified (owner-reported; Samsung Galaxy A06; installed Android builds, 15 and 23 Nov 2026). R-2 / E-3 closed by owner-approved exception (23 Nov 2026); issue #2 (Expo Go only) accepted as a limitation, not fixed (KI-1). Check email and Set new password not checked at 130% | [device log](testing/DEVICE-TEST-LOG.md), [known issues](KNOWN-ISSUES.md) |
 
 ## Stage 1A: what was built
 

@@ -1,0 +1,7 @@
+# Known issues register
+
+Issues that are **not fixed** but have been accepted, with the owner's approval, as known limitations. Each stays here for monitoring until it is fixed or no longer applies. Accepting an issue here never means it is fixed.
+
+| ID | Issue | Where it occurs | Status | Decision | Evidence | Monitoring |
+|---|---|---|---|---|---|---|
+| **KI-1** | **Intermittent session restoration in Expo Go** (device-log issue #2). Two attempts at closing Expo Go completely and reopening it returned to the login screen (13–14 Nov 2026); logging in again showed the same shop and device, so no data was lost. It fails safe: the owner simply logs in again | **Expo Go only** (a development tool, not how the app is distributed). Never reproduced in an installed Android build | **Accepted limitation — not fixed.** Cause **unexplained** | Owner, **23 Nov 2026**: accepted as an Expo Go-only development-environment limitation; E-3 / R-2 closed by owner-approved exception (decision 52, [PLAN.md](PLAN.md)) | Expo Go: 2 failures, later passes. Development build: 2 cold restarts passed (15 Nov 2026). Installed Android build: several cold restarts passed (reported 23 Nov 2026). Samsung Galaxy A06; owner-reported. See [testing/DEVICE-TEST-LOG.md](testing/DEVICE-TEST-LOG.md) | Re-open immediately if session restoration ever fails in an **installed** build (development, preview or release). Re-check cold-start session restoration on every new installed build before a release, and before real shop data is used (gate G2) |

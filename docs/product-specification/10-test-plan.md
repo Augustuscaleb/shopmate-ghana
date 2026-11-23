@@ -20,7 +20,7 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 - CI and local passes say nothing about the cloud project or a real phone. Tests that need those environments (TC-CLOUD, TC-DEV, TC-UX) stay below ☁️ / 📱 until that evidence exists.
 - A test whose code or rules change returns to 🛠 until re-run.
 
-**Current status (12 November 2026: Stage 1B approved; cloud verification passed, [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); Stage 1C plan awaiting approval):**
+**Status (Stage 1B approved 11 Nov 2026; cloud verification passed 12 Nov 2026, [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); **Stage 1C plan approved 23 Nov 2026**; device row updated 23 Nov 2026, E-3 / R-2 closed by owner-approved exception). The planned-test counts below were last fully updated on 12 Nov 2026; the Stage 1C tests (TC-INV, TC-IDEM) are added to this tracker at the 1C-1 checkpoint (plan exit criterion 5):**
 
 | Area | Tests | 📝 | 🛠 | 🟢 Local only | ✅ CI | ☁️ Cloud | 📱 Device |
 |---|---|---|---|---|---|---|---|
@@ -39,8 +39,8 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 | Backup (TC-BAK), **mandatory gate** | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
 | **Cloud verification (TC-CLOUD-00 – 03), required** | 4 | 0 | 1 (TC-CLOUD-00: preflight revised after the cloud run) | 0 | 0 | **3** | — |
-| **Physical device (TC-DEV), required** | 3 | 3 | 0 | 0 | 0 | — | **0** |
-| **Total (planned)** | **148** | **136** | **5** | **0** | **1** | **6** | **0** |
+| **Physical device (TC-DEV), required** | 3 | 0 | 0 | 0 | 0 | — | **3** (owner-reported; issue #2 accepted as an Expo Go-only limitation, not fixed) |
+| **Total (planned)** | **148** | **133** | **5** | **0** | **1** | **6** | **3** |
 | Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 0 | 91 | — |
 | Stage 1B tests (§0b) | 22 | 0 | 0 | 4 | 14 | 4 | — |
 | Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 11 | 0 | 0 | — |
@@ -96,9 +96,9 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | TC-CLOUD-01 | Cloud migrations match the repository | `cloud-verify.yml` → `scripts/verify-cloud-migrations.mjs` (now with `PGSSLMODE=require`, after the preflight step) | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): "Repository migrations: 5; applied in cloud: 5" (**5/5**), with `PGSSLMODE=require`. (The earlier 5/5 in failed [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) is not counted) |
 | TC-CLOUD-02 | All database tests (structure, RLS on every table, privileges, isolation) pass **on the cloud database** | `cloud-verify.yml` → `supabase test db --remote="$SUPABASE_DB_URL" --yes` with `PGSSLMODE=require` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): "Files=2, Tests=77 … Result: PASS" (**77/77**), with `PGSSLMODE=require`; each test file rolled back. The `auth.users` risk did not occur. (Earlier [run 43252032512](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43252032512) failed before any test ran; fixed in `21a11e9`) |
 | TC-CLOUD-03 | Business-data isolation **through the cloud API** (two fictitious owners) | `cloud-verify.yml` → `tests/security.api.test.ts` + `tests/target.test.ts` in cloud mode | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), [cloud log](../test-evidence/2026-11-12-cloud-verification.log)): **18/18** (14 API security and isolation tests TC-API-01 – 14, 4 cloud safeguards TC-CLOUD-00a – d) |
-| TC-DEV-01 | On the owner's Android phone: registration, **email confirmation**, login, shop setup, logout, login again (and a wrong-password attempt) | Manual, development build; see `docs/testing/DEVICE-TEST-LOG.md` | 📝 Documented; **required before moving beyond the authentication foundation** |
-| TC-DEV-02 | Email confirmation and password-reset links open the app (needs a development build; Expo Go can't receive `shopmate://` links) | Manual | 📝 Documented |
-| TC-DEV-03 | Readability at 130% font size; ₵ renders (TC-UX-04, partial) | Manual | 📝 Documented |
+| TC-DEV-01 | On the owner's Android phone: registration, **email confirmation**, login, shop setup, logout, login again (and a wrong-password attempt) | Manual, development build; see `docs/testing/DEVICE-TEST-LOG.md` | 📱 **Device verified** (owner-reported; Samsung Galaxy A06): all 12 steps passed in installed Android builds (development build 15 Nov 2026; step 6 and step 9 re-check reported 23 Nov 2026). Issue #2 (intermittent session restoration in Expo Go only) is **not fixed**; the owner accepted it as an Expo Go-only limitation on 23 Nov 2026 (KI-1, `docs/KNOWN-ISSUES.md`), closing E-3 / R-2 by exception. See `docs/testing/DEVICE-TEST-LOG.md` |
+| TC-DEV-02 | Email confirmation and password-reset links open the app (needs a development build; Expo Go can't receive `shopmate://` links) | Manual | 📱 **Device verified** (owner-reported; Samsung Galaxy A06, installed Android builds): real confirmation and password-reset links open ShopMate (15 Nov 2026; re-checked, reported 23 Nov 2026). An iPhone check was inconclusive (ShopMate not installed there; outside Android scope) |
+| TC-DEV-03 | Readability at 130% font size; ₵ renders (TC-UX-04, partial) | Manual | 📱 **Device verified** (owner-reported; one device, Samsung Galaxy A06): 130% readability on Welcome, Login, Home, Your shop, Sign-up and Forgot password; GH₵ display correct on the Today dashboard. **Not checked at 130%:** Check email, Set new password. TC-UX-04 (3+ low-end devices) remains open |
 
 **Rules:**
 - A status moves to ✅ only with the evidence above.

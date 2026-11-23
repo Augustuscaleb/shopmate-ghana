@@ -1,6 +1,6 @@
 # Stage 1C implementation plan: inventory foundations
 
-**Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. Checkpoint 1C-2 (screens) may not start until E-3 is fully closed.**
+**Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. E-3 was closed on 23 Nov 2026 by owner-approved exception, so checkpoint 1C-2 (screens) is no longer blocked by E-3; it starts only when the owner authorises it.**
 **Baseline:** product specification revision 5.1 (approved). This stage implements existing rules only. It adds **no new features** and **no accounting changes**. Where the specification leaves a detail open, it's listed in §6 as a question for the owner, not decided by Claude.
 
 ## 1. Entry criteria (all needed before coding starts)
@@ -9,11 +9,13 @@
 |---|---|---|
 | E-1 | Stage 1B approved | ✅ 11 Nov 2026 |
 | E-2 | This plan approved by the owner, with answers to §6 | ✅ 23 Nov 2026 (answers in §6, decisions in §6a) |
-| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ⛔ **Open.** TC-DEV-01 is **not** complete: step 6 (separate manual login with a newly confirmed account that has no shop) is pending; issue #2 (intermittent session restoration) is still open; 130% readability is not yet checked on Create account, Forgot password and Your shop. **Limited exception (owner, 23 Nov 2026): waived for 1C-1 database implementation and testing only.** Device checks continue in parallel, and E-3 must be fully closed before any 1C-2 screen work begins. R-1 cloud verification ✅ completed 12 Nov 2026 |
+| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ✅ **CLOSED — owner-approved exception (23 Nov 2026).** All TC-DEV-01 steps, TC-DEV-02 and the owner-required TC-DEV-03 checks are 📱 device verified (Samsung Galaxy A06; installed Android builds, 15 and 23 Nov 2026; owner-reported). Issue #1 was fixed and re-checked. Issue #2 (intermittent session restoration in **Expo Go only**) is **not fixed**: the two Expo Go failures remain unexplained; development-build restarts (15 Nov) and repeated installed-build cold starts (reported 23 Nov) passed. The owner explicitly approved accepting it as an Expo Go-only development-environment limitation (decision 52); it stays in [KNOWN-ISSUES.md](../KNOWN-ISSUES.md) as KI-1. *History:* waived for 1C-1 database work only on 23 Nov 2026 (decision 51) before closure. R-1 cloud verification ✅ completed 12 Nov 2026 |
 
 > If the owner prefers, Stage 1C could start before E-3 with the device fixes slotted in first. That's the owner's choice; by default Claude waits for E-3.
 >
 > **Owner decision (23 Nov 2026):** E-3 is waived **only** for checkpoint 1C-1 (database functions, migrations and their automated tests on the local stack and CI). This does not mark TC-DEV-01 complete or any device issue resolved. Checkpoint 1C-2 (Android screens) starts only after E-3 is fully closed.
+>
+> **E-3 closed (owner decision, 23 Nov 2026):** closed by owner-approved exception, accepting issue #2 as an Expo Go-only limitation (not fixed). The E-3 precondition for checkpoint 1C-2 is therefore met; 1C-2 itself still needs the owner's go-ahead.
 
 ## 2. Scope (from the approved specification)
 
