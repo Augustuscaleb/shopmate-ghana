@@ -1,6 +1,6 @@
 # Stage 1C implementation plan: inventory foundations
 
-**Status: PLAN ONLY, awaiting owner review. No implementation has started.**
+**Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. Checkpoint 1C-2 (screens) may not start until E-3 is fully closed.**
 **Baseline:** product specification revision 5.1 (approved). This stage implements existing rules only. It adds **no new features** and **no accounting changes**. Where the specification leaves a detail open, it's listed in §6 as a question for the owner, not decided by Claude.
 
 ## 1. Entry criteria (all needed before coding starts)
@@ -8,10 +8,12 @@
 | # | Criterion | Status |
 |---|---|---|
 | E-1 | Stage 1B approved | ✅ 11 Nov 2026 |
-| E-2 | This plan approved by the owner, with answers to §6 | ⏳ |
-| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ⛔ Waiting for the owner's phone journey (R-2). R-1 cloud verification ✅ completed 12 Nov 2026 |
+| E-2 | This plan approved by the owner, with answers to §6 | ✅ 23 Nov 2026 (answers in §6, decisions in §6a) |
+| E-3 | **Device journey TC-DEV-01 done, and any issues fixed and re-checked on the phone** (owner condition: fix before moving beyond the authentication foundation) | ⛔ **Open.** TC-DEV-01 is **not** complete: step 6 (separate manual login with a newly confirmed account that has no shop) is pending; issue #2 (intermittent session restoration) is still open; 130% readability is not yet checked on Create account, Forgot password and Your shop. **Limited exception (owner, 23 Nov 2026): waived for 1C-1 database implementation and testing only.** Device checks continue in parallel, and E-3 must be fully closed before any 1C-2 screen work begins. R-1 cloud verification ✅ completed 12 Nov 2026 |
 
 > If the owner prefers, Stage 1C could start before E-3 with the device fixes slotted in first. That's the owner's choice; by default Claude waits for E-3.
+>
+> **Owner decision (23 Nov 2026):** E-3 is waived **only** for checkpoint 1C-1 (database functions, migrations and their automated tests on the local stack and CI). This does not mark TC-DEV-01 complete or any device issue resolved. Checkpoint 1C-2 (Android screens) starts only after E-3 is fully closed.
 
 ## 2. Scope (from the approved specification)
 
@@ -26,7 +28,7 @@
 | **Return to supplier** | Value removed at average; credit as refund or reduction of the amount owed; difference as a visible cost adjustment | 05 C-117, C-25c |
 | **Stock adjustments** | Damaged, expired, missing/theft, count correction (losses at average); **own use** (separate, below net profit); stock found (information only) | F-06; 04 §2.3; 05 C-30, C-31, C-37 |
 | **Visible adjustments** | Cost adjustments (C-25, C-25a, C-25b, C-25c) and their Needs attention items (cost adjustment, cost check, cost missing, purchase correction) | 05 §3.4 (C-120 – C-126 as relevant) |
-| **Low stock** | Low-stock list, shareable as text | F-07; S-35 (see Q2) |
+| **Low stock** | Low-stock list, shareable as text | F-07; S-35 (included: Q2) |
 | **Screens** | Products list (stock and value colours), product form, product detail with movement history, restock form, unpaid purchases and pay supplier, correct purchase / return to supplier, stock adjustment, Needs attention list (inventory items only) | 03 S-30 – S-39, S-36 |
 | **Server functions** | `create_product`, `update_product`, `set_cost`, `restock`, `pay_supplier`, `correct_purchase`, `return_to_supplier`, `adjust_stock`, `acknowledge_attention`, `check_stock_integrity`. All transactional, idempotent, with the approved lock order | 09 §3, §4 |
 
@@ -35,7 +37,7 @@
 - Customers and credit, expenses, cash count and closing, reports, CSV export
 - Offline product cache (part of the sync stage)
 - Backup implementation (its own stage after R-1)
-- Starter product lists (see Q3)
+- Starter product lists (deferred: Q3, until real product names and prices are gathered from pilot shops)
 
 **Note on testing allocation without sales:** proportional purchase-cost allocation must account for goods already sold. Sales don't exist until a later stage, so the 1C **database** tests create fictitious sale movements directly as fixtures to exercise the algorithm. The same tests are re-run end-to-end once real sales exist.
 
@@ -43,7 +45,7 @@
 
 | Planned tests | Coverage in 1C |
 |---|---|
-| TC-COST-01 – 10, 13, 17, 19, 20, 21 | Full |
+| TC-COST-01 – 10, 13, 17, 19, 20, 21 | Full (TC-COST-07, void returns the line cost, with fixture sales only; end-to-end with real voids in 1D: D9) |
 | TC-COST-11, 12, 14 – 16, 18 (need uploaded sales or sale times) | Later stage |
 | TC-PUR-01 – 09, 11 – 16 | Full (PUR-12/13 with fixture sales) |
 | TC-PUR-10 (expense form steering) | Later: the expense form is a later stage |
@@ -66,16 +68,34 @@ Each test is recorded with its true evidence level (📝 / 🛠 / 🟢 / ✅ / �
 4. Screens work end-to-end against the local stack. Screens are 📱 device-verified only when the owner tests them on the phone.
 5. Test tracker, implementation status and release-readiness pages updated; report presented for review before the next stage.
 6. The dashboard product and low-stock counts use server-side aggregation and pass tests with more than 1,000 products (see the requirement in §4).
+7. No migration is applied to the cloud project without the owner's separate approval (D11). Until then, exit criterion 3 is recorded as outstanding.
 
 ## 6. Questions for the owner (clarifications only; no rule changes proposed)
 
-| # | Question | Claude's suggestion |
-|---|---|---|
-| Q1 | **Stock-reducing adjustments beyond current stock** (e.g. "damaged: 5" when the app shows 3). The specification doesn't say. Allow (stock goes negative and raises the negative-stock item), or refuse with "Only 3 in stock: correct the count first"? | **Refuse**, except "count correction", which sets an absolute count ≥ 0. Negative stock should come only from real sales |
-| Q2 | Include the **low-stock list** (F-07, S-35) in 1C? It's in the approved MVP | Include: small, purely inventory |
-| Q3 | **Starter product lists** at shop setup (S-05; the specification marks the item lists as assumptions to refine with pilot shops) | **Defer** until real item names and prices can be gathered; skipping is already allowed |
-| Q4 | **Purchase date:** a restock can record a different `purchased_on` date (e.g. entering yesterday's market trip today), but costing uses the time it's recorded (cost events are online and server-timed, decision 32). Confirm | Confirm as stated |
-| Q5 | **Units:** one selling unit per product plus a pack multiplier at restock (spec 5.5). Confirm that's sufficient for 1C | Confirm |
+| # | Question | Claude's suggestion | **Owner decision (23 Nov 2026)** |
+|---|---|---|---|
+| Q1 | **Stock-reducing adjustments beyond current stock** (e.g. "damaged: 5" when the app shows 3). The specification doesn't say. Allow (stock goes negative and raises the negative-stock item), or refuse with "Only 3 in stock: correct the count first"? | **Refuse**, except "count correction", which sets an absolute count ≥ 0. Negative stock should come only from real sales | **Refuse** stock-reducing adjustments that exceed available stock, except count corrections, which set an absolute count of zero or higher |
+| Q2 | Include the **low-stock list** (F-07, S-35) in 1C? It's in the approved MVP | Include: small, purely inventory | **Include** in Stage 1C |
+| Q3 | **Starter product lists** at shop setup (S-05; the specification marks the item lists as assumptions to refine with pilot shops) | **Defer** until real item names and prices can be gathered; skipping is already allowed | **Defer** until actual product names and prices are gathered from pilot shops |
+| Q4 | **Purchase date:** a restock can record a different `purchased_on` date (e.g. entering yesterday's market trip today), but costing uses the time it's recorded (cost events are online and server-timed, decision 32). Confirm | Confirm as stated | **Confirmed.** A different purchase date is allowed; costing uses the server time at which the transaction is recorded |
+| Q5 | **Units:** one selling unit per product plus a pack multiplier at restock (spec 5.5). Confirm that's sufficient for 1C | Confirm | **Confirmed.** One selling unit per product, with a pack multiplier during restocking |
+
+## 6a. Implementation decisions (owner-approved, 23 Nov 2026)
+
+These settle implementation details within the approved specification. None changes a business or accounting rule.
+
+| # | Decision |
+|---|---|
+| D3 | A restock leaves `purchases.movement_id` empty and links the stock movement to its purchase (`stock_movements.purchase_id`). Reason: the two links reference each other, neither foreign key can be deferred, and purchases are append-only, so `purchases.movement_id` can never be filled in. No schema change |
+| D4 | Products are archived with `active = false`. `deleted_at` is not used for products in 1C. An archived product keeps its name reserved |
+| D5 | A category cannot be archived while any active product still uses it; the refusal gives a clear message |
+| D6 | Input limits, enforced in the server functions: quantity at most 100,000 per movement; purchase cost and other entered amounts at most GH₵ 1,000,000 (the existing selling-price cap); `low_stock_level` at most 100,000. In addition, every change to `stock_qty` and `stock_value` is range-checked before it is written, so no calculation can overflow its column |
+| D7 | The dashboard's product count and low-stock count come from a read-only database function, `inventory_summary`, with exact database-side counts. Tested with more than 1,000 products, including through the API (where the 1,000-row limit applies). `max_rows` is not changed. Test TC-DASH-05 is narrowed to allow only this read-only call |
+| D8 | Duplicate open attention items (same shop, type and item) are prevented by a unique database index on open items, which is safe under concurrent requests |
+| D9 | Void-related costing (TC-COST-07) is tested with fixture sales in 1C; end-to-end testing with real voids follows in 1D |
+| D10 | Needs attention is shown on the dashboard and inside Stock; no fifth tab |
+| D11 | Migrations run on the local Supabase stack and in CI only. Applying them to the cloud project needs the owner's separate approval |
+| D12 | The dashboard's sales figures stay unchanged until Stage 1D |
 
 ## 7. Rough size
 About 2–3 weeks of part-time work equivalent:

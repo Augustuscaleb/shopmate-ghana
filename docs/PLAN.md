@@ -376,7 +376,7 @@ Timelines are estimates for part-time work.
 |---|---|---|
 | **1A** | Project foundation; database schema; auth configuration; RLS; security and constraint tests; CI | ✅ Approved by owner (11 Nov 2026) |
 | 1B | App login and onboarding (secure session storage), business setup, cloud verification tooling, dependency monitoring | ✅ **Approved by owner** (11 Nov 2026), subject to release requirements R-1 – R-6 ([RELEASE-READINESS.md](RELEASE-READINESS.md)). R-1 cloud verification ✅ completed 12 Nov 2026 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); R-2 – R-6 not yet closed |
-| 1C | Inventory foundations: categories, products, purchases, supplier credit, weighted-average (value-pool) costing, adjustments; within the approved specification only | 📋 **Plan prepared, awaiting owner approval** ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md)). Implementation **not started**; by default waits for the device journey (R-2) |
+| 1C | Inventory foundations: categories, products, purchases, supplier credit, weighted-average (value-pool) costing, adjustments; within the approved specification only | ✅ **Plan approved by owner** (23 Nov 2026), with decisions Q1–Q5 and D3–D12 ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a). **1C-1 (database) in progress** under a limited exception: the device-journey criterion E-3 (R-2) is waived for 1C-1 only and must be fully closed before **1C-2 (screens)** starts |
 | Ops-1 | Backup and restore implementation and first restore drill (mandatory gate, R-3) | Designed ([operations/BACKUP-AND-RESTORE.md](operations/BACKUP-AND-RESTORE.md)); the cloud project now exists and is verified (R-1); starts only with owner approval. **R-3 remains open** |
 | 1D onwards | Sales and offline sync, credit, expenses, closing, reports | Not started |
 
@@ -568,6 +568,8 @@ Original Stage 1 scope:
 | 47 | Device journey issues must be fixed before work moves beyond the authentication foundation | Approved (Stage 1B approval) |
 | 48 | Stage 1C limited to inventory foundations within the approved specification; no new features or accounting changes without asking | Approved (Stage 1B approval) |
 | 49 | Server-side common-password enforcement: options A–D in [security/PASSWORD-POLICY-SERVER-SIDE.md](security/PASSWORD-POLICY-SERVER-SIDE.md) | Awaiting owner decision (Claude recommends A now + C at Pro) |
+| 50 | Stage 1C plan approved with answers Q1–Q5 (refuse stock-reducing adjustments beyond available stock except count corrections; low-stock list included; starter product lists deferred; purchase date may differ but costing uses server record time; one selling unit plus pack multiplier) and implementation decisions D3–D12 ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a) | Approved (23 Nov 2026) |
+| 51 | Limited exception to decision 47: the device-journey criterion (E-3, R-2) is waived for Stage 1C-1 database work only. TC-DEV-01 is not complete and issue #2 remains open; E-3 must be fully closed before Stage 1C-2 screens begin | Approved (23 Nov 2026) |
 
 ### References
 

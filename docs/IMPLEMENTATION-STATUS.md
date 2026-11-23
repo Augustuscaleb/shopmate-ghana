@@ -1,7 +1,8 @@
 # Implementation status
 
 **Baseline:** product specification revision 5.1 and PLAN v7.1 (approved 11 November 2026).
-**Current stage:** Stage 1C **plan** awaiting owner approval ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md)). No Stage 1C code has been written.
+**Current stage:** Stage 1C **plan approved** by the owner (23 Nov 2026; [stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a). **Checkpoint 1C-1 (database) in progress**, task T1 (shared inventory helpers). The device-journey criterion E-3 is waived for 1C-1 only; it remains open (TC-DEV-01 step 6, issue #2, 130% checks) and must close before 1C-2 (screens).
+**Today dashboard** (`4b8bb6d`, CI ✅ [run 45173572606](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45173572606)): tested by the owner on the Android phone, working, figures verified as accurate (23 Nov 2026; owner-reported; build type and the individual checks run were not recorded).
 Stage 1A: ✅ approved (11 Nov 2026). Cloud verification (R-1): ✅ **completed** 12 Nov 2026, based on TC-CLOUD-01, 02 and 03 in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124). Stage 1B: ✅ approved (11 Nov 2026), subject to the outstanding release requirements in [RELEASE-READINESS.md](RELEASE-READINESS.md): physical-device journey, backup/restore gate, password investigation decision, Dependabot PRs.
 
 **Real shop data is still not allowed.** Release gate **G2 ("real data allowed")**, which must be passed before any real shop data is used, has **not** been reached. It needs, among other things, R-1 (✅ completed), **R-2 physical Android journey (⛔ open)** and **R-3 backup and restore (⛔ open)**. See [RELEASE-READINESS.md](RELEASE-READINESS.md) and test plan §10 (release gates).
