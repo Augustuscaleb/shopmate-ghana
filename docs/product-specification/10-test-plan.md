@@ -1,6 +1,6 @@
 # 10 — Test Plan and Release Gates
 
-**Revision 5.1** · test status updated for Stage 1 (11 November 2026) and for the first successful cloud verification (12 November 2026).
+**Revision 5.1** · test status updated for Stage 1 (11 November 2026), the first successful cloud verification (12 November 2026) and the Stage 1C-1 checkpoint (24 November 2026, §0d).
 
 ## 0. Test status (read this first)
 
@@ -20,30 +20,31 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 - CI and local passes say nothing about the cloud project or a real phone. Tests that need those environments (TC-CLOUD, TC-DEV, TC-UX) stay below ☁️ / 📱 until that evidence exists.
 - A test whose code or rules change returns to 🛠 until re-run.
 
-**Status (Stage 1B approved 11 Nov 2026; cloud verification passed 12 Nov 2026, [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); **Stage 1C plan approved 23 Nov 2026**; device row updated 23 Nov 2026, E-3 / R-2 closed by owner-approved exception). The planned-test counts below were last fully updated on 12 Nov 2026; the Stage 1C tests (TC-INV, TC-IDEM) are added to this tracker at the 1C-1 checkpoint (plan exit criterion 5):**
+**Status (24 Nov 2026, Stage 1C-1 checkpoint):** counts below updated for the Stage 1C-1 database work (§0d; evidence: [local log](../test-evidence/2026-11-24-stage1c1-local.log), commit `230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)). A planned test counts as ✅ only when **all** of it is met; a test met only in part counts as 🛠, and its row names what remains. Nothing from Stage 1C is ☁️ yet: its migrations aren't applied to the cloud project (R-1, D11). *History:* Stage 1B approved 11 Nov 2026; cloud verification passed 12 Nov 2026 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); Stage 1C plan approved 23 Nov 2026; device row updated 23 Nov 2026 (E-3 / R-2 closed by owner-approved exception).
 
 | Area | Tests | 📝 | 🛠 | 🟢 Local only | ✅ CI | ☁️ Cloud | 📱 Device |
 |---|---|---|---|---|---|---|---|
 | Financial (TC-FIN) | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
-| Cost (TC-COST) | 21 | 21 | 0 | 0 | 0 | 0 | 0 |
+| Cost (TC-COST) | 21 | 8 | 5 | 0 | 8 | 0 | 0 |
 | Sale time (TC-TIME) | 10 | 10 | 0 | 0 | 0 | 0 | 0 |
 | Daily closing (TC-CLOSE) | 9 | 8 | 0 | 0 | 0 | 1 | 0 |
-| Purchases (TC-PUR) | 16 | 16 | 0 | 0 | 0 | 0 | 0 |
-| Needs attention (TC-ATTN) | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
-| Losses (TC-LOSS) | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
+| Purchases (TC-PUR) | 16 | 0 | 6 | 0 | 10 | 0 | 0 |
+| Needs attention (TC-ATTN) | 7 | 3 | 2 | 0 | 2 | 0 | 0 |
+| Losses (TC-LOSS) | 3 | 1 | 0 | 0 | 2 | 0 | 0 |
 | Credit (TC-CRED, TC-CASH) | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
 | Sync (TC-SYNC) | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
 | Cancellation (TC-CANCEL) | 9 | 9 | 0 | 0 | 0 | 0 | 0 |
-| Concurrency (TC-CONC) | 7 | 6 | 1 | 0 | 0 | 0 | 0 |
-| Security (TC-SEC) | 9 | 3 | 3 | 0 | 1 | 2 | 0 |
+| Concurrency (TC-CONC) | 7 | 5 | 2 | 0 | 0 | 0 | 0 |
+| Security (TC-SEC) | 9 | 3 | 2 | 0 | 2 | 2 | 0 |
 | Backup (TC-BAK), **mandatory gate** | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Usability (TC-UX) | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
 | **Cloud verification (TC-CLOUD-00 – 03), required** | 4 | 0 | 1 (TC-CLOUD-00: preflight revised after the cloud run) | 0 | 0 | **3** | — |
 | **Physical device (TC-DEV), required** | 3 | 0 | 0 | 0 | 0 | — | **3** (owner-reported; issue #2 accepted as an Expo Go-only limitation, not fixed) |
-| **Total (planned)** | **148** | **133** | **5** | **0** | **1** | **6** | **3** |
+| **Total (planned)** | **148** | **97** | **18** | **0** | **24** | **6** | **3** |
 | Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 0 | 91 | — |
-| Stage 1B tests (§0b) | 22 | 0 | 0 | 4 | 14 | 4 | — |
-| Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 11 | 0 | 0 | — |
+| Stage 1B tests (§0b) | 22 | 0 | 0 | 0 | 18 | 4 | — |
+| Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 0 | 11 | 0 | — |
+| **Stage 1C-1 tests (§0d)**: TC-INV, TC-IDEM and the planned IDs above, in 12 database files and 10 API files | 974 (896 database, 78 API) | 0 | 0 | 0 | 974 | 0 | — |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
 
@@ -72,7 +73,7 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | Group | IDs | Count | Where | Status |
 |---|---|---|---|---|
-| Password rules: minimum 8, 2,087 common passwords, **a listed password followed only by numbers or symbols** (e.g. `password123`; TC-AUTH-18, added 2026-11-14 after device test TC-DEV-01 step 2), repeated characters, email, 72-byte maximum | TC-AUTH-01 – 03, 18 | 4 | `app/src/auth/passwordPolicy.test.ts` | 🟢 **Local passed** 2026-11-14 for the revised rules: 4/4, plus a negative control in which TC-AUTH-18 fails against the previous code ([local log](../test-evidence/2026-11-14-password-policy-local.log)). **CI pending.** *History:* TC-AUTH-01 – 03 were ✅ CI passed 2026-11-11 with the previous rules ([local log](../test-evidence/2026-11-11-stage1b-local.log), [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
+| Password rules: minimum 8, 2,087 common passwords, **a listed password followed only by numbers or symbols** (e.g. `password123`; TC-AUTH-18, added 2026-11-14 after device test TC-DEV-01 step 2), repeated characters, email, 72-byte maximum | TC-AUTH-01 – 03, 18 | 4 | `app/src/auth/passwordPolicy.test.ts` | ✅ **CI passed** for the revised rules: 4/4 in [CI #48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849) and [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081) (24 Nov 2026; `app/src/auth/passwordPolicy.test.ts`, 4 tests); local evidence 2026-11-14, with a negative control in which TC-AUTH-18 fails against the previous code ([local log](../test-evidence/2026-11-14-password-policy-local.log)). Phone re-check of TC-DEV-01 step 2: see §0c. *History:* TC-AUTH-01 – 03 were ✅ CI passed 2026-11-11 with the previous rules ([local log](../test-evidence/2026-11-11-stage1b-local.log), [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Validation (Ghana phone formats matching the database, shop name/type, email) | TC-AUTH-04 – 05 | 2 | `app/src/auth/validation.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Error messages (no account enumeration; network, rate-limit) | TC-AUTH-06 – 07 | 2 | `app/src/auth/messages.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Deep links (confirmation and reset; rejects foreign and malformed links) | TC-AUTH-08 | 1 | `app/src/auth/deepLinks.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
@@ -81,8 +82,8 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | Onboarding: create shop; lost reply → no second shop; device registered once, survives lost reply | TC-AUTH-14 – 16 | 3 | `tests/onboarding.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | App refuses service-role and secret keys | TC-AUTH-17 | 1 | `app/src/config/env.test.ts` | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
 | Cloud test safeguards (wrong project, missing confirmation, non-local URL in local mode) | TC-CLOUD-00a – d | 4 | `tests/target.test.ts` | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), run in cloud mode within TC-CLOUD-03); ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)) |
-| **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; a direct connection accepts only the username `postgres` or `postgres.<project-ref>` (TC-CLOUD-00o); output never contains the URL, password, host, username or refs | TC-CLOUD-00e – o | 11 | `tests/cloud-preflight.test.ts` | 🟢 **Local passed** 2026-11-12 for the **revised** implementation (script `c29e9b49…`): 11/11, plus a negative control in which TC-CLOUD-00o fails against the previous script ([revised local log](../test-evidence/2026-11-12-cloud-preflight-revised-local.log)). **CI verification pending** for the revised implementation. *History:* the previous version (script `fb29d758…`, commit `f22ab13`, tests 00e – n) was ✅ CI passed in [CI 43259802553](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43259802553) ([local log](../test-evidence/2026-11-12-cloud-preflight-local.log)). These unit tests use fake values only |
-| **Total** (excluding the preflight row, counted separately in §0) | | **22** | | **4 🟢 local passed** (password rules, revised 2026-11-14; CI pending), **14 ✅ CI passed, 4 ☁️ Cloud passed** (TC-CLOUD-00a – d); none 📱 device |
+| **Cloud preflight** (`scripts/check-cloud-target.mjs`): database-URL project ref must equal `SUPABASE_DEV_PROJECT_REF`; exact Supabase pooler/direct host forms only; mismatched usernames, look-alike hosts and malformed encoded credentials refused; a direct connection accepts only the username `postgres` or `postgres.<project-ref>` (TC-CLOUD-00o); output never contains the URL, password, host, username or refs | TC-CLOUD-00e – o | 11 | `tests/cloud-preflight.test.ts` | ✅ **CI passed** for the **revised** implementation: 11/11 (`tests/cloud-preflight.test.ts`), most recently in [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081) (24 Nov 2026); local evidence 2026-11-12 (script `c29e9b49…`), with a negative control in which TC-CLOUD-00o fails against the previous script ([revised local log](../test-evidence/2026-11-12-cloud-preflight-revised-local.log)). The revised preflight has **not** run in the cloud (TC-CLOUD-00, §0c). *History:* the previous version (script `fb29d758…`, commit `f22ab13`, tests 00e – n) was ✅ CI passed in [CI 43259802553](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43259802553) ([local log](../test-evidence/2026-11-12-cloud-preflight-local.log)). These unit tests use fake values only |
+| **Total** (excluding the preflight row, counted separately in §0) | | **22** | | **18 ✅ CI passed** (including the revised password rules), **4 ☁️ Cloud passed** (TC-CLOUD-00a – d); none 📱 device |
 
 **CI:** Stage 1B commit `1aee353`: ✅ all 21 tests above passed on GitHub Actions ([run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)), together with all Stage 1A tests and the bundle secret scan.
 
@@ -112,6 +113,32 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 - **E2E:** the app on an emulator or a low-end Android phone.
 - **Drill:** a documented manual exercise.
 
+## 0d. Stage 1C-1 tests (inventory database functions)
+
+**Evidence for every ✅ marked "(§0d)" in this plan:** local run at commit `230c029`, 24 Nov 2026 ([local log](../test-evidence/2026-11-24-stage1c1-local.log)), and [CI #49, run 45431840081](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081) on the same commit. Both: database **973/973** (14 files), API **131/131** (16 files), app **25/25** (8 files); typecheck, secret scan, dependency gate, Android bundle export and bundle secret scan passed. Earlier CI: [#47](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45411475080) (T1–T9, `2b3bb4a`), [#48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849) (T1–T10, `ba565e7`). **Not ☁️:** none of these migrations is applied to the cloud project (R-1, D11). **Not 📱:** no Stage 1C screens exist yet (1C-2).
+
+| Task (commit) | What is tested | Files (tests) |
+|---|---|---|
+| T1 shared helpers (`253d489`) | Stock pool, movements, history, pool rules C-25a / C-25b, attention items, limits | `03_inventory_helpers` (63) |
+| T2 inventory summary (`2aeb500`) | Server-side product and low-stock counts above 1,000 products (D7) | `04_inventory_summary` (29), `inventory-summary.api` (8) |
+| T3 products and categories (`40cf83d`) | Create, edit, archive, unique names, isolation | `05_products_categories` (109), `products.api` (11) |
+| Idempotency fix (`91f084a`) | Business-scoped request claims (TC-IDEM) | `06_request_idempotency` (40), `idempotency.api` (4) |
+| T4 set_cost (`a62baa9`) | Owner cost correction | `07_set_cost` (61), `set-cost.api` (6) |
+| T5 restock (`4212e94`) | Purchases, C-25 revaluation, parallel restocks | `08_restock` (82), `restock.api` (8) |
+| T6 adjust_stock (`bd59bee`) | Losses, own use, counts, stock found | `09_adjust_stock` (93), `adjust-stock.api` (8) |
+| T7 supplier payments (`1d695f8`) | Pay supplier, unpaid purchases list | `10_supplier_payments` (100), `supplier-payments.api` (8) |
+| T8 return to supplier (`5d807cd`) | Returns, credits, C-25c difference | `11_return_to_supplier` (95), `return-to-supplier.api` (8) |
+| T9 correct purchase (`2b3bb4a`) | Proportional allocation, refunds, TC-PUR-13 equivalence | `12_correct_purchase` (108), `correct-purchase.api` (10) |
+| T10 attention, integrity, low stock (`ba565e7`) | Acknowledgement, nine integrity checks, low-stock list; integrity assertions added to the earlier suites (T10 plan §7.2) | `13_attention_integrity_lowstock` (76), `attention-integrity-lowstock.api` (7) |
+| 1C-1 test gaps (`230c029`) | TC-COST-07 (shared-helper simulation with a fixture void), TC-COST-13, TC-COST-17 GH₵ effect | `14_sale_cost_fixed` (40) |
+| **Total** | | **896 database + 78 API = 974** |
+
+Database files are in `supabase/tests/database/`, API files in `tests/`. The remaining 77 database tests (files 01–02) are §0a; the remaining 53 API tests are §0a, §0b, the audit gate (20) and the cloud preflight (11). The app's dashboard tests (TC-DASH, 11) came with the Today dashboard and are ✅ CI as part of the 25 app tests.
+
+**Deliberate faults:** each task's tests were checked against deliberately broken versions of its functions (T5–T10, and 14 faults for `14_sale_cost_fixed`); every fault was caught. The fault scripts are **not** in the repository (finding I6), so this can't be re-run from the repository.
+
+**Partial and deferred** (counted as 🛠 or 📝 above, never ✅): TC-COST-05, 07, 13, 17, 20; TC-PUR-01, 07, 09, 10, 14, 15; TC-ATTN-02, 06; TC-CONC-03, 05; TC-SEC-04, 08. Each row says what remains. TC-COST-19 (screens), TC-COST-21 (Reports) and TC-ATTN-07 (pilot usability) stay 📝: they belong to later stages.
+
 ## 1. Financial calculations
 
 | ID | Test | Rules | Type | Status |
@@ -129,27 +156,27 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-COST-01 | Restock adds the **purchase cost**: 10 / 11000 + 12 costing 13920 → 22 / 24920 (avg 1132.7273) | C-21 | 📝 |
-| TC-COST-02 | Restock while stock is −2 (value −2000) with 10 costing 15000 → cost adjustment +1000 with a Needs attention item; pool 8 / 12000 (avg 1500) | C-25, C-122 | 📝 |
-| TC-COST-03 | Stock reaches 0 with value left over → leftover posted as cost adjustment; value 0 | C-25a | 📝 |
-| TC-COST-04 | Every value-changing event writes exactly one history row with qty, value and average | C-22 | 📝 |
-| TC-COST-05 | Unknown cost → line cost 0, `cost_missing`, warning count; first cost set → value correction, no profit effect | C-24, C-27a | 📝 |
-| TC-COST-06 | Losses and stock found valued at round(qty × average); average unchanged | C-21, C-30 | 📝 |
-| TC-COST-07 | Void returns the original line cost to the pool | C-21, C-26 | 📝 |
-| TC-COST-08 | Manual cost correction → `value_correction` (info line, not profit); past sales unchanged | C-27, C-29 | 📝 |
-| TC-COST-09 | Two parallel restocks of one product = sequential result | 09 §4.2 | 📝 |
-| TC-COST-10 | 100 random restocks, sales, voids and adjustments: `check_stock_integrity()` passes | 09 §3 | 📝 |
+| TC-COST-01 | Restock adds the **purchase cost**: 10 / 11000 + 12 costing 13920 → 22 / 24920 (avg 1132.7273) | C-21 | ✅ **CI passed** (§0d): `03_inventory_helpers`, `08_restock`, `restock.api` |
+| TC-COST-02 | Restock while stock is −2 (value −2000) with 10 costing 15000 → cost adjustment +1000 with a Needs attention item; pool 8 / 12000 (avg 1500) | C-25, C-122 | ✅ **CI passed** (§0d): `08_restock` |
+| TC-COST-03 | Stock reaches 0 with value left over → leftover posted as cost adjustment; value 0 | C-25a | ✅ **CI passed** (§0d): `03_inventory_helpers` |
+| TC-COST-04 | Every value-changing event writes exactly one history row with qty, value and average | C-22 | ✅ **CI passed** (§0d): `03_inventory_helpers`, `07_set_cost`, `08_restock`, `09_adjust_stock` |
+| TC-COST-05 | Unknown cost → line cost 0, `cost_missing`, warning count; first cost set → value correction, no profit effect | C-24, C-27a | 🛠 **Partial.** ✅ CI (§0d) for the first cost set on an unknown-cost product (value correction, no profit effect; `07_set_cost` TC-COST-05a–c). **Remaining (Stage 1D):** sale-side line cost 0, `cost_missing` and the warning count |
+| TC-COST-06 | Losses and stock found valued at round(qty × average); average unchanged | C-21, C-30 | ✅ **CI passed** (§0d): `09_adjust_stock` |
+| TC-COST-07 | Void returns the original line cost to the pool | C-21, C-26 | 🛠 **Partial.** ✅ CI (§0d) as a **deterministic shared-helper simulation** with a fixture void (`14_sale_cost_fixed` TC-COST-07a–k): the pool takes back exactly the recorded line cost, never a recalculation at the current average, and the recorded sale is untouched. **Remaining (Stage 1D, D9):** a real void function, end to end |
+| TC-COST-08 | Manual cost correction → `value_correction` (info line, not profit); past sales unchanged | C-27, C-29 | ✅ **CI passed** (§0d): `07_set_cost` (TC-COST-08a–f, past sales unchanged) |
+| TC-COST-09 | Two parallel restocks of one product = sequential result | 09 §4.2 | ✅ **CI passed** (§0d): `restock.api` (10 parallel restocks give the sequential result). Single run per CI; see §6 note on repetition |
+| TC-COST-10 | 100 random restocks, sales, voids and adjustments: `check_stock_integrity()` passes | 09 §3 | ✅ **CI passed** (§0d): `13_attention_integrity_lowstock` (100 random operations; sales and voids are fixtures, to be re-run with real sales in Stage 1D) |
 | TC-COST-11 | **Owner's scenario A** (05 §3.5): late sale costed 2 × 10.00 = 20.00; pool afterwards 18 / 23000, average **1277.7778**, equal to true-time-order processing | C-21, C-23 | 📝 |
 | TC-COST-12 | **Scenario B** (in-between sale): every figure in 05 §3.5 matches; total cost conserved; C-58 logs the late-sale difference | C-20, C-58 | 📝 |
-| TC-COST-13 | A recorded sale's cost never changes after later restocks, corrections or uploads | C-29 | 📝 |
+| TC-COST-13 | A recorded sale's cost never changes after later restocks, corrections or uploads | C-29 | 🛠 **Partial.** ✅ CI (§0d) after restock (including the C-25 revaluation of negative stock), `set_cost`, and purchase cost and quantity corrections: the stored sale, sale item and sale movement are compared exactly (`14_sale_cost_fixed` TC-COST-13a–i; also TC-COST-08e/f). **Remaining (Stage 1D):** later uploads |
 | TC-COST-14 | Re-sending a recorded sale returns the same stored cost | C-29 | 📝 |
 | TC-COST-15 | Low-confidence sale is costed at upload time; `cost_basis` recorded | C-23, C-93 | 📝 |
 | TC-COST-16 | Sale time earlier than the first history row → earliest row; `cost_basis_adjusted` | C-23a | 📝 |
-| TC-COST-17 | Late sale leaves value negative while qty > 0 → cost adjustment to 0 **and** a "Cost check needed" item showing the GH₵ effect | C-25b, C-123 | 📝 |
+| TC-COST-17 | Late sale leaves value negative while qty > 0 → cost adjustment to 0 **and** a "Cost check needed" item showing the GH₵ effect | C-25b, C-123 | 🛠 **Partial.** ✅ CI (§0d) for the GH₵ effect on the "Cost check needed" item: `value_before` and `value_change` asserted exactly (−340 / +340, the C-123 example; −2000 / +2000 through `adjust_stock`), with the negative value produced by a fixture sale and by `adjust_stock` (`14_sale_cost_fixed` TC-COST-17a–f). **Remaining (Stage 1D):** the late-sale trigger itself |
 | TC-COST-18 | **Order independence:** the same restocks plus several offline sales (no in-between online sales), uploaded in every possible order, give an identical final pool, equal to true-time-order processing | C-21 | 📝 |
-| TC-COST-19 | Restock, adjustment, void and cost correction are impossible offline (buttons disabled; no queue) | 05 §3.8 | 📝 |
-| TC-COST-20 | **Conservation statement** (05 §3.2), with every term (opening value, purchases at full cost, purchase corrections, customer returns, stock found, owner corrections, supplier returns, cost of items sold, stock losses, own use, cost adjustments), holds exactly to the pesewa for every product and every period, after every test in sections 2, 2a, 2c and 2d | C-20, C-21 | 📝 |
-| TC-COST-21 | Cost-adjustment and value-correction lines appear in the right report lines (Cost of items sold sub-line vs info) | C-41, C-57 | 📝 |
+| TC-COST-19 | Restock, adjustment, void and cost correction are impossible offline (buttons disabled; no queue) | 05 §3.8 | 📝 Needs the Stage 1C-2 screens (offline button states) |
+| TC-COST-20 | **Conservation statement** (05 §3.2), with every term (opening value, purchases at full cost, purchase corrections, customer returns, stock found, owner corrections, supplier returns, cost of items sold, stock losses, own use, cost adjustments), holds exactly to the pesewa for every product and every period, after every test in sections 2, 2a, 2c and 2d | C-20, C-21 | 🛠 **Partial.** ✅ CI (§0d) at stock-pool level: every product's stock equals the sum of its movements with one history row each, after every Stage 1C database suite, plus `check_stock_integrity` in the suites listed in the T10 plan §7.2. **Remaining (Reports stage):** the period-level statement with every term |
+| TC-COST-21 | Cost-adjustment and value-correction lines appear in the right report lines (Cost of items sold sub-line vs info) | C-41, C-57 | 📝 Needs the Reports stage (and the M3 clarification of C-41) |
 
 ## 2a. Sale time: anchors, reboots and clock changes
 
@@ -184,41 +211,41 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-PUR-01 | Goods worth GH₵500, paid GH₵300 from the cash drawer → stock value +500; owed 200; expected cash −300; profit 0 | C-110 – C-115 | 📝 |
-| TC-PUR-02 | Paid now > purchase cost rejected | C-110 | 📝 |
-| TC-PUR-03 | **Partial payments:** GH₵500 purchase, 300 paid at purchase, then 100 by MoMo → owed **100**; then 100 cash → owed 0; a further 50 rejected. Stock value and profit unchanged throughout | C-113, §12.1 | 📝 |
-| TC-PUR-04 | Same Pay supplier request twice → recorded once; two parallel payments exceeding unpaid → one rejected | SEC-24, 09 §4.2 | 📝 |
-| TC-PUR-05 | Price correction with **no** units consumed since the purchase → f = 1; all of ΔC to stock value; unpaid updated; original purchase unchanged | C-116a, C-116b | 📝 |
-| TC-PUR-06 | Price correction after stock reached 0 → f = 0; all of ΔC to the already-sold/used parts; attention item lists them | C-116a, C-122 | 📝 |
-| TC-PUR-07 | Return to supplier: value removed at average; refund in cash increases expected cash; credit vs value difference → cost adjustment | C-117, C-25c | 📝 |
-| TC-PUR-08 | Return credited against a purchase's unpaid amount → unpaid reduced; never below 0 | C-117 | 📝 |
-| TC-PUR-09 | Own use → own-use line below estimated net profit, at cost; not in stock losses; stock value reduced | C-37 | 📝 |
-| TC-PUR-10 | Supplier payments never appear in operating expenses or stock value, in any report; expense form suggests Pay supplier when the note mentions stock or supplier | §12.1 | 📝 |
-| TC-PUR-11 | Partial payments are idempotent; two phones paying the same purchase at once cannot exceed the amount owed | §12.1, 09 §4.2 | 📝 |
-| TC-PUR-12 | **Worked example 05 §12.2:** +GH₵20 correction → 7.80 already sold (cost adjustment), 1.00 own use, 11.20 remaining stock; final pool 16 / 160.00 | C-116a – C-116c | 📝 |
-| TC-PUR-13 | **Equivalence:** for random in-order histories (no late uploads, voids or negative stock), the proportional split equals a full recalculation with the corrected cost, to the pesewa (allowing ≤ 1 pesewa per part from rounding) | C-116a | 📝 |
-| TC-PUR-14 | Parts always add up to ΔC exactly; recorded sale costs, past reports and closed days are unchanged; all parts dated on the correction day | C-116c, C-116d | 📝 |
-| TC-PUR-15 | Cost reduction below the amount already paid → requires a refund entry; refund in cash increases expected cash | C-116e | 📝 |
-| TC-PUR-16 | Quantity correction changes quantity only; stock value unchanged; attention item raised; stock reaching 0 applies C-25a | C-116f | 📝 |
+| TC-PUR-01 | Goods worth GH₵500, paid GH₵300 from the cash drawer → stock value +500; owed 200; expected cash −300; profit 0 | C-110 – C-115 | 🛠 **Partial.** ✅ CI (§0d) for stock value +500, owed 200 and no profit-affecting record (`08_restock`, `restock.api`). **Remaining:** expected cash −300 (cash count stage) |
+| TC-PUR-02 | Paid now > purchase cost rejected | C-110 | ✅ **CI passed** (§0d): `08_restock` |
+| TC-PUR-03 | **Partial payments:** GH₵500 purchase, 300 paid at purchase, then 100 by MoMo → owed **100**; then 100 cash → owed 0; a further 50 rejected. Stock value and profit unchanged throughout | C-113, §12.1 | ✅ **CI passed** (§0d): `10_supplier_payments`, `supplier-payments.api` (no movement, stock value change or expense is written; report-level profit lines come with Reports) |
+| TC-PUR-04 | Same Pay supplier request twice → recorded once; two parallel payments exceeding unpaid → one rejected | SEC-24, 09 §4.2 | ✅ **CI passed** (§0d): `10_supplier_payments`, `supplier-payments.api` |
+| TC-PUR-05 | Price correction with **no** units consumed since the purchase → f = 1; all of ΔC to stock value; unpaid updated; original purchase unchanged | C-116a, C-116b | ✅ **CI passed** (§0d): `12_correct_purchase` |
+| TC-PUR-06 | Price correction after stock reached 0 → f = 0; all of ΔC to the already-sold/used parts; attention item lists them | C-116a, C-122 | ✅ **CI passed** (§0d): `12_correct_purchase` |
+| TC-PUR-07 | Return to supplier: value removed at average; refund in cash increases expected cash; credit vs value difference → cost adjustment | C-117, C-25c | 🛠 **Partial.** ✅ CI (§0d) for the value removed at average, the refund and the cost-adjustment difference with its item (`11_return_to_supplier`, `return-to-supplier.api`). **Remaining:** expected cash (cash count stage); the C-25c profit line (Reports, M3) |
+| TC-PUR-08 | Return credited against a purchase's unpaid amount → unpaid reduced; never below 0 | C-117 | ✅ **CI passed** (§0d): `11_return_to_supplier`, `return-to-supplier.api` |
+| TC-PUR-09 | Own use → own-use line below estimated net profit, at cost; not in stock losses; stock value reduced | C-37 | 🛠 **Partial.** ✅ CI (§0d) for own use at cost, separate from losses, stock value reduced (`09_adjust_stock`, `adjust-stock.api`). **Remaining (Reports):** the own-use line below estimated net profit |
+| TC-PUR-10 | Supplier payments never appear in operating expenses or stock value, in any report; expense form suggests Pay supplier when the note mentions stock or supplier | §12.1 | 🛠 **Partial.** ✅ CI (§0d): supplier payments never create an expense or touch stock value (`10_supplier_payments`, `supplier-payments.api`). **Remaining:** "in any report" (Reports) and the expense-form suggestion (expenses stage) |
+| TC-PUR-11 | Partial payments are idempotent; two phones paying the same purchase at once cannot exceed the amount owed | §12.1, 09 §4.2 | ✅ **CI passed** (§0d): `10_supplier_payments`, `supplier-payments.api` |
+| TC-PUR-12 | **Worked example 05 §12.2:** +GH₵20 correction → 7.80 already sold (cost adjustment), 1.00 own use, 11.20 remaining stock; final pool 16 / 160.00 | C-116a – C-116c | ✅ **CI passed** (§0d): `12_correct_purchase` |
+| TC-PUR-13 | **Equivalence:** for random in-order histories (no late uploads, voids or negative stock), the proportional split equals a full recalculation with the corrected cost, to the pesewa (allowing ≤ 1 pesewa per part from rounding) | C-116a | ✅ **CI passed** (§0d): `12_correct_purchase`, against the **owner-approved clarification** (exact rational equivalence; inclusive bounds 0.5 pesewa consumed, 2 pesewas remaining; [STAGE-1C-DECISIONS.md](../stages/STAGE-1C-DECISIONS.md)). The wording in this row is unchanged until the M3 batch is approved |
+| TC-PUR-14 | Parts always add up to ΔC exactly; recorded sale costs, past reports and closed days are unchanged; all parts dated on the correction day | C-116c, C-116d | 🛠 **Partial.** ✅ CI (§0d): parts add up to ΔC exactly; recorded sale costs unchanged (`12_correct_purchase`; `14_sale_cost_fixed` TC-COST-13f–i). **Remaining:** past reports and closed days (those stages) |
+| TC-PUR-15 | Cost reduction below the amount already paid → requires a refund entry; refund in cash increases expected cash | C-116e | 🛠 **Partial.** ✅ CI (§0d) for the required refund entry (`12_correct_purchase`). **Remaining:** expected cash (cash count stage) |
+| TC-PUR-16 | Quantity correction changes quantity only; stock value unchanged; attention item raised; stock reaching 0 applies C-25a | C-116f | ✅ **CI passed** (§0d): `12_correct_purchase` |
 
 ## 2d. Needs attention (visibility)
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
 | TC-ATTN-01 | Negative stock raises an item with the shortfall, its estimated cost in GH₵, and the three actions | C-120, C-121 | 📝 |
-| TC-ATTN-02 | Every automatic cost adjustment ≥ GH₵0.10 raises an item with amount and direction; smaller ones appear as "Rounding" in reports | C-122, C-25a | 📝 |
-| TC-ATTN-03 | Negative value with positive qty raises "Cost check needed" | C-123 | 📝 |
+| TC-ATTN-02 | Every automatic cost adjustment ≥ GH₵0.10 raises an item with amount and direction; smaller ones appear as "Rounding" in reports | C-122, C-25a | 🛠 **Partial.** ✅ CI (§0d): items with amount and direction at ≥ GH₵0.10 (`03_inventory_helpers`, `08_restock`, `11_return_to_supplier`, `12_correct_purchase`). **Remaining (Reports):** smaller adjustments shown as "Rounding" |
+| TC-ATTN-03 | Negative value with positive qty raises "Cost check needed" | C-123 | ✅ **CI passed** (§0d), **mapped** (no test carries this ID): TC-INV-05a–c (`03_inventory_helpers`, shared helper) and TC-INV-74j/k (`09_adjust_stock`, through `adjust_stock`); TC-COST-17a–f |
 | TC-ATTN-04 | **No silent changes:** across all tests, every change to stock_qty has an owner-initiated or sale source, and every automatic value change has a matching attention item or rounding line | §3.4 principles | 📝 |
-| TC-ATTN-05 | Acknowledging an item changes no figures | §3.4 | 📝 |
-| TC-ATTN-06 | Items clear only through the stated action (e.g. negative stock clears only when stock ≥ 0 through an owner action) | C-120 | 📝 |
+| TC-ATTN-05 | Acknowledging an item changes no figures | §3.4 | ✅ **CI passed** (§0d): `13_attention_integrity_lowstock`, `attention-integrity-lowstock.api` |
+| TC-ATTN-06 | Items clear only through the stated action (e.g. negative stock clears only when stock ≥ 0 through an owner action) | C-120 | 🛠 **Partial.** ✅ CI (§0d): negative-stock, stock-discrepancy and cost-missing items cannot be acknowledged (A1); discrepancies resolve only through `adjust_stock` (`13_attention_integrity_lowstock`, `09_adjust_stock`). **Remaining (Stage 1D):** negative-stock items created and cleared by sales |
 | TC-ATTN-07 | Messages are understandable to a non-technical owner (pilot usability check) | D-05 | 📝 |
 
 ## 3. Losses, credit and cash
 
 | ID | Test | Rules | Status |
 |---|---|---|---|
-| TC-LOSS-01 | Damaged / expired / missing / count-down = stock losses at average (own use excluded, see TC-PUR-09) | C-30 | 📝 |
-| TC-LOSS-02 | Count-up corrections are not income ("stock found") | C-31 | 📝 |
+| TC-LOSS-01 | Damaged / expired / missing / count-down = stock losses at average (own use excluded, see TC-PUR-09) | C-30 | ✅ **CI passed** (§0d): `09_adjust_stock`, `adjust-stock.api` (report lines come with Reports) |
+| TC-LOSS-02 | Count-up corrections are not income ("stock found") | C-31 | ✅ **CI passed** (§0d): `09_adjust_stock`, `adjust-stock.api` |
 | TC-LOSS-03 | Resolving negative stock by count-up has no profit effect | C-32 | 📝 |
 | TC-CRED-01 | Credit sale with paid-now creates `credit_sale` + `repayment` | C-70, C-71 | 📝 |
 | TC-CRED-02 | Payment = balance → repayment only; balance 0 | C-79 | 📝 |
@@ -281,9 +308,9 @@ Run with several parallel database connections, repeated at least 100 times to e
 |---|---|---|---|
 | TC-CONC-01 | 3 devices upload 50 sales each, all touching the same 5 products, in parallel | stock = opening − Σ sold; `check_stock_integrity()` passes; no deadlock left unretried | 📝 |
 | TC-CONC-02 | Sales touching overlapping product sets in opposite orders | No deadlock (fixed lock order); all succeed | 📝 |
-| TC-CONC-03 | Sale and restock of the same product at the same time | Both applied; avg and history consistent with one sequential order | 📝 |
+| TC-CONC-03 | Sale and restock of the same product at the same time | Both applied; avg and history consistent with one sequential order | 🛠 **Partial: restock half only.** ✅ CI (§0d): parallel restocks give the sequential result (TC-COST-09), negative stock is revalued once under parallel restocks (TC-INV-68f), integrity check during restocks and adjustments (TC-INV-131b). **Remaining (Stage 1D):** the sale-against-restock race |
 | TC-CONC-04 | Forced deadlock/serialisation error (test hook) | Full rollback; client retry succeeds once; no partial rows | 📝 |
-| TC-CONC-05 | Same request ID sent from two connections simultaneously (payment, write-off, restock) | Exactly one write; both callers receive the same result | 🛠 Implemented, partial: register_device, 5 parallel duplicates (TC-API-12); payment, write-off and restock functions not built yet |
+| TC-CONC-05 | Same request ID sent from two connections simultaneously (payment, write-off, restock) | Exactly one write; both callers receive the same result | 🛠 **Partial.** ✅ CI (§0d) for register_device (TC-API-12) and every Stage 1C write function: restock, adjust_stock, pay_supplier, return_to_supplier, correct_purchase (5 simultaneous copies each), acknowledge_attention (TC-INV-130c). **Remaining:** write-off (credit stage); the section's 100-times repetition is not yet run (finding L3) |
 | TC-CONC-06 | Credit sale and payment for the same customer at the same time | Balance = Σ ledger; never negative | 📝 |
 | TC-CONC-07 | Void and a new sale of the same product at the same time | Both applied consistently; integrity check passes | 📝 |
 
@@ -292,13 +319,13 @@ Run with several parallel database connections, repeated at least 100 times to e
 | ID | Test | Status |
 |---|---|---|
 | TC-SEC-01 | Every table: Business A cannot select, insert, update or delete Business B rows | ✅ CI passed 2026-11-11 ([CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749)): all 30 current tables; ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), TC-CLOUD-02 and 03) |
-| TC-SEC-02 | Every function: another business's IDs rejected | 🛠 Implemented, partial: covers the 2 Stage 1 functions; extend with each new function |
+| TC-SEC-02 | Every function: another business's IDs rejected | ✅ **CI passed** (§0d) for **every current function** (2 from Stage 1, 14 from Stage 1C): refused through another shop (`not_a_member`) and with the caller's own shop but another shop's record (`…_not_found`), files 04, 05, 07–13 and their API tests. Not yet ☁️ for the Stage 1C functions (R-1). Extend with each new function |
 | TC-SEC-03 | Direct API writes to money, stock and ledger tables denied | ☁️ **Cloud passed** 2026-11-12 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124), TC-CLOUD-02 and 03); ✅ CI passed 2026-11-11: [local log](../test-evidence/2026-11-11-stage1-local.log), [CI 43077043749](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43077043749); re-passed in [CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
-| TC-SEC-04 | Invalid inputs rejected server-side | 🛠 Implemented, partial: table constraints done (TC-DB-10–34); function inputs in later stages |
+| TC-SEC-04 | Invalid inputs rejected server-side | 🛠 Implemented, partial: table constraints (TC-DB-10–34); ✅ CI (§0d) for the inputs of every Stage 1C function (D6 limits, required fields, dates); later functions pending |
 | TC-SEC-05 | No service-role key in the app bundle or repository (automated scan) | ✅ CI passed 2026-11-11 ([CI 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053)): repository scan, plus Android bundle scan (exact-match deny list + decoded service-role check; 2 negative controls failed as expected) |
 | TC-SEC-06 | Crash reports contain no personal or business data | 📝 |
 | TC-SEC-07 | "Log out other devices" revokes sessions; outboxes kept | 📝 |
-| TC-SEC-08 | Audit entries for every SEC-21 action | 🛠 Implemented, partial: create_business and register_device audit entries only |
+| TC-SEC-08 | Audit entries for every SEC-21 action | 🛠 **Partial.** ✅ CI (§0d) for every SEC-21 action that exists today: price changes (TC-INV-27c/d), cost changes (TC-COST-08d), stock adjustments (TC-INV-71c/f), device registration (TC-FN tests); every other Stage 1C write function is also audited. **Remaining:** voids, cancellations, write-offs and undos, debt recoveries, back-dated entries, expense edits and deletes, cash count changes, plan changes, device revocation (their functions don't exist yet) |
 | TC-SEC-09 | Cancellation requires re-authentication | 📝 |
 
 ## 8. Backup and restore (Gate G2)

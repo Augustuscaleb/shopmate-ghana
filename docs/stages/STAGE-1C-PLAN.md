@@ -1,6 +1,7 @@
 # Stage 1C implementation plan: inventory foundations
 
 **Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. E-3 was closed on 23 Nov 2026 by owner-approved exception, so checkpoint 1C-2 (screens) is no longer blocked by E-3; it starts only when the owner authorises it.**
+**Progress (24 Nov 2026):** checkpoint 1C-1 tasks T1–T10 and the 1C-1 test-gap tests are committed, pushed and CI-passed (HEAD `230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)). Exit-criteria assessment in §5a; **formal 1C-1 closure awaits the owner's review**. 1C-2 additionally waits for owner decision M2. Decisions: [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md).
 **Baseline:** product specification revision 5.1 (approved). This stage implements existing rules only. It adds **no new features** and **no accounting changes**. Where the specification leaves a detail open, it's listed in §6 as a question for the owner, not decided by Claude.
 
 ## 1. Entry criteria (all needed before coding starts)
@@ -71,6 +72,22 @@ Each test is recorded with its true evidence level (📝 / 🛠 / 🟢 / ✅ / �
 5. Test tracker, implementation status and release-readiness pages updated; report presented for review before the next stage.
 6. The dashboard product and low-stock counts use server-side aggregation and pass tests with more than 1,000 products (see the requirement in §4).
 7. No migration is applied to the cloud project without the owner's separate approval (D11). Until then, exit criterion 3 is recorded as outstanding.
+
+## 5a. Checkpoint 1C-1 assessment (24 Nov 2026; owner review pending)
+
+Owner-approved approach (24 Nov 2026): the §5 criteria apply to the **1C-1 scope** (database functions, migrations and their automated tests). Screens, Reports and usability requirements belong to 1C-2 and later stages and are not marked complete here.
+
+| # | Criterion | 1C-1 status | Evidence |
+|---|---|---|---|
+| 1 | In-scope tests ✅ CI passed, with a local log and CI link | **PASS for the 1C-1 scope** | Local log [2026-11-24-stage1c1-local.log](../test-evidence/2026-11-24-stage1c1-local.log) and [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081), both at `230c029`. Every in-scope test is ✅, or 🛠 with only its later-stage part outstanding, or 📝 because it needs screens, Reports, sales or a pilot ([test plan §0d](../product-specification/10-test-plan.md)) |
+| 2 | `check_stock_integrity()` and the conservation statement after every test | **PASS, with limits** | Integrity checks at the end of database files 03, 05, 07–12 and seven API files (T10 §7.2), and in files 13 and 14; pool conservation in every Stage 1C suite. Run at the end of each file, not after each individual test (as approved for T10 I3). The period-level statement (TC-COST-20) needs Reports |
+| 3 | Cloud migration and re-verification, or listed as outstanding under R-1 | **Outstanding (D11)** | Not applied; listed in [RELEASE-READINESS.md](../RELEASE-READINESS.md) R-1 |
+| 4 | Screens end to end | **Not applicable to 1C-1** | 1C-2 |
+| 5 | Tracker, status and release-readiness pages updated; report presented | **PASS once this update is reviewed** | This update (24 Nov 2026) |
+| 6 | Dashboard counts server-side, tested above 1,000 products | **PASS** | `inventory_summary` (D7): `04_inventory_summary`, `inventory-summary.api` |
+| 7 | No cloud migration without owner approval | **PASS** | None applied |
+
+**Open:** M2 (before 1C-2), M3 (before Reports), cloud re-verification (D11), findings L1–L3 and I6 ([STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §4–5).
 
 ## 6. Questions for the owner (clarifications only; no rule changes proposed)
 

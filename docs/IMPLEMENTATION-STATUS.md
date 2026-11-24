@@ -1,13 +1,13 @@
 # Implementation status
 
 **Baseline:** product specification revision 5.1 and PLAN v7.1 (approved 11 November 2026).
-**Current stage:** Stage 1C **plan approved** by the owner (23 Nov 2026; [stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §6, §6a). **Checkpoint 1C-1 (database) in progress**, task T1 (shared inventory helpers). The device-journey criterion **E-3 is CLOSED by owner-approved exception (23 Nov 2026)**: all device checks passed, and issue #2 (intermittent session restoration in Expo Go only, **not fixed**, cause unexplained) is accepted as an Expo Go-only limitation and monitored as KI-1 ([KNOWN-ISSUES.md](KNOWN-ISSUES.md)). 1C-2 (screens) is no longer blocked by E-3 but has not started; it needs the owner's go-ahead.
+**Current stage:** Stage 1C, **checkpoint 1C-1 (database): T1–T10 and the 1C-1 test-gap tests are implemented, committed, pushed and CI-passed; formal 1C-1 closure is pending the owner's review** of this update ([stages/STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §5a). Nothing from Stage 1C has been applied to the cloud project or tested on a phone. **Checkpoint 1C-2 (screens) has not started:** it needs the owner decision M2 and a separate go-ahead ([stages/STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §4). The device-journey criterion **E-3 is CLOSED by owner-approved exception (23 Nov 2026)**: issue #2 (intermittent session restoration in Expo Go only, **not fixed**, cause unexplained) is accepted as an Expo Go-only limitation and monitored as KI-1 ([KNOWN-ISSUES.md](KNOWN-ISSUES.md)).
 **Today dashboard** (`4b8bb6d`, CI ✅ [run 45173572606](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45173572606)): tested by the owner on the Android phone, working, figures verified as accurate (23 Nov 2026; owner-reported; build type and the individual checks run were not recorded).
 Stage 1A: ✅ approved (11 Nov 2026). Cloud verification (R-1): ✅ **completed** 12 Nov 2026, based on TC-CLOUD-01, 02 and 03 in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124). Stage 1B: ✅ approved (11 Nov 2026), subject to the outstanding release requirements in [RELEASE-READINESS.md](RELEASE-READINESS.md): physical-device journey, backup/restore gate, password investigation decision, Dependabot PRs.
 
 **Real shop data is still not allowed.** Release gate **G2 ("real data allowed")**, which must be passed before any real shop data is used, has **not** been reached. It needs, among other things, R-1 (✅ completed), R-2 physical Android journey (✅ closed by owner-approved exception, 23 Nov 2026) and **R-3 backup and restore (⛔ open)**. See [RELEASE-READINESS.md](RELEASE-READINESS.md) and test plan §10 (release gates).
 
-Test status is tracked in [product-specification/10-test-plan.md](product-specification/10-test-plan.md) (§0 and §0a). This page summarises it.
+Test status is tracked in [product-specification/10-test-plan.md](product-specification/10-test-plan.md) (§0, §0a and, for Stage 1C-1, §0d). This page summarises it.
 
 ## Cloud verification status (12 Nov 2026)
 - Development project: `shopmate-ghana`, North EU (Stockholm); project ref confirmed by the owner.
@@ -18,8 +18,40 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
   - TC-CLOUD-01 migration parity: **5/5**
   - TC-CLOUD-02 database tests on the cloud database: **77/77**
   - TC-CLOUD-03 API security and isolation through the cloud API: **18/18**
-- **Preflight correction after the run (owner-approved, 12 Nov 2026):** a direct-connection URL now accepts only the username `postgres` or `postgres.<project-ref>`; before, any other username (e.g. `admin`) was ignored if the host's project ref matched. New test TC-CLOUD-00o. **11/11 preflight tests 🟢 local passed** ([log](test-evidence/2026-11-12-cloud-preflight-revised-local.log)); **CI verification pending**. The revised preflight was **not** part of [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); that run's preflight result applies to the `f22ab13` version only. TC-CLOUD-00 is therefore 🛠 until the next cloud run.
+- **Preflight correction after the run (owner-approved, 12 Nov 2026):** a direct-connection URL now accepts only the username `postgres` or `postgres.<project-ref>`; before, any other username (e.g. `admin`) was ignored if the host's project ref matched. New test TC-CLOUD-00o. **11/11 preflight tests 🟢 local passed** ([log](test-evidence/2026-11-12-cloud-preflight-revised-local.log)); ✅ **CI passed** in [CI #48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849) and [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081) (24 Nov 2026). The revised preflight was **not** part of [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); that run's preflight result applies to the `f22ab13` version only. TC-CLOUD-00 is therefore 🛠 until the next cloud run.
 - **Requirement R-1: ✅ completed**, on the basis of the cloud database and API verification (TC-CLOUD-01 – 03) in [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124); the preflight correction doesn't affect those results. Evidence: [test-evidence/2026-11-12-cloud-verification.log](test-evidence/2026-11-12-cloud-verification.log).
+
+## Stage 1C-1: what was built (inventory database functions)
+
+Implemented and tested on the **local Supabase stack and in CI only**. **Not applied to the cloud project** (D11: needs the owner's separate approval; R-1 re-verification outstanding). No screens yet (1C-2). Real shop data is still not allowed.
+
+| Task | Commit | Server functions | Status |
+|---|---|---|---|
+| T1 shared inventory helpers | `253d489` | internal: `apply_movement`, `write_movement`, `lock_products`, `raise_attention`, limits, rounding | ✅ CI |
+| T2 server-side dashboard counts (D7) | `2aeb500` | `inventory_summary` | ✅ CI |
+| T3 products and categories | `40cf83d` | `create_product`, `update_product`, `set_product_archived` | ✅ CI |
+| Security fix: idempotency replays scoped to the business | `91f084a` | internal `claim_request` | ✅ CI |
+| T4 owner cost correction | `a62baa9` | `set_cost` | ✅ CI |
+| T5 restock | `4212e94` | `restock` | ✅ CI |
+| T6 stock adjustment | `bd59bee` | `adjust_stock` | ✅ CI |
+| T7 supplier payments | `1d695f8` | `pay_supplier`, `unpaid_purchases` | ✅ CI |
+| T8 return to supplier | `5d807cd` | `return_to_supplier` | ✅ CI |
+| T9 purchase correction | `2b3bb4a` | `correct_purchase` | ✅ CI ([CI #47](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45411475080): T1–T9) |
+| T10 Needs attention, stock integrity, low stock | `ba565e7` | `acknowledge_attention`, `check_stock_integrity`, `low_stock_products` | ✅ CI ([CI #48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849): T1–T10) |
+| 1C-1 test gaps (tests only) | `230c029` | none: TC-COST-07, 13, 17 | ✅ CI ([CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)) |
+
+Per-test status: [test plan §0d](product-specification/10-test-plan.md). Decisions: [stages/STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md).
+
+**Limits of this evidence:**
+- **TC-COST-07** is a deterministic shared-helper simulation with a fixture void; the real void function comes in Stage 1D (D9).
+- **TC-COST-13** covers restock, `set_cost` and purchase corrections; later uploads come in Stage 1D. **TC-COST-17**: the GH₵ effect is covered; the late-sale trigger comes in Stage 1D.
+- Sales and voids in all 1C tests are fixtures. Reports, cash count and screens don't exist yet, so tests that need them are partial or not started (§0d).
+
+**Open before or alongside the next steps:**
+- **M2** `unpaid_purchases` display fields: owner decision required **before Stage 1C-2**.
+- **M3** specification clarification batch (09 §3; 05 §3.2; C-41; TC-PUR-13 wording; 09 §2 attention types): owner approval **before the Reports stage**.
+- **Cloud:** migrations `20261123000100` – `20261125000100` not applied; cloud verification (R-1) to be re-run after approval (D11).
+- **Monitoring:** findings L1 (long-history correction holds locks about 4.4–5.7 s at 2,000 movements), L2 (stale comments in the frozen T7 migration), L3 (timing-dependent concurrency tests), I6 (fault scripts not in the repository). See [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §5.
 
 ## Stage 1B: what was built
 
@@ -27,7 +59,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 |---|---|---|
 | Screens: Welcome, Sign up, Log in, Forgot password, Check email, Set new password, Shop setup, Home placeholder; approved design tokens; 56 dp buttons; plain taps only | ✅ Built; typechecks and bundles. **Run by the owner on a physical Android phone in Expo Go (13–14 Nov 2026, fictitious data):** registration, email confirmation (account confirmed; Expo Go can't return to the app from the link), login, shop setup, logout and login again (same shop, Device A) worked; session restored after a full close of Expo Go in the latest attempts (about 2–3 minutes and over 70 minutes). **Unresolved:** two earlier full-close attempts returned to the login screen (intermittent; cause unknown; not reproduced since). **Pending:** TC-DEV-01 step 2 re-check with the corrected password rule; steps 5, 7, 10 and 12; development-build checks (TC-DEV-02 email links opening the app and password reset; re-check of session restoration); TC-DEV-03. Not yet 📱 Device verified ([device log](testing/DEVICE-TEST-LOG.md)) | `app/src/screens/`, `app/src/ui/` |
 | Sessions stored **only** in Android Keystore-backed secure storage (chunked); restored after restart; cleared on log out (SEC-05) | ✅ Built and tested against local Supabase (TC-AUTH-13) | `app/src/lib/chunkedSecureStorage.ts`, `expoSecureStore.ts`, `supabase.ts` |
-| Password rules: minimum 8 (server and app), 2,087 common passwords rejected (app only, see SEC-01 note). **Revised 14 Nov 2026 (owner-approved)** after device test TC-DEV-01 step 2 accepted `password123`: a listed password followed only by numbers or symbols is now also rejected | ✅ Built. Revision: 🟢 local tests pass ([log](test-evidence/2026-11-14-password-policy-local.log)); CI and phone re-check pending | `app/src/auth/passwordPolicy.ts` |
+| Password rules: minimum 8 (server and app), 2,087 common passwords rejected (app only, see SEC-01 note). **Revised 14 Nov 2026 (owner-approved)** after device test TC-DEV-01 step 2 accepted `password123`: a listed password followed only by numbers or symbols is now also rejected | ✅ Built. Revision: 🟢 local tests pass ([log](test-evidence/2026-11-14-password-policy-local.log)); ✅ CI passed ([CI #48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849) and [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)); phone re-check: see the [device log](testing/DEVICE-TEST-LOG.md) | `app/src/auth/passwordPolicy.ts` |
 | Email confirmation and password reset via PKCE deep links (`shopmate://auth-callback`, `shopmate://reset-password`) | ✅ Built; links need a development build to test on a phone | `app/src/auth/deepLinks.ts`, `AppRoot.tsx` |
 | Shop setup and device registration with crash-safe idempotency (request ID saved before the call) | ✅ Built and tested, including lost-reply cases (TC-AUTH-14–16) | `app/src/services/account.ts` |
 | **Bug found and fixed:** the app would have started with no configuration on a real phone (Expo only inlines `process.env.EXPO_PUBLIC_*` when written literally). Caught by the new bundle scan's control check | ✅ Fixed | `app/src/config/env.ts` |
@@ -39,7 +71,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 
 *Snapshot at Stage 1B approval (11 Nov 2026), verified on 23 Nov 2026 against the [local log](test-evidence/2026-11-11-stage1b-local.log) (database `Files=2, Tests=77`; API `4 files, 22 tests`; app `6 files, 13 tests`) and [CI run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) on commit `1aee353` (same counts). These are not the current totals.*
 
-**Current totals (latest CI, verified 23 Nov 2026):** [CI run #40, 45240599452](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45240599452) on commit `91f084a` passed every step: database tests **316/316** (6 files), API security and integration tests **76/76** (9 files), app unit tests **25/25** (8 files); typecheck, secret scan, dependency gate, Android bundle export and bundle secret scan all passed. The growth since Stage 1B comes from the dashboard (app tests), the password-rule revision, the audit gate and cloud-preflight tests, and Stage 1C-1 tasks T1–T3 plus the idempotency fix.
+**Current totals (verified 24 Nov 2026):** commit `230c029`, [CI #49, run 45431840081](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081), and the same commit locally ([local log](test-evidence/2026-11-24-stage1c1-local.log)): database tests **973/973** (14 files), API security and integration tests **131/131** (16 files), app unit tests **25/25** (8 files); typecheck, secret scan, dependency gate, Android bundle export and bundle secret scan all passed. *Previous snapshot:* [CI #40](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45240599452) on `91f084a` (316 / 76 / 25).
 
 | Suite | Result | Evidence |
 |---|---|---|
@@ -48,7 +80,7 @@ Test status is tracked in [product-specification/10-test-plan.md](product-specif
 | App unit tests | ✅ 13/13 (local) | same |
 | Repository and bundle secret scans; dependency gate; typecheck | ✅ (local) | same |
 | CI (GitHub Actions) | ✅ Passed: 77 DB, 22 integration, 13 app unit tests; secret, dependency and bundle scans | [run 43081513053](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43081513053) |
-| **Cloud verification** (actual Supabase development project) | ☁️ Passed: migrations 5/5; database tests 77/77; API security and isolation 18/18; preflight passed with the `f22ab13` version (revised since: 🛠, CI pending) | [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) |
+| **Cloud verification** (actual Supabase development project) | ☁️ Passed: migrations 5/5; database tests 77/77; API security and isolation 18/18; preflight passed with the `f22ab13` version (revised since: ✅ CI passed, not yet run in the cloud, so TC-CLOUD-00 stays 🛠) | [cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124) |
 | On-device checks (TC-DEV-01–03) | 📱 Device verified (owner-reported; Samsung Galaxy A06; installed Android builds, 15 and 23 Nov 2026). R-2 / E-3 closed by owner-approved exception (23 Nov 2026); issue #2 (Expo Go only) accepted as a limitation, not fixed (KI-1). Check email and Set new password not checked at 130% | [device log](testing/DEVICE-TEST-LOG.md), [known issues](KNOWN-ISSUES.md) |
 
 ## Stage 1A: what was built

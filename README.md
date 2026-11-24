@@ -2,7 +2,7 @@
 
 A mobile-first business management app for small shops in Ghana (provision stores, mini-marts, boutiques): sales, stock, customer credit, expenses and profit, in GH₵, with offline sales recording.
 
-**Status:** Stage 1 (project foundation, database and security). No business features yet. No real shop data.
+**Status:** Stage 1C, checkpoint 1C-1: the inventory database functions (products, restock, adjustments, supplier payments, returns, purchase corrections, Needs attention, stock integrity, low stock) are built and pass CI on the local stack; they are **not** yet applied to the cloud project, and there are no inventory screens yet. No real shop data. See [docs/IMPLEMENTATION-STATUS.md](docs/IMPLEMENTATION-STATUS.md).
 
 | Folder | What it is |
 |---|---|

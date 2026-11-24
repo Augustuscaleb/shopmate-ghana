@@ -1,6 +1,6 @@
 # Stage 1C-1, task T8: Return to supplier — plan and accounting reconciliation
 
-**Status:** PLAN, for owner review. Not implemented. Owner decisions R1–R8, Q1 and O1 recorded 24 Nov 2026.
+**Status:** ✅ **Implemented** in `5d807cd` (24 Nov 2026); CI passed ([CI #47](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45411475080), [#48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849), [#49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)); not applied to the cloud project (D11). Owner decisions R1–R8, Q1 and O1 recorded 24 Nov 2026. The specification recommendations in §3.4 remain **open** (M3, before Reports). *Below: the plan as approved; its "not implemented" wording is historical.*
 **Baseline:** commit `1d695f8` (T7), CI #45 passed. Specification revision 5.1.
 **Scope:** `return_to_supplier` only. Purchase-cost corrections (`correct_purchase`) are a separate later task.
 

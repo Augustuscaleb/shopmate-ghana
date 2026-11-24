@@ -1,6 +1,6 @@
 # Stage 1C-1, task T9: Correct purchase — plan
 
-**Status:** APPROVED DESIGN. All fifteen owner decisions (C1, C2, Q3–Q10, U1–U5) approved 24 Nov 2026. **Not implemented.** No owner decision is outstanding; §13 lists routine implementation details only.
+**Status:** ✅ **Implemented** in `2b3bb4a` (24 Nov 2026); CI passed ([CI #47](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45411475080), [#48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849), [#49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)); not applied to the cloud project (D11). All fifteen owner decisions (C1, C2, Q3–Q10, U1–U5) approved 24 Nov 2026. The specification clarification in §12 (09 §3, with the T8 recommendations) remains **open** (M3, before Reports). *Below: the design as approved; "to be implemented" wording is historical.*
 **Baseline:** commit `5d807cd` (T8), CI #46 passed. Specification revision 5.1.
 **Legend:** **[REQ]** established by the specification or an earlier approved decision · **[DEC]** owner-approved for T9 · **[REC]** recommendation, not yet approved · **[OPEN]** needs an owner decision.
 
