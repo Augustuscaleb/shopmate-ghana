@@ -1,0 +1,77 @@
+ShopMate Ghana — Stage 1C-1 closure verification (LOCAL Supabase stack, fictitious data only)
+Date (UTC): 2026-11-24T22:59:27Z   Supabase CLI: 3.1.0   Node: v22.23.4
+Commit: 44d9d55bd668421f5e3cf1559c9cff96adf27fcb, run in a clean git worktree of that commit; tracked changes at start: 0; untracked entries: 2 (the node_modules links, not project files)
+Scope: local Docker stack only; includes the M2 migration and tests. No cloud project, no device.
+Generation: every line below is the command output with trailing whitespace removed as it was written (sed 's/[[:space:]]*$//'); nothing was edited afterwards.
+
+== 1. Reset database (all migrations from scratch) ==
+Applying migration 20261111000100_foundation.sql...
+Applying migration 20261111000200_business_access.sql...
+Applying migration 20261111000300_core_tables.sql...
+Applying migration 20261111000400_triggers_rls_privileges.sql...
+Applying migration 20261111000500_foundation_functions.sql...
+Applying migration 20261123000100_inventory_helpers.sql...
+Applying migration 20261123000200_inventory_summary.sql...
+Applying migration 20261123000300_product_management.sql...
+Applying migration 20261123000400_claim_request_business_check.sql...
+Applying migration 20261123000500_set_cost.sql...
+Applying migration 20261124000100_restock.sql...
+Applying migration 20261124000200_adjust_stock.sql...
+Applying migration 20261124000300_supplier_payments.sql...
+Applying migration 20261124000400_return_to_supplier.sql...
+Applying migration 20261124000500_correct_purchase.sql...
+Applying migration 20261125000100_attention_integrity_lowstock.sql...
+Applying migration 20261125000200_unpaid_purchases_display.sql...
+Finished supabase db reset.
+
+== 2. Repository secret scan ==
+Secret scan passed: 161 files checked, no keys, tokens or passwords found.
+
+== 3. Dependency audit gate ==
+Dependency audit gate passed for .: no high or critical advisories outside approved, unexpired exceptions.
+Dependency audit gate passed for app: no high or critical advisories outside approved, unexpired exceptions.
+
+== 4. Typecheck (tests and app) ==
+Typecheck passed (exit 0)
+
+== 5. Database tests (pgTAP, supabase test db) ==
+Target: local stack (127.0.0.1:54322)
+supabase/tests/database/01_structure_and_constraints.test.sql ..... ok
+supabase/tests/database/02_rls_isolation_and_functions.test.sql ... ok
+supabase/tests/database/03_inventory_helpers.test.sql ............. ok
+supabase/tests/database/04_inventory_summary.test.sql ............. ok
+supabase/tests/database/05_products_categories.test.sql ........... ok
+supabase/tests/database/06_request_idempotency.test.sql ........... ok
+supabase/tests/database/07_set_cost.test.sql ...................... ok
+supabase/tests/database/08_restock.test.sql ....................... ok
+supabase/tests/database/09_adjust_stock.test.sql .................. ok
+supabase/tests/database/10_supplier_payments.test.sql ............. ok
+supabase/tests/database/11_return_to_supplier.test.sql ............ ok
+supabase/tests/database/12_correct_purchase.test.sql ..............
+# TC-PUR-13 measurements: 25 histories; movements walked min 11, median 29, max 2000; correct_purchase time ms: median 4.68, max 4558.49 (long history of 2000 movements: 4558.49 ms); largest f denominator 264 digits; largest share denominator 273 digits; max remaining-stock deviation 1.3525 pesewa; max consumed-part deviation 0.4933 pesewa
+ok
+supabase/tests/database/13_attention_integrity_lowstock.test.sql ..
+# TC-INV-121p measurement: 20004 movements in 4 products checked in 156.4 ms
+# TC-INV-122d measurement: low_stock_products over 1005 low products (of 1009 active) in 11.2 ms
+ok
+supabase/tests/database/14_sale_cost_fixed.test.sql ............... ok
+supabase/tests/database/15_unpaid_purchases_display.test.sql ......
+# M2-70 measurement: unpaid_purchases over 2000 unpaid purchases (page of 200) in 105.6 ms
+ok
+All tests successful.
+Files=15, Tests=1017, 55 wallclock secs ( 0.19 usr  0.05 sys +  0.16 cusr  0.21 csys =  0.61 CPU)
+Result: PASS
+
+== 6. API security and integration tests (vitest, local Auth + PostgREST) ==
+ Test Files  17 passed (17)
+      Tests  133 passed (133)
+
+== 7. App unit tests ==
+ Test Files  8 passed (8)
+      Tests  25 passed (25)
+
+== 8. Android bundle export and bundle secret scan ==
+Android Bundled 11805ms index.ts (671 modules)
+Bundle secret scan passed: 2 files; public URL present; 2 denied secret values absent; no service-role JWTs, secret keys, DB passwords or private keys.
+
+== End: 2026-11-24T23:01:42Z ==

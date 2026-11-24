@@ -88,6 +88,35 @@ export function ChevronLeftIcon({ colour, size = 24 }: IconProps) {
   );
 }
 
+
+/** Customers: two people (head and shoulders). */
+export function PeopleIcon({ colour, size = 24 }: IconProps) {
+  const head = size * 0.28;
+  return (
+    <View style={[styles.box, { width: size, height: size }]} accessible={false}>
+      <View style={{ flexDirection: 'row', gap: size * 0.06, alignItems: 'flex-end' }}>
+        {[0, 1].map((i) => (
+          <View key={i} style={{ alignItems: 'center', gap: size * 0.04 }}>
+            <View style={{ width: head, height: head, borderRadius: head / 2, borderWidth: 2, borderColor: colour }} />
+            <View style={{ width: size * 0.4, height: size * 0.24, borderTopLeftRadius: size * 0.2, borderTopRightRadius: size * 0.2, borderWidth: 2, borderBottomWidth: 0, borderColor: colour }} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** More: three horizontal lines. */
+export function MenuIcon({ colour, size = 24 }: IconProps) {
+  return (
+    <View style={[styles.box, { width: size, height: size, gap: size * 0.16 }]} accessible={false}>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={{ width: size * 0.72, height: 2, borderRadius: 1, backgroundColor: colour }} />
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   box: { alignItems: 'center', justifyContent: 'center' },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },

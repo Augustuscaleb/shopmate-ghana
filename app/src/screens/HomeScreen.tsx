@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   BackHandler,
   Platform,
@@ -13,7 +13,11 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Button, Notice } from '../ui/components';
 import { colours, space, touch, type } from '../ui/theme';
-import { AlertIcon, BarsIcon, BoxIcon, ChevronLeftIcon, GridIcon, PlusIcon, ReceiptIcon } from '../ui/icons';
+import { AlertIcon, BarsIcon, BoxIcon, ChevronLeftIcon, GridIcon, MenuIcon, PeopleIcon, PlusIcon, ReceiptIcon } from '../ui/icons';
+import { FadeIn, PressableScale, Skeleton } from '../ui/animated';
+import { HOME_TAB, TABS, onBackPress, type TabKey } from '../navigation/tabs';
+import { ConnectivityMonitor, type Connectivity } from '../lib/connectivity';
+import { classifyRpcError, looksLikeNetworkFailure } from '../services/rpcErrors';
 import type { Business, Device } from '../services/account';
 import {
   firstName,
@@ -40,12 +44,13 @@ import {
  * S-10 Today: the owner's business dashboard.
  *
  * Every figure is read from the owner's own shop data (DashboardService, read-only). Selling
- * (Stage 1D) and inventory (Stage 1C) are not built yet, so today the figures are genuinely zero
- * and the Sales, Stock and Reports tabs are honest previews of what is coming. Nothing here
- * records or changes business data.
+ * (Stage 1D) and inventory screens (Stage 1C-2) are not built yet, so today the figures are genuinely
+ * zero and the Sell, Products and Customers tabs are honest previews of what is coming. Nothing here
+ * records or changes business data. Five tabs: owner decisions D-7 and D-8 (24 Nov 2026).
  */
 
-type Tab = 'dashboard' | 'sales' | 'stock' | 'reports';
+type Tab = TabKey;
+type LaterTab = Exclude<TabKey, 'today' | 'more'>;
 
 const TOP_INSET = Platform.OS === 'android' ? (SystemStatusBar.currentHeight ?? 24) : 48;
 /**
@@ -55,7 +60,7 @@ const TOP_INSET = Platform.OS === 'android' ? (SystemStatusBar.currentHeight ?? 
  * library is added in a future native build.
  */
 const NAV_BAR_ALLOWANCE = Platform.OS === 'android' ? 48 : 24;
-const TINT = '#E3F3EA';
+const TINT = colours.tint;
 
 export function HomeScreen({ business, device, onSignOut, dashboard }: {
   business: Business;
@@ -63,7 +68,10 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
   onSignOut: () => void;
   dashboard: DashboardService;
 }) {
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTab] = useState<Tab>(HOME_TAB);
+  const connectivity = useMemo(() => new ConnectivityMonitor(), []);
+  const [online, setOnline] = useState<Connectivity>(connectivity.state);
+  useEffect(() => connectivity.subscribe(setOnline), [connectivity]);
   const [accountOpen, setAccountOpen] = useState(false);
   const [load, setLoad] = useState<DashboardLoad>({ kind: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
@@ -73,23 +81,29 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
     else setLoad({ kind: 'loading' });
     try {
       const data = await dashboard.fetchOverview(business.id);
+      connectivity.reportServerResponse();
       setLoad(loadSucceeded(data));
-    } catch {
+    } catch (e) {
+      // Only a request with no server response means "offline"; a server error means online
+      if (looksLikeNetworkFailure(e as never)) connectivity.reportNoResponse();
+      else if (classifyRpcError(e as never).kind === 'definite') connectivity.reportServerResponse();
       // Keep figures that were already shown (with a notice); only show the error state when there are none
       setLoad(loadFailed);
     } finally {
       setRefreshing(false);
     }
-  }, [dashboard, business.id]);
+  }, [dashboard, business.id, connectivity]);
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
   // Android back: close the account panel, then return to the dashboard, then leave the app.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (accountOpen) { setAccountOpen(false); return true; }
-      if (tab !== 'dashboard') { setTab('dashboard'); return true; }
-      return false;
+      const next = onBackPress({ tab, overlayOpen: accountOpen });
+      if (!next) return false;
+      setAccountOpen(next.overlayOpen);
+      setTab(next.tab);
+      return true;
     });
     return () => sub.remove();
   }, [accountOpen, tab]);
@@ -110,22 +124,27 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
       <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={tab === 'dashboard'
+        refreshControl={tab === 'today'
           ? <RefreshControl refreshing={refreshing} onRefresh={() => fetchOverview(true)} colors={[colours.shopGreen]} progressViewOffset={TOP_INSET} />
           : undefined}
       >
-        {tab === 'dashboard' ? (
-          <Dashboard
-            business={business}
-            ownerName={ownerName}
-            load={load}
-            onRetry={() => fetchOverview(load.kind === 'ready')}
-            onOpenAccount={() => setAccountOpen(true)}
-            onNavigate={setTab}
-          />
-        ) : (
-          <ComingSoon tab={tab} onBack={() => setTab('dashboard')} />
-        )}
+        <FadeIn animationKey={tab}>
+          {tab === 'today' ? (
+            <Dashboard
+              business={business}
+              ownerName={ownerName}
+              load={load}
+              offline={online === 'offline'}
+              onRetry={() => fetchOverview(load.kind === 'ready')}
+              onOpenAccount={() => setAccountOpen(true)}
+              onNavigate={setTab}
+            />
+          ) : tab === 'more' ? (
+            <AccountPanel business={business} device={device} ownerName={ownerName} onSignOut={onSignOut} />
+          ) : (
+            <ComingSoon tab={tab} onBack={() => setTab(HOME_TAB)} />
+          )}
+        </FadeIn>
       </ScrollView>
       <BottomNav tab={tab} onChange={setTab} />
     </View>
@@ -134,10 +153,11 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
 
 /* ───────────────────────── Dashboard ───────────────────────── */
 
-function Dashboard({ business, ownerName, load, onRetry, onOpenAccount, onNavigate }: {
+function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount, onNavigate }: {
   business: Business;
   ownerName: string | null;
   load: DashboardLoad;
+  offline: boolean;
   onRetry: () => void;
   onOpenAccount: () => void;
   onNavigate: (tab: Tab) => void;
@@ -148,6 +168,7 @@ function Dashboard({ business, ownerName, load, onRetry, onOpenAccount, onNaviga
   const stale = staleNotice(load);
   const activity = activityView(load);
   const dash = '—';
+  const loading = load.kind === 'loading';
 
   return (
     <>
@@ -178,17 +199,26 @@ function Dashboard({ business, ownerName, load, onRetry, onOpenAccount, onNaviga
           <View style={styles.revenueAccent} />
           <View style={styles.revenueBody}>
             <Text style={styles.cardLabel}>TODAY'S REVENUE</Text>
-            <Text style={styles.keyFigure}>{data ? formatCedis(data.todayRevenuePesewas) : dash}</Text>
+            {loading ? <Skeleton width="60%" height={36} style={styles.skeletonFigure} /> : (
+              <Text style={styles.keyFigure}>{data ? formatCedis(data.todayRevenuePesewas) : dash}</Text>
+            )}
             <Text style={styles.cardCaption}>
               {revenueCaption(load)}
             </Text>
           </View>
         </View>
 
+        {offline ? (
+          <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
+            <Text style={styles.offlineText}>You're offline. Figures may be out of date; actions that need internet are paused.</Text>
+          </View>
+        ) : null}
+
         <View style={styles.statRow}>
-          <Stat label="Sales today" value={data ? String(data.todaySalesCount) : dash} caption={data ? (data.todaySalesCount === 1 ? 'sale' : 'sales') : ' '} icon={ReceiptIcon} />
-          <Stat label="Products" value={data ? String(data.productCount) : dash} caption={data ? (data.productCount === 0 ? 'none added yet' : 'in stock list') : ' '} icon={BoxIcon} />
+          <Stat loading={loading} label="Sales today" value={data ? String(data.todaySalesCount) : dash} caption={data ? (data.todaySalesCount === 1 ? 'sale' : 'sales') : ' '} icon={ReceiptIcon} />
+          <Stat loading={loading} label="Products" value={data ? String(data.productCount) : dash} caption={data ? (data.productCount === 0 ? 'none added yet' : 'in stock list') : ' '} icon={BoxIcon} />
           <Stat
+            loading={loading}
             label="Low stock"
             value={data ? String(data.lowStockCount) : dash}
             caption={data ? (data.lowStockCount > 0 ? 'need restocking' : data.productCount === 0 ? 'nothing to track' : 'all good') : ' '}
@@ -206,10 +236,10 @@ function Dashboard({ business, ownerName, load, onRetry, onOpenAccount, onNaviga
 
         <SectionTitle title="Quick actions" />
         <View style={styles.actions}>
-          <Action label="Record a sale" caption="Coming in Stage 1D" icon={ReceiptIcon} primary onPress={() => onNavigate('sales')} />
-          <Action label="View inventory" caption="Coming in Stage 1C" icon={BoxIcon} onPress={() => onNavigate('stock')} />
-          <Action label="Add a product" caption="Coming in Stage 1C" icon={PlusIcon} onPress={() => onNavigate('stock')} />
-          <Action label="View reports" caption="Coming later" icon={BarsIcon} onPress={() => onNavigate('reports')} />
+          <Action label="Record a sale" caption="Coming in Stage 1D" icon={ReceiptIcon} primary onPress={() => onNavigate('sell')} />
+          <Action label="View products" caption="Being built now" icon={BoxIcon} onPress={() => onNavigate('products')} />
+          <Action label="Add a product" caption="Being built now" icon={PlusIcon} onPress={() => onNavigate('products')} />
+          <Action label="View reports" caption="Coming later" icon={BarsIcon} onPress={() => onNavigate('more')} />
         </View>
 
         <SectionTitle title="Recent activity" />
@@ -248,17 +278,19 @@ function Chip({ text, gold = false }: { text: string; gold?: boolean }) {
   );
 }
 
-function Stat({ label, value, caption, icon: Icon, warn = false }: {
-  label: string; value: string; caption: string; icon: ComponentType<{ colour: string; size?: number }>; warn?: boolean;
+function Stat({ label, value, caption, icon: Icon, warn = false, loading = false }: {
+  label: string; value: string; caption: string; icon: ComponentType<{ colour: string; size?: number }>; warn?: boolean; loading?: boolean;
 }) {
   const tone = warn ? colours.warnText : colours.shopGreen;
   return (
-    <View style={[styles.card, styles.stat]} accessible accessibilityLabel={`${label}: ${value} ${caption}`}>
+    <View style={[styles.card, styles.stat]} accessible accessibilityLabel={loading ? `${label}: loading` : `${label}: ${value} ${caption}`}>
       <View style={[styles.statIcon, { backgroundColor: warn ? colours.warnBg : TINT }]}>
         <Icon colour={tone} size={20} />
       </View>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, warn && { color: colours.warnText }]}>{value}</Text>
+      {loading ? <Skeleton width={40} height={26} style={styles.skeletonStat} /> : (
+        <Text style={[styles.statValue, warn && { color: colours.warnText }]}>{value}</Text>
+      )}
       <Text style={styles.statCaption}>{caption}</Text>
     </View>
   );
@@ -272,19 +304,19 @@ function Action({ label, caption, icon: Icon, onPress, primary = false }: {
   label: string; caption: string; icon: ComponentType<{ colour: string; size?: number }>; onPress: () => void; primary?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={`${caption}. Opens a preview.`}
       onPress={onPress}
-      style={({ pressed }) => [styles.action, primary && styles.actionPrimary, pressed && styles.pressed]}
+      style={[styles.action, primary && styles.actionPrimary]}
     >
       <View style={[styles.actionIcon, primary && styles.actionIconPrimary]}>
         <Icon colour={primary ? colours.deepGreen : colours.shopGreen} size={22} />
       </View>
       <Text style={[styles.actionLabel, primary && styles.actionLabelPrimary]}>{label}</Text>
       <Text style={[styles.actionCaption, primary && styles.actionCaptionPrimary]}>{caption}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -335,11 +367,11 @@ function EmptyActivity({ view }: { view: Exclude<ActivityView, 'list'> }) {
 
 /* ───────────────────────── Previews of later stages ───────────────────────── */
 
-const PREVIEWS: Record<Exclude<Tab, 'dashboard'>, { title: string; subtitle: string; stage: string; icon: ComponentType<{ colour: string; size?: number }>; points: string[] }> = {
-  sales: {
-    title: 'Sales',
+const PREVIEWS: Record<LaterTab, { title: string; subtitle: string; stage: string; icon: ComponentType<{ colour: string; size?: number }>; points: string[] }> = {
+  sell: {
+    title: 'Sell',
     subtitle: 'Record sales and give receipts',
-    stage: 'Coming in Stage 1D',
+    stage: 'Coming in a later update (Stage 1D)',
     icon: ReceiptIcon,
     points: [
       'A fast New Sale screen with your product tiles',
@@ -348,10 +380,10 @@ const PREVIEWS: Record<Exclude<Tab, 'dashboard'>, { title: string; subtitle: str
       'Receipts you can share on WhatsApp',
     ],
   },
-  stock: {
-    title: 'Stock',
+  products: {
+    title: 'Products',
     subtitle: 'Products, restocks and low-stock alerts',
-    stage: 'Coming in Stage 1C',
+    stage: 'Being built now (Stage 1C)',
     icon: BoxIcon,
     points: [
       'Add products with selling price and cost',
@@ -360,21 +392,20 @@ const PREVIEWS: Record<Exclude<Tab, 'dashboard'>, { title: string; subtitle: str
       'Record damaged, expired or missing stock',
     ],
   },
-  reports: {
-    title: 'Reports',
-    subtitle: 'Profit and business performance',
-    stage: 'Coming in a later stage, after selling',
-    icon: BarsIcon,
+  customers: {
+    title: 'Customers',
+    subtitle: 'Your credit book',
+    stage: 'Coming in a later update',
+    icon: PeopleIcon,
     points: [
-      "Today's sales and profit, after expenses and losses",
-      'Cash, MoMo and credit split',
-      'Best-selling products',
-      'Money customers owe you',
+      'See who owes you, largest amounts first',
+      'Record repayments in cash or MoMo',
+      'Send a polite balance reminder on WhatsApp',
     ],
   },
 };
 
-function ComingSoon({ tab, onBack }: { tab: Exclude<Tab, 'dashboard'>; onBack: () => void }) {
+function ComingSoon({ tab, onBack }: { tab: LaterTab; onBack: () => void }) {
   const p = PREVIEWS[tab];
   const Icon = p.icon;
   return (
@@ -403,7 +434,7 @@ function ComingSoon({ tab, onBack }: { tab: Exclude<Tab, 'dashboard'>; onBack: (
           </View>
         </View>
         <Notice text="Nothing has been recorded. This screen only shows what is planned." />
-        <Button label="Back to dashboard" kind="secondary" onPress={onBack} />
+        <Button label="Back to Today" kind="secondary" onPress={onBack} />
       </View>
     </>
   );
@@ -411,17 +442,27 @@ function ComingSoon({ tab, onBack }: { tab: Exclude<Tab, 'dashboard'>; onBack: (
 
 /* ───────────────────────── Account panel ───────────────────────── */
 
+/** S-70 More items that arrive in later stages (shown so the owner knows where they will be). */
+const LATER_MENU = ['Expenses', 'Reports', 'Close the day', 'Export data', 'Settings', 'Subscription', 'Help and support'];
+
+/**
+ * Shop and account details with Log out. Opened from the avatar (with Back), and shown as the
+ * More tab (S-70; D-8: More keeps Log out), where it also lists the items still to come.
+ */
 function AccountPanel({ business, device, ownerName, onClose, onSignOut }: {
-  business: Business; device: Device; ownerName: string | null; onClose: () => void; onSignOut: () => void;
+  business: Business; device: Device; ownerName: string | null; onClose?: () => void; onSignOut: () => void;
 }) {
-  return (
-    <ScrollView contentContainerStyle={styles.scroll}>
+  const asTab = !onClose;
+  const body = (
+    <>
       <View style={styles.bar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onClose} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <ChevronLeftIcon colour={colours.surface} size={20} />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
-        <Text style={styles.barTitle} accessibilityRole="header">Shop and account</Text>
+        {onClose ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onClose} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+            <ChevronLeftIcon colour={colours.surface} size={20} />
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+        ) : null}
+        <Text style={styles.barTitle} accessibilityRole="header">{asTab ? 'More' : 'Shop and account'}</Text>
         {ownerName ? <Text style={styles.barSubtitle}>Signed in as {ownerName}</Text> : null}
       </View>
       <View style={styles.body}>
@@ -433,10 +474,21 @@ function AccountPanel({ business, device, ownerName, onClose, onSignOut }: {
         </View>
         <Notice text="Test version: please use made-up data only until the pilot starts." />
         <Text style={styles.footnote}>Shop details, receipt text and low-stock settings will be editable here in a later stage.</Text>
+        {asTab ? (
+          <View style={styles.card}>
+            {LATER_MENU.map((item, i) => (
+              <View key={item} style={[styles.infoRow, i > 0 && styles.saleRowDivider]} accessible accessibilityLabel={`${item}: coming in a later update`}>
+                <Text style={styles.infoValue}>{item}</Text>
+                <Text style={styles.laterTag}>Later</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <Button label="Log out" kind="secondary" onPress={onSignOut} />
       </View>
-    </ScrollView>
+    </>
   );
+  return asTab ? body : <ScrollView contentContainerStyle={styles.scroll}>{body}</ScrollView>;
 }
 
 function InfoRow({ label, value, first = false }: { label: string; value: string; first?: boolean }) {
@@ -450,32 +502,34 @@ function InfoRow({ label, value, first = false }: { label: string; value: string
 
 /* ───────────────────────── Bottom navigation ───────────────────────── */
 
-const TABS: { key: Tab; label: string; icon: ComponentType<{ colour: string; size?: number }> }[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: GridIcon },
-  { key: 'sales', label: 'Sales', icon: ReceiptIcon },
-  { key: 'stock', label: 'Stock', icon: BoxIcon },
-  { key: 'reports', label: 'Reports', icon: BarsIcon },
-];
+const TAB_ICONS: Record<Tab, ComponentType<{ colour: string; size?: number }>> = {
+  today: GridIcon,
+  sell: ReceiptIcon,
+  products: BoxIcon,
+  customers: PeopleIcon,
+  more: MenuIcon,
+};
 
 function BottomNav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   return (
     <View style={styles.nav} accessibilityRole="tablist">
-      {TABS.map(({ key, label, icon: Icon }) => {
+      {TABS.map(({ key, label, availability }) => {
         const selected = key === tab;
+        const Icon = TAB_ICONS[key];
         return (
-          <Pressable
+          <PressableScale
             key={key}
             accessibilityRole="tab"
-            accessibilityLabel={label}
+            accessibilityLabel={availability === 'later' ? `${label}, coming in a later update` : label}
             accessibilityState={{ selected }}
             onPress={() => onChange(key)}
-            style={({ pressed }) => [styles.navItem, pressed && styles.pressed]}
+            style={styles.navItem}
           >
             <View style={[styles.navIcon, selected && styles.navIconSelected]}>
               <Icon colour={selected ? colours.shopGreen : colours.stone} size={22} />
             </View>
             <Text style={[styles.navLabel, selected && styles.navLabelSelected]} numberOfLines={1} maxFontSizeMultiplier={1.3}>{label}</Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
@@ -583,4 +637,10 @@ const styles = StyleSheet.create({
   navIconSelected: { backgroundColor: TINT },
   navLabel: { fontSize: type.caption, color: colours.stone, fontWeight: '600' },
   navLabelSelected: { color: colours.shopGreen, fontWeight: '800' },
+
+  skeletonFigure: { marginVertical: space.xs },
+  skeletonStat: { marginVertical: 3 },
+  offlineBanner: { backgroundColor: '#EDECEA', borderRadius: 12, padding: space.md, borderLeftWidth: 4, borderLeftColor: colours.neutral },
+  offlineText: { fontSize: type.body, color: colours.ink },
+  laterTag: { fontSize: type.caption, color: colours.stone, fontWeight: '700' },
 });

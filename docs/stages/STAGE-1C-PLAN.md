@@ -1,7 +1,7 @@
 # Stage 1C implementation plan: inventory foundations
 
 **Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. E-3 was closed on 23 Nov 2026 by owner-approved exception, so checkpoint 1C-2 (screens) is no longer blocked by E-3; it starts only when the owner authorises it.**
-**Progress (24 Nov 2026):** checkpoint 1C-1 tasks T1–T10 and the 1C-1 test-gap tests are committed, pushed and CI-passed (`230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)); current HEAD `7d29d4d` ([CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376)). Exit-criteria assessment in §5a; **formal 1C-1 closure awaits the owner's review**. M2 is decided and implemented (Option B, `7d29d4d`, [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376)); 1C-2 still needs the owner's separate go-ahead. Decisions: [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md).
+**Progress (24 Nov 2026):** checkpoint 1C-1 (T1–T10, test gaps, M2) is **closed** by the owner for its local/CI scope (§5a), with cloud verification outstanding (D11). **Checkpoint 1C-2 is authorised** and in progress, one increment at a time ([STAGE-1C-2-EXECUTION-BRIEF.md](STAGE-1C-2-EXECUTION-BRIEF.md); decisions in [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §3a). Current HEAD `44d9d55`.
 **Baseline:** product specification revision 5.1 (approved). This stage implements existing rules only. It adds **no new features** and **no accounting changes**. Where the specification leaves a detail open, it's listed in §6 as a question for the owner, not decided by Claude.
 
 ## 1. Entry criteria (all needed before coding starts)
@@ -73,7 +73,7 @@ Each test is recorded with its true evidence level (📝 / 🛠 / 🟢 / ✅ / �
 6. The dashboard product and low-stock counts use server-side aggregation and pass tests with more than 1,000 products (see the requirement in §4).
 7. No migration is applied to the cloud project without the owner's separate approval (D11). Until then, exit criterion 3 is recorded as outstanding.
 
-## 5a. Checkpoint 1C-1 assessment (24 Nov 2026; owner review pending)
+## 5a. Checkpoint 1C-1 assessment (24 Nov 2026): **CLOSED by the owner** for its local/CI scope, cloud verification outstanding
 
 Owner-approved approach (24 Nov 2026): the §5 criteria apply to the **1C-1 scope** (database functions, migrations and their automated tests). Screens, Reports and usability requirements belong to 1C-2 and later stages and are not marked complete here.
 
@@ -83,9 +83,11 @@ Owner-approved approach (24 Nov 2026): the §5 criteria apply to the **1C-1 scop
 | 2 | `check_stock_integrity()` and the conservation statement after every test | **PASS, with limits** | Integrity checks at the end of database files 03, 05, 07–12 and seven API files (T10 §7.2), and in files 13 and 14; pool conservation in every Stage 1C suite. Run at the end of each file, not after each individual test (as approved for T10 I3). The period-level statement (TC-COST-20) needs Reports |
 | 3 | Cloud migration and re-verification, or listed as outstanding under R-1 | **Outstanding (D11)** | Not applied; listed in [RELEASE-READINESS.md](../RELEASE-READINESS.md) R-1 |
 | 4 | Screens end to end | **Not applicable to 1C-1** | 1C-2 |
-| 5 | Tracker, status and release-readiness pages updated; report presented | **PASS once this update is reviewed** | This update (24 Nov 2026) |
+| 5 | Tracker, status and release-readiness pages updated; report presented | **PASS** | Committed in `44d9d55` after the owner's review; closure recorded 24 Nov 2026 |
 | 6 | Dashboard counts server-side, tested above 1,000 products | **PASS** | `inventory_summary` (D7): `04_inventory_summary`, `inventory-summary.api` |
 | 7 | No cloud migration without owner approval | **PASS** | None applied |
+
+**Closure (owner, 24 Nov 2026):** checkpoint 1C-1 is closed for its local/CI scope. Fresh local verification at `44d9d55` (including M2): [2026-11-24-stage1c1-closure-local.log](../test-evidence/2026-11-24-stage1c1-closure-local.log) (database 1017/1017, API 133/133, app 25/25). Criterion 3 stays **outstanding** (D11). Stage 1C-2 decisions: [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §3a.
 
 **Open:** M3 (before Reports), cloud re-verification (D11), findings L1–L3 and I6 ([STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §4–5).
 

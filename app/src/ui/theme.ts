@@ -13,6 +13,12 @@ export const colours = {
   warnBg: '#FFF4D6',
   danger: '#B42318',
   dangerBg: '#FDECEA',
+  /** Selected and success backgrounds (already used by the dashboard as TINT). */
+  tint: '#E3F3EA',
+  /** Neutral status, e.g. pending (08 §3). */
+  neutral: '#6B6B6B',
+  /** Text on the green header. */
+  onGreenMuted: '#D9EDE3',
 } as const;
 
 export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
@@ -26,3 +32,6 @@ export const type = {
 } as const;
 
 export const touch = { min: 48, primaryButton: 56 } as const;
+
+/** Corner radii (08 §5: cards 12 dp). */
+export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;

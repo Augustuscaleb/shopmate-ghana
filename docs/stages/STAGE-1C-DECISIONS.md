@@ -37,6 +37,28 @@ Source: [STAGE-1C-PLAN.md](STAGE-1C-PLAN.md) §6, §6a; [PLAN.md](../PLAN.md) de
 - **Test gaps closed in 1C-1** (`230c029`, tests only): TC-COST-07 as a deterministic shared-helper simulation with a fixture void (end-to-end void in Stage 1D, D9); TC-COST-13 for restock, set_cost and purchase corrections (later uploads in 1D); TC-COST-17's GH₵ effect on the "Cost check needed" item (late-sale trigger in 1D).
 - **Coverage mapped, not duplicated:** TC-ATTN-03 and TC-SEC-02 are covered by existing tests; TC-SEC-08 and TC-CONC-03 are partial (see the test plan §0d).
 
+## 3a. Checkpoint 1C-1 closure and Stage 1C-2 decisions
+
+| # | Decision (owner-approved 24 Nov 2026) |
+|---|---|
+| **D-0** | Checkpoint 1C-1 **closed** for its local/CI scope; cloud verification (criterion 3, D11) explicitly **outstanding**; M3, T10-I2 and findings L1–L3, I6 carried. Fresh local evidence at `44d9d55`: [2026-11-24-stage1c1-closure-local.log](../test-evidence/2026-11-24-stage1c1-closure-local.log) |
+| **D-1** | Stage 1C-2 **authorised**, one increment at a time; each increment reported before the next starts |
+| **D-2** | Hand-built navigation (no navigation library); `expo-network` approved **in principle** for online state. Installing it, and any new development build it needs, is **not** authorised yet: separate approval |
+| **D-3** | S-30 and S-35 are **online-only** until offline sync is implemented; offline they show the E-04 message |
+| **D-4** | S-39 **Option A**: show the change to the amount owed before saving; show the exact split from the server's result after saving. No preview function |
+| **D-5** | Selling-price changes through `update_product`; cost corrections stay separate (`set_cost`), audited and reason-required |
+| **D-6** | Stock colours: **green OK** (above the low-stock level); **amber Low** (above 0, at or below the level); **red Out of stock** (exactly 0); **red with an explicit "Negative" label** (below 0). Always a word with the colour |
+| **D-7** | The tab is named **Products** |
+| **D-8** | Five tabs (Today · Sell · Products · Customers · More); Sell and Customers marked "coming in a later update"; More keeps Log out |
+| **D-9** | Device testing against a **local development stack**; D11 cloud migration stays separate |
+| **D-10** | Existing automated tests plus structured manual device checklists; **no UI automation** yet |
+| **S-37 margin** | Margin = selling price − average cost, also as % of the selling price; hidden when the cost is unknown or the selling price is 0 |
+| **Categories** | "Manage categories" entry from the S-30 category filter (direct writes, D5) |
+| **Messages** | A plain-language message table for the server error codes, prepared for owner review and used by the app |
+| **Design** | A consistent visual design system and purposeful, reduced-motion-aware animations within approved scope; no dependency without a compatibility and bundle check first; no change to business rules, calculations, APIs or security |
+
+These approvals do **not** authorise cloud migrations, EAS builds, installations, commits, pushes, merges or deployments.
+
 ## 4. Open decisions and conditions
 
 | # | Item | Needed before | Status |

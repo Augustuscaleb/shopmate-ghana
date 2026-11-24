@@ -1,6 +1,6 @@
 # Stage 1C-2 execution brief (screens): DRAFT for owner review
 
-**Status: DRAFT, 24 Nov 2026. Not approved; nothing here is implemented.** Stage 1C-2 starts only after the owner's separate go-ahead ([STAGE-1C-PLAN.md](STAGE-1C-PLAN.md) header; [PLAN.md](../PLAN.md) decisions 52, 55). This brief adds no scope: every item below comes from the approved Stage 1C plan, specification revision 5.1 or a recorded owner decision. Where those sources are ambiguous, the point is listed in §7 for the owner instead of being decided here.
+**Status: AUTHORISED (owner, 24 Nov 2026); in progress, one increment at a time.** The §7 points were decided by the owner on 24 Nov 2026 (recorded in [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §3a; §7 below is kept as the record of the questions). Each increment is reported before the next starts. This brief adds no scope: every item comes from the approved Stage 1C plan, specification revision 5.1 or a recorded owner decision. Visual direction: [STAGE-1C-2-VISUAL-DESIGN.md](STAGE-1C-2-VISUAL-DESIGN.md).
 
 **Baseline:** HEAD `7d29d4d`; [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376) passed (database 1017/1017, API 133/133, app 25/25). Checkpoint 1C-1 (database) is complete in CI; its formal closure awaits the owner's review ([STAGE-1C-PLAN.md](STAGE-1C-PLAN.md) §5a). M2 is decided and implemented ([STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §4).
 
@@ -54,6 +54,8 @@
 
 Reasons for the order: the service layer and error handling are shared by every screen; S-37 is the entry point for S-39; S-36's action buttons lead to S-31, S-33, S-34, S-37 and S-39, so it comes once those exist.
 
+**Increment 1 status (24 Nov 2026): implemented locally, uncommitted, awaiting the owner's review.** Five-tab shell (D-7, D-8) with the More tab keeping Log out; pure navigation model; online-state monitor fed by request outcomes (`expo-network` **not installed**: needs separate approval, and a new development build to verify, D-2); server-error classifier; request-ID store (reuse on retry, release on a definite answer, hold back changed inputs after an unknown outcome); strict result readers; the message table ([STAGE-1C-2-ERROR-MESSAGES.md](STAGE-1C-2-ERROR-MESSAGES.md)); the visual foundation ([STAGE-1C-2-VISUAL-DESIGN.md](STAGE-1C-2-VISUAL-DESIGN.md)): tokens, reduced-motion-aware touch feedback, entrances and skeleton loading, using only React Native's built-in Animated API. A shared reduce-motion state (reduced until the phone's setting is known; one native check and subscription). Tests: app 66/66 (41 new), API 139/139 (6 new, `tests/app-error-handling.test.ts`), database 1017/1017; typecheck, scans and bundle export passed. No backend change. Not device-tested yet (D-9: local stack).
+
 ## 4. Acceptance criteria and tests for every increment
 
 - **Unit tests (app):** each service function's result parser (valid results, malformed results rejected, money as integer pesewas only), request-ID reuse on retry (as TC-AUTH-14 – 16), error-code to message mapping, and the screen state logic (as `dashboardState.test.ts`). Required by STAGE-1C-PLAN §4 ("UI unit tests").
@@ -80,7 +82,7 @@ Reasons for the order: the service layer and error handling are shared by every 
 - Starter product lists (Q3); customers and credit; expenses; cash count and day closing; CSV export; backup (R-3); real shop data (gate G2).
 - The weekly all-shops integrity run and alert (T10-I2); TC-ATTN-07 pilot usability.
 
-## 7. Open points for the owner (ambiguities and prerequisites; not decided here)
+## 7. Points put to the owner (decided 24 Nov 2026; see STAGE-1C-DECISIONS §3a)
 
 | # | Point | Why it matters |
 |---|---|---|

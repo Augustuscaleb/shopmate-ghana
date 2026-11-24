@@ -21,11 +21,11 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 ## 1. Current-state summary (24 Nov 2026)
 
 - **Repository:** branch `claude/elegant-babbage-a2rfd2`, HEAD `7d29d4d`; [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376) passed: database 1017/1017 (15 files), API 133/133 (17 files), app 25/25 (8 files), plus typecheck, secret scan, dependency gate, Android bundle export and bundle scan. No pull request; nothing merged.
-- **Done:** Stage 1A (foundation) and 1B (login and onboarding) approved; Today dashboard built and owner-tested on a phone; Stage 1C-1 (inventory **database** functions, T1–T10, plus M2) built and CI-passed.
+- **Done:** Stage 1A (foundation) and 1B (login and onboarding) approved; Today dashboard built and owner-tested on a phone; Stage 1C-1 (inventory **database** functions, T1–T10, plus M2) built, CI-passed and **closed by the owner for its local/CI scope (24 Nov 2026)**, with fresh local evidence at `44d9d55`.
 - **Cloud:** the development project has only the **5 Stage 1 migrations** (☁️ cloud run 43260965124, 12 Nov 2026). The **12 Stage 1C migrations** are **not** applied (D11). There is **no production project** yet (CLOUD-SETUP-LOG: "a separate production project will be created before real data").
-- **Not started:** Stage 1C-2 screens; sales and offline sync (1D); credit; expenses; cash count and closing; reports; CSV export; settings, subscription, help; backup (R-3); pilot.
+- **In progress:** Stage 1C-2 screens (authorised 24 Nov 2026), increment 1 first. **Not started:** sales and offline sync (1D); credit; expenses; cash count and closing; reports; CSV export; settings, subscription, help; backup (R-3); pilot.
 - **Gates:** G1, G2, G3 **not reached**. **Real shop data is not allowed** (G2 needs R-1, R-2, R-3, among others).
-- **Next decisions:** formal 1C-1 closure; 1C-2 go-ahead and its ten open points (§9).
+- **Next decisions:** D11 cloud migration; `expo-network` installation and any development build it needs (D-2); the remaining items in §9.
 
 ## 2. Phase overview and order
 
@@ -34,8 +34,8 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 | P0 | Stage 0 — validation (PLAN §11) | **IN PROGRESS**: desk research and specification done; competitor tests and survey not evidenced in the repository | Owner |
 | P1A | Stage 1A — foundation | **COMPLETED AND VERIFIED** (☁️ 91/91) | — |
 | P1B | Stage 1B — login, onboarding, cloud tooling | **IMPLEMENTED, NOT FULLY VERIFIED**: approved, ☁️ 4 safeguard tests, 📱 TC-DEV-01–03; open sub-items in §3.2 | — |
-| P1C-1 | Stage 1C checkpoint 1 — inventory database | **IMPLEMENTED, NOT FULLY VERIFIED**: CI-passed; not ☁️; formal closure pending | — |
-| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **REQUIRES OWNER DECISION** (go-ahead + §9 items D-1 – D-10) | P1C-1 closure |
+| P1C-1 | Stage 1C checkpoint 1 — inventory database | **IMPLEMENTED, NOT FULLY VERIFIED**: CI-passed and locally verified; **checkpoint closed** by the owner (24 Nov 2026); not ☁️ (D11 outstanding) | — |
+| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 implemented locally, awaiting review | P1C-1 closure ✅ |
 | Ops-1 | Backup and restore, first restore drill (R-3, mandatory) | **REQUIRES OWNER DECISION** (start approval); designed only | Cloud project (exists) |
 | P1D+ | Stage 1 remaining: sales and offline sync, voids, cancellations, credit, expenses, closing, reports, export, settings, subscription, help (PLAN §11 "1D onwards") | **NOT STARTED**; sub-stage split **not yet planned** | P1C (stock functions); 1D plan |
 | Cloud | Apply migrations to the cloud and re-verify after each (decision 42, R-1, D11) | **REQUIRES OWNER DECISION** per batch | Owner approval |
@@ -100,11 +100,11 @@ All rows: evidence [test plan §0d](product-specification/10-test-plan.md) (Stag
 | 1C-1 test gaps | `230c029` | — | tests only |
 | M2 display fields | `7d29d4d` | `20261125000200` | `unpaid_purchases` (additive) |
 
-**Remaining for 1C-1:** owner review and formal closure ([STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §5a); cloud application and re-verification (D11); monitoring findings L1 – L3, I6 ([STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §5).
+**Remaining for 1C-1:** checkpoint **closed** by the owner (24 Nov 2026; [STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §5a; local evidence [2026-11-24-stage1c1-closure-local.log](test-evidence/2026-11-24-stage1c1-closure-local.log)). Still outstanding: cloud application and re-verification (D11); monitoring findings L1 – L3, I6 ([STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §5).
 
-### 3.4 Stage 1C-2 — inventory screens (NOT STARTED; needs owner go-ahead)
+### 3.4 Stage 1C-2 — inventory screens (IN PROGRESS; authorised 24 Nov 2026)
 
-Scope and order: [STAGE-1C-2-EXECUTION-BRIEF.md](stages/STAGE-1C-2-EXECUTION-BRIEF.md). Screens S-30 – S-39, Needs attention on the dashboard (D10). All backend functions exist (§4). Open points D-1 – D-10 in §9.
+Scope and order: [STAGE-1C-2-EXECUTION-BRIEF.md](stages/STAGE-1C-2-EXECUTION-BRIEF.md). Screens S-30 – S-39, Needs attention on the dashboard (D10). All backend functions exist (§4). Decisions D-0 – D-10 approved (§9).
 
 ### 3.5 Ops-1 — backup and restore (R-3, mandatory before real data)
 
@@ -268,29 +268,29 @@ Future items (01 §3: staff accounts, automated payments and reports, OTP, barco
 | Q-10 | PLAN §10.1 said "no Supabase project exists yet" (outdated since 12 Nov) | PLAN §10.1 | **Fixed in this review** (dated update; backup still not executed) |
 | Q-11 | PLAN decision 29 said "currently all Documented" (outdated; refined by 46) | PLAN §14 | **Fixed in this review** (dated note; decision text kept) |
 | Q-12 | S-06 Quick tour and F-02 sample lists: S-06 isn't assigned to any stage; F-02 deferred (Q3) | 03 S-06; 01 F-02 | Owner to assign S-06 |
-| Q-13 | S-30 and S-35 are marked offline views, but the offline cache is in the sync stage | 03; STAGE-1C-PLAN §3 | D-3 |
-| Q-14 | S-30 four stock colours vs two defined in 08 | 03 S-30; 08 | D-6 |
-| Q-15 | Tab name "Products" (03) vs "Stock" (D10) | 03; D10 | D-7 |
+| Q-13 | S-30 and S-35 are marked offline views, but the offline cache is in the sync stage | 03; STAGE-1C-PLAN §3 | **Resolved:** online-only in 1C-2 (D-3) |
+| Q-14 | S-30 four stock colours vs two defined in 08 | 03 S-30; 08 | **Resolved:** four states defined (D-6) |
+| Q-15 | Tab name "Products" (03) vs "Stock" (D10) | 03; D10 | **Resolved:** "Products" (D-7) |
 | Q-16 | SEC-01 says "1,000 most common passwords"; the app uses 2,087 (stricter) | 07 SEC-01; IMPLEMENTATION-STATUS | Accept as stricter, record |
 | Q-17 | PLAN §2 lists Sentry, `expo-sqlite`, EAS Update; none is installed | PLAN §2; `app/package.json` | Dependency decisions when the features start |
 | Q-18 | Near-duplicate risks in PLAN §13A ("Wrong or manipulated phone clocks" and "Wrong phone clock"); their mitigations differ and don't conflict | PLAN §13A | No change needed; merge when §13 is next revised |
 | Q-19 | Stage 3 "likely additions: manager/cashier accounts" (PLAN §11) vs staff accounts "Stage 3+" (01 §3): consistent, but not committed scope | PLAN §11; 01 §3 | Decide after the pilot |
 
-## 9. Unresolved owner decisions
+## 9. Owner decisions (D-0 – D-10 approved 24 Nov 2026; the rest open)
 
 | # | Decision | Needed before | Owner / action |
 |---|---|---|---|
-| D-0 | **Formal closure of Stage 1C-1** | 1C-2 | Owner reviews STAGE-1C-PLAN §5a and closes or returns findings |
-| D-1 | **Go-ahead for Stage 1C-2** | 1C-2 | Owner authorises 1C-2 (after D-0) |
-| D-2 | Navigation and network-status libraries (dependency approval) | 1C-2 increment 1 | Owner approves or rejects a dependency; Claude proposes options |
-| D-3 | Offline views S-30 / S-35 in 1C-2: online-only? | 1C-2 | Owner decides; recorded in the 1C-2 plan |
-| D-4 | S-39 split preview: after saving, or a new read-only preview function | 1C-2 increment 7 | Owner chooses; a preview function would need its own plan and migration |
-| D-5 | S-32 cost change: reason prompt or route to "Correct cost price" | 1C-2 increment 2 | Owner decides |
-| D-6 | Stock colours: meaning of red vs negative | 1C-2 increment 2 | Owner defines the four states |
-| D-7 | Tab name: Products or Stock | 1C-2 increment 1 | Owner confirms |
-| D-8 | Sell and Customers tabs: hidden or "coming later" | 1C-2 increment 1 | Owner decides |
-| D-9 | Device-test backend: cloud (needs D11 first) or local stack; installed build (EAS needs approval) | 1C-2 increment 9 | Owner chooses the backend; EAS build needs separate approval |
-| D-10 | Evidence for "end to end against the local stack" (manual vs UI test tool) | 1C-2 | Owner sets the evidence standard |
+| D-0 | **Formal closure of Stage 1C-1** | 1C-2 | **Approved 24 Nov 2026:** closed for the local/CI scope; D11 outstanding |
+| D-1 | **Go-ahead for Stage 1C-2** | 1C-2 | **Approved 24 Nov 2026** |
+| D-2 | Navigation and network-status libraries (dependency approval) | 1C-2 increment 1 | **Approved in principle:** hand-built navigation + `expo-network`; installation and any development build need separate approval |
+| D-3 | Offline views S-30 / S-35 in 1C-2: online-only? | 1C-2 | **Approved:** online-only |
+| D-4 | S-39 split preview: after saving, or a new read-only preview function | 1C-2 increment 7 | **Approved:** Option A |
+| D-5 | S-32 cost change: reason prompt or route to "Correct cost price" | 1C-2 increment 2 | **Approved:** `update_product` for price; `set_cost` separate |
+| D-6 | Stock colours: meaning of red vs negative | 1C-2 increment 2 | **Approved:** green OK, amber Low, red Out of stock, red "Negative" |
+| D-7 | Tab name: Products or Stock | 1C-2 increment 1 | **Approved:** Products |
+| D-8 | Sell and Customers tabs: hidden or "coming later" | 1C-2 increment 1 | **Approved:** five tabs; Sell and Customers "coming later" |
+| D-9 | Device-test backend: cloud (needs D11 first) or local stack; installed build (EAS needs approval) | 1C-2 increment 9 | **Approved:** local development stack; D11 separate |
+| D-10 | Evidence for "end to end against the local stack" (manual vs UI test tool) | 1C-2 | **Approved:** automated tests + manual checklists; no UI automation |
 | D-11 | **Cloud migration of the 12 Stage 1C migrations** and cloud re-verification (D11, R-1) | Device tests against the cloud; G2 | Owner approves the cloud batch; then cloud verification run |
 | D-12 | **1D plan** and the split of "1D onwards" into sub-stages | 1D | Claude drafts a 1D plan on request; owner approves |
 | D-13 | **M3** specification clarification batch (Q-3 – Q-7) | Reports | Claude drafts the clarification batch; owner approves |
