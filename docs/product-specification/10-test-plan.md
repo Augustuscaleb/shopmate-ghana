@@ -20,7 +20,7 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 - CI and local passes say nothing about the cloud project or a real phone. Tests that need those environments (TC-CLOUD, TC-DEV, TC-UX) stay below ☁️ / 📱 until that evidence exists.
 - A test whose code or rules change returns to 🛠 until re-run.
 
-**Status (24 Nov 2026, Stage 1C-1 checkpoint):** counts below updated for the Stage 1C-1 database work (§0d; evidence: [local log](../test-evidence/2026-11-24-stage1c1-local.log), commit `230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)). A planned test counts as ✅ only when **all** of it is met; a test met only in part counts as 🛠, and its row names what remains. Nothing from Stage 1C is ☁️ yet: its migrations aren't applied to the cloud project (R-1, D11). *History:* Stage 1B approved 11 Nov 2026; cloud verification passed 12 Nov 2026 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); Stage 1C plan approved 23 Nov 2026; device row updated 23 Nov 2026 (E-3 / R-2 closed by owner-approved exception).
+**Status (24 Nov 2026, Stage 1C-1 checkpoint):** counts below updated for the Stage 1C-1 database work (§0d; evidence: [local log](../test-evidence/2026-11-24-stage1c1-local.log), commit `230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081); M2 tests: commit `7d29d4d`, [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376)). A planned test counts as ✅ only when **all** of it is met; a test met only in part counts as 🛠, and its row names what remains. Nothing from Stage 1C is ☁️ yet: its migrations aren't applied to the cloud project (R-1, D11). *History:* Stage 1B approved 11 Nov 2026; cloud verification passed 12 Nov 2026 ([cloud run 43260965124](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/43260965124)); Stage 1C plan approved 23 Nov 2026; device row updated 23 Nov 2026 (E-3 / R-2 closed by owner-approved exception).
 
 | Area | Tests | 📝 | 🛠 | 🟢 Local only | ✅ CI | ☁️ Cloud | 📱 Device |
 |---|---|---|---|---|---|---|---|
@@ -44,7 +44,7 @@ Every test shows the **highest level of evidence it actually has**. A level is c
 | Stage 1A foundation tests (§0a) | 91 | 0 | 0 | 0 | 0 | 91 | — |
 | Stage 1B tests (§0b) | 22 | 0 | 0 | 0 | 18 | 4 | — |
 | Cloud preflight tests (§0b, TC-CLOUD-00e – o), revised implementation | 11 | 0 | 0 | 0 | 11 | 0 | — |
-| **Stage 1C-1 tests (§0d)**: TC-INV, TC-IDEM and the planned IDs above, in 12 database files and 10 API files | 974 (896 database, 78 API) | 0 | 0 | 0 | 974 | 0 | — |
+| **Stage 1C tests (§0d)**: TC-INV, TC-IDEM, the M2 tests and the planned IDs above, in 13 database files and 11 API files | 1020 (940 database, 80 API) | 0 | 0 | 0 | 1020 | 0 | — |
 
 ## 0a. Stage 1 foundation tests (implemented and run)
 
@@ -117,6 +117,8 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 
 **Evidence for every ✅ marked "(§0d)" in this plan:** local run at commit `230c029`, 24 Nov 2026 ([local log](../test-evidence/2026-11-24-stage1c1-local.log)), and [CI #49, run 45431840081](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081) on the same commit. Both: database **973/973** (14 files), API **131/131** (16 files), app **25/25** (8 files); typecheck, secret scan, dependency gate, Android bundle export and bundle secret scan passed. Earlier CI: [#47](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45411475080) (T1–T9, `2b3bb4a`), [#48](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45424865849) (T1–T10, `ba565e7`). **Not ☁️:** none of these migrations is applied to the cloud project (R-1, D11). **Not 📱:** no Stage 1C screens exist yet (1C-2).
 
+**M2 display fields** (commit `7d29d4d`, owner decision M2 Option B): ✅ CI passed in [CI #51, run 45487659376](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376) on that commit: database **1017/1017** (15 files), API **133/133** (17 files), app **25/25** (8 files). It was also verified locally with a clean rebuild before the commit, but **no local log for it is committed**; the committed local log above is from `230c029`, before M2.
+
 | Task (commit) | What is tested | Files (tests) |
 |---|---|---|
 | T1 shared helpers (`253d489`) | Stock pool, movements, history, pool rules C-25a / C-25b, attention items, limits | `03_inventory_helpers` (63) |
@@ -131,11 +133,12 @@ These test the database foundation built in Stage 1: schema, constraints, RLS, p
 | T9 correct purchase (`2b3bb4a`) | Proportional allocation, refunds, TC-PUR-13 equivalence | `12_correct_purchase` (108), `correct-purchase.api` (10) |
 | T10 attention, integrity, low stock (`ba565e7`) | Acknowledgement, nine integrity checks, low-stock list; integrity assertions added to the earlier suites (T10 plan §7.2) | `13_attention_integrity_lowstock` (76), `attention-integrity-lowstock.api` (7) |
 | 1C-1 test gaps (`230c029`) | TC-COST-07 (shared-helper simulation with a fixture void), TC-COST-13, TC-COST-17 GH₵ effect | `14_sale_cost_fixed` (40) |
-| **Total** | | **896 database + 78 API = 974** |
+| M2 display fields (`7d29d4d`) | `unpaid_purchases` adds `corrected_cost`, `cost_corrections`, `refunds_received`, `return_credits`; the identity on every row; existing fields, totals, ordering, errors and privileges unchanged (M2-01 – 70, M2-API-1 – 2). Evidence: CI #51 only (see above) | `15_unpaid_purchases_display` (44), `unpaid-purchases-display.api` (2) |
+| **Total** | | **940 database + 80 API = 1020** |
 
-Database files are in `supabase/tests/database/`, API files in `tests/`. The remaining 77 database tests (files 01–02) are §0a; the remaining 53 API tests are §0a, §0b, the audit gate (20) and the cloud preflight (11). The app's dashboard tests (TC-DASH, 11) came with the Today dashboard and are ✅ CI as part of the 25 app tests.
+Database files are in `supabase/tests/database/`, API files in `tests/`. Together with the remaining 77 database tests (files 01–02, §0a) these make 1017; the remaining 53 API tests (making 133) are §0a, §0b, the audit gate (20) and the cloud preflight (11). The app's dashboard tests (TC-DASH, 11) came with the Today dashboard and are ✅ CI as part of the 25 app tests.
 
-**Deliberate faults:** each task's tests were checked against deliberately broken versions of its functions (T5–T10, and 14 faults for `14_sale_cost_fixed`); every fault was caught. The fault scripts are **not** in the repository (finding I6), so this can't be re-run from the repository.
+**Deliberate faults:** each task's tests were checked against deliberately broken versions of its functions (T5–T10, 14 faults for `14_sale_cost_fixed` and 13 for the M2 tests); every fault was caught. The fault scripts are **not** in the repository (finding I6), so this can't be re-run from the repository.
 
 **Partial and deferred** (counted as 🛠 or 📝 above, never ✅): TC-COST-05, 07, 13, 17, 20; TC-PUR-01, 07, 09, 10, 14, 15; TC-ATTN-02, 06; TC-CONC-03, 05; TC-SEC-04, 08. Each row says what remains. TC-COST-19 (screens), TC-COST-21 (Reports) and TC-ATTN-07 (pilot usability) stay 📝: they belong to later stages.
 

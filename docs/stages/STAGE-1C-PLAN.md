@@ -1,7 +1,7 @@
 # Stage 1C implementation plan: inventory foundations
 
 **Status: ✅ APPROVED by the owner (23 Nov 2026)**, with the answers to §6, the implementation decisions in §6a and the limited E-3 exception below. **Checkpoint 1C-1 (database) may proceed. E-3 was closed on 23 Nov 2026 by owner-approved exception, so checkpoint 1C-2 (screens) is no longer blocked by E-3; it starts only when the owner authorises it.**
-**Progress (24 Nov 2026):** checkpoint 1C-1 tasks T1–T10 and the 1C-1 test-gap tests are committed, pushed and CI-passed (HEAD `230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)). Exit-criteria assessment in §5a; **formal 1C-1 closure awaits the owner's review**. 1C-2 additionally waits for owner decision M2. Decisions: [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md).
+**Progress (24 Nov 2026):** checkpoint 1C-1 tasks T1–T10 and the 1C-1 test-gap tests are committed, pushed and CI-passed (`230c029`, [CI #49](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45431840081)); current HEAD `7d29d4d` ([CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376)). Exit-criteria assessment in §5a; **formal 1C-1 closure awaits the owner's review**. M2 is decided and implemented (Option B, `7d29d4d`, [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376)); 1C-2 still needs the owner's separate go-ahead. Decisions: [STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md).
 **Baseline:** product specification revision 5.1 (approved). This stage implements existing rules only. It adds **no new features** and **no accounting changes**. Where the specification leaves a detail open, it's listed in §6 as a question for the owner, not decided by Claude.
 
 ## 1. Entry criteria (all needed before coding starts)
@@ -87,7 +87,7 @@ Owner-approved approach (24 Nov 2026): the §5 criteria apply to the **1C-1 scop
 | 6 | Dashboard counts server-side, tested above 1,000 products | **PASS** | `inventory_summary` (D7): `04_inventory_summary`, `inventory-summary.api` |
 | 7 | No cloud migration without owner approval | **PASS** | None applied |
 
-**Open:** M2 (before 1C-2), M3 (before Reports), cloud re-verification (D11), findings L1–L3 and I6 ([STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §4–5).
+**Open:** M3 (before Reports), cloud re-verification (D11), findings L1–L3 and I6 ([STAGE-1C-DECISIONS.md](STAGE-1C-DECISIONS.md) §4–5).
 
 ## 6. Questions for the owner (clarifications only; no rule changes proposed)
 
