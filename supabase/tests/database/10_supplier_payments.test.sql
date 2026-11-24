@@ -387,29 +387,29 @@ values (tests.id('biz_a'), tests.id('p_frm'), 'cost', 1500, 'Invoice was higher'
 select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 6500::bigint, 'TC-INV-88b: a +1500 cost correction raises the amount owed to 6500');
 insert into public.purchase_corrections (business_id, purchase_id, type, cost_change, reason, allocation, allocation_exact, refund_amount, refund_method)
 values (tests.id('biz_a'), tests.id('p_frm'), 'cost', -500, 'Discount agreed', '{}', true, 200, 'cash');
-select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 6000::bigint,
-  'TC-INV-88c: a -500 correction lowers it to 6000; its cash refund is money received, not part of the amount owed');
+select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 6200::bigint,
+  'TC-INV-88c: a -500 correction lowers it by 500; its 200 refund is added back (T9 C2): 6200');
 insert into public.purchase_corrections (business_id, purchase_id, type, qty_change, reason)
 values (tests.id('biz_a'), tests.id('p_frm'), 'quantity', -1, 'Short delivery');
-select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 6000::bigint, 'TC-INV-88d: a quantity correction does not change the amount owed (C-116f)');
+select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 6200::bigint, 'TC-INV-88d: a quantity correction does not change the amount owed (C-116f)');
 insert into public.supplier_returns (business_id, product_id, qty, value_removed, credit_amount, credit_type, purchase_id, reason) values
   (tests.id('biz_a'), tests.id('rice'), 1, 5000, 1000, 'reduce_unpaid', tests.id('p_frm'), 'Torn bag'),
   (tests.id('biz_a'), tests.id('rice'), 1, 5000, 700, 'refund_cash', tests.id('p_frm'), 'Torn bag, cash back'),
   (tests.id('biz_a'), tests.id('rice'), 1, 5000, 400, 'refund_momo', null, 'MoMo refund'),
   (tests.id('biz_a'), tests.id('rice'), 1, 5000, 300, 'reduce_unpaid', tests.id('p_val'), 'Credit on another purchase');
-select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 5000::bigint,
-  'TC-INV-88e: a 1000 return credit against this purchase lowers it to 5000; refunds and credits on other purchases do not count');
+select is(tests.unpaid(tests.id('biz_a'), tests.id('p_frm')), 5200::bigint,
+  'TC-INV-88e: a 1000 return credit against this purchase lowers it to 5200; refunds and credits on other purchases do not count');
 select is(tests.unpaid(tests.id('biz_a'), tests.id('p_val')), 7800::bigint, 'TC-INV-88f: the 300 credit counts on the purchase it names (8100 - 300)');
 set local role authenticated;
-select throws_ok($q$select tests.pay(tests.id('biz_a'), tests.id('p_frm'), 5001, 'cash_drawer')$q$, '22023', 'amount_exceeds_unpaid',
-  'TC-INV-88g: pay_supplier uses the same figure: 5001 is refused');
-insert into tests.results select 'f2', tests.pay(tests.id('biz_a'), tests.id('p_frm'), 5000, 'cash_drawer');
+select throws_ok($q$select tests.pay(tests.id('biz_a'), tests.id('p_frm'), 5201, 'cash_drawer')$q$, '22023', 'amount_exceeds_unpaid',
+  'TC-INV-88g: pay_supplier uses the same figure: 5201 is refused');
+insert into tests.results select 'f2', tests.pay(tests.id('biz_a'), tests.id('p_frm'), 5200, 'cash_drawer');
 reset role;
-select ok(tests.r('f2') @> '{"unpaid_before":5000,"unpaid_after":0}', 'TC-INV-88h: and exactly 5000 pays it off');
+select ok(tests.r('f2') @> '{"unpaid_before":5200,"unpaid_after":0}', 'TC-INV-88h: and exactly 5200 pays it off');
 -- A correction below what was already paid: the exact figure is negative; nothing is owed and it is never listed
 insert into public.purchase_corrections (business_id, purchase_id, type, cost_change, reason, allocation, allocation_exact, refund_amount, refund_method)
 values (tests.id('biz_a'), tests.id('p_neg'), 'cost', -1500, 'Overcharged', '{}', true, 1500, 'cash');
-select is(tests.unpaid(tests.id('biz_a'), tests.id('p_neg')), -1500::bigint, 'TC-INV-88i: the helper returns the exact signed figure (-1500)');
+select is(tests.unpaid(tests.id('biz_a'), tests.id('p_neg')), 0::bigint, 'TC-INV-88i: the helper returns the exact signed figure (0: the 1500 refund is added back, T9 C2)');
 set local role authenticated;
 select throws_ok($q$select tests.pay(tests.id('biz_a'), tests.id('p_neg'), 1, 'cash_drawer')$q$, '22023', 'nothing_owed',
   'TC-INV-88j: a negative figure means nothing owed');
