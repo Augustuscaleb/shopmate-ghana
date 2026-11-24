@@ -7,7 +7,7 @@
 -- Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(108);
+select plan(109);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -421,6 +421,11 @@ select ok(not has_function_privilege('authenticated', 'private.category_archive_
           and not has_function_privilege('authenticated', 'private.validate_product_fields(text,bigint,text,integer)', 'execute')
           and not has_function_privilege('authenticated', 'private.usable_category(uuid,uuid)', 'execute'),
   'TC-INV-32d: the new internal helpers are not callable through the API');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123b (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;

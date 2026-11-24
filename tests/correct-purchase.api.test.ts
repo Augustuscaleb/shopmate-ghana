@@ -6,7 +6,7 @@
  * by the database tests with fixtures).
  */
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { anonClient, signedInOwner, testTarget } from './target';
 
@@ -252,5 +252,14 @@ describe.skipIf(target.mode === 'cloud')('Correct purchase through the API (T9)'
     const { data: rows } = await ownerA.from('purchase_corrections').select('id').eq('purchase_id', purchase);
     expect(rows).toHaveLength(1);
     expect(await stock(ownerA, tea)).toEqual({ stock_qty: 4, stock_value: 600 });
+  });
+  // T10 (I3, additive): stock integrity of the shops this file used: no discrepancy
+  afterAll(async () => {
+    for (const [client, shop] of [[ownerA, shopA], [ownerB, shopB]] as const) {
+      const { data, error } = await client.rpc('check_stock_integrity', { p_business_id: shop, p_limit: 1000 });
+      expect(error).toBeNull();
+      expect(data.discrepancies).toEqual([]);
+      expect(data.ok).toBe(true);
+    }
   });
 });

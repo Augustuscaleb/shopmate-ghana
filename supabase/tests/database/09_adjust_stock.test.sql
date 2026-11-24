@@ -10,7 +10,7 @@
 -- Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(92);
+select plan(93);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -515,6 +515,11 @@ select throws_ok(format('update public.stock_movements set value = 0 where id = 
   'TC-INV-79o: a recorded adjustment cannot be changed');
 select throws_ok(format('delete from public.stock_movements where id = %L', tests.id('mv_l1')), 'P0001', null,
   'TC-INV-79p: a recorded adjustment cannot be deleted');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123e (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;

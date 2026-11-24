@@ -9,7 +9,7 @@
 -- execute them. Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(62);
+select plan(63);
 
 create schema tests;
 grant usage on schema tests to authenticated;
@@ -305,6 +305,15 @@ select ok(not has_table_privilege('authenticated', 'public.products', 'insert')
           and not has_table_privilege('authenticated', 'public.stock_movements', 'insert')
           and not has_table_privilege('authenticated', 'public.attention_items', 'insert'),
   'TC-INV-08c: the API still cannot write products, movements or attention items directly');
+
+-- T10 (I3, additive): stock integrity of every shop this file used. The only discrepancies are the
+-- documented overflow fixture "sugar" (set directly at lines 235-254, then one accepted movement at
+-- TC-INV-06l): exactly qty_mismatch and history_chain_mismatch, and nothing for any other product.
+reset role;
+select is((select coalesce(jsonb_agg(jsonb_build_array(i.k, s.product_id = tests.id('sugar'), s.check_code) order by i.k, s.check_code), '[]')
+           from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'),
+          '[["biz_a", true, "history_chain_mismatch"], ["biz_a", true, "qty_mismatch"]]'::jsonb,
+  'TC-INV-123a (T10 I3): stock integrity: only the documented overflow fixture "sugar", with exactly qty_mismatch and history_chain_mismatch');
 
 select * from finish();
 rollback;

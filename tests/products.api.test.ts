@@ -4,7 +4,7 @@
  * to the cloud project with the owner's approval (D11). Fictitious data only.
  */
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { anonClient, signedInOwner, testTarget } from './target';
 
@@ -188,5 +188,14 @@ describe.skipIf(target.mode === 'cloud')('Products and categories through the AP
     expect(archived.data?.deleted_at).not.toBeNull();
     expect((await create(ownerA, businessA, { p_name: 'Apple juice', p_selling_price: 800, p_category_id: cat.data!.id })).error?.message)
       .toBe('category_archived');
+  });
+  // T10 (I3, additive): stock integrity of the shops this file used: no discrepancy
+  afterAll(async () => {
+    for (const [client, shop] of [[ownerA, businessA], [ownerB, businessB]] as const) {
+      const { data, error } = await client.rpc('check_stock_integrity', { p_business_id: shop, p_limit: 1000 });
+      expect(error).toBeNull();
+      expect(data.discrepancies).toEqual([]);
+      expect(data.ok).toBe(true);
+    }
   });
 });

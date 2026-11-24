@@ -8,7 +8,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { anonClient, signedInOwner, testTarget } from './target';
 
@@ -206,5 +206,17 @@ describe.skipIf(target.mode === 'cloud')('Restock through the API (T5)', () => {
     expect(await stock(ownerA, rice)).toEqual({ stock_qty: 4, stock_value: 4300 });
     const { data: purchases } = await ownerA.from('purchases').select('id').eq('product_id', rice);
     expect(purchases).toHaveLength(1);
+  });
+  // T10 (I3, additive): stock integrity of the shops this file used. The only discrepancies are the
+  // documented TC-INV-68f fixture product "API Parallel pen" (a service-role movement and an unlinked
+  // history row): exactly history_chain_mismatch and history_link_mismatch, nothing else.
+  afterAll(async () => {
+    for (const [client, shop] of [[ownerA, shopA], [ownerB, shopB]] as const) {
+      const { data, error } = await client.rpc('check_stock_integrity', { p_business_id: shop, p_limit: 1000 });
+      expect(error).toBeNull();
+      expect(data.truncated).toBe(false);
+      const found = (data.discrepancies as { product_name: string; check: string }[]).map((d) => `${d.product_name}: ${d.check}`).sort();
+      expect(found).toEqual(client === ownerA ? ['API Parallel pen: history_chain_mismatch', 'API Parallel pen: history_link_mismatch'] : []);
+    }
   });
 });

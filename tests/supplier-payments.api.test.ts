@@ -6,7 +6,7 @@
  * public functions.
  */
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { anonClient, signedInOwner, testTarget } from './target';
 
@@ -200,5 +200,14 @@ describe.skipIf(target.mode === 'cloud')('Pay supplier and unpaid purchases thro
     expect((await list(ownerA, shopList, 10, -1)).error?.message).toBe('invalid_offset');
     // Each purchase's payment history is read directly (members only)
     expect(await payments(ownerA, p2)).toEqual([{ amount: 1000, paid_from: 'momo', paid_on: today(), note: null }]);
+  });
+  // T10 (I3, additive): stock integrity of the shops this file used: no discrepancy
+  afterAll(async () => {
+    for (const [client, shop] of [[ownerA, shopA], [ownerA, shopList], [ownerB, shopB]] as const) {
+      const { data, error } = await client.rpc('check_stock_integrity', { p_business_id: shop, p_limit: 1000 });
+      expect(error).toBeNull();
+      expect(data.discrepancies).toEqual([]);
+      expect(data.ok).toBe(true);
+    }
   });
 });

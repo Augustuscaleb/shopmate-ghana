@@ -8,7 +8,7 @@
 -- cost is revalued (C-25). Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(81);
+select plan(82);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -410,6 +410,11 @@ select ok((select count(*) from public.stock_movements m where m.product_id = p.
 select ok(not has_function_privilege('authenticated',
             'private.apply_movement(uuid,uuid,text,integer,bigint,text,numeric,uuid,uuid,text,boolean)', 'execute'),
   'TC-INV-67g: the T1 helpers remain internal');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123d (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;

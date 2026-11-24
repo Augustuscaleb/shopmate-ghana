@@ -5,7 +5,7 @@
  * only. No service-role key is used: every fixture goes through the public functions.
  */
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { anonClient, signedInOwner, testTarget } from './target';
 
@@ -198,5 +198,14 @@ describe.skipIf(target.mode === 'cloud')('Adjust stock through the API (T6)', ()
     for (const r of results) expect(r.data).toEqual(results[0].data);
     expect(await stock(ownerA, rice)).toEqual({ stock_qty: 6, stock_value: 6000 });
     expect((await movements(ownerA, rice)).filter((m) => m.type === 'adjustment')).toHaveLength(1);
+  });
+  // T10 (I3, additive): stock integrity of the shops this file used: no discrepancy
+  afterAll(async () => {
+    for (const [client, shop] of [[ownerA, shopA], [ownerB, shopB]] as const) {
+      const { data, error } = await client.rpc('check_stock_integrity', { p_business_id: shop, p_limit: 1000 });
+      expect(error).toBeNull();
+      expect(data.discrepancies).toEqual([]);
+      expect(data.ok).toBe(true);
+    }
   });
 });

@@ -6,7 +6,7 @@
 -- fixtures (Stage 1C plan §3). Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(107);
+select plan(108);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -718,6 +718,11 @@ select diag(format('TC-PUR-13 measurements: %s histories; movements walked min %
   (select max(round(abs(tests.part(res, x.part) - (recalc -> x.part ->> 0)::numeric / (recalc -> x.part ->> 1)::numeric), 4))
    from pur13 cross join (values ('already_sold'), ('stock_losses'), ('own_use'), ('returns_to_supplier')) x(part))));
 select ok(tests.pool_conserved(tests.id('biz_a')), 'TC-PUR-13 / TC-COST-20: conservation still holds after the random histories');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123h (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;

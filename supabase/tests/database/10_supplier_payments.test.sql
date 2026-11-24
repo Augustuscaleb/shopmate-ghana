@@ -8,7 +8,7 @@
 -- purchases can be paid; P7 note only. Fixtures are fictitious and everything is rolled back.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(99);
+select plan(100);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -507,6 +507,11 @@ select ok(not exists (select 1 from public.purchases p where p.business_id in (t
                       and (select coalesce(sum(s.amount), 0) from public.supplier_payments s where s.purchase_id = p.id) > p.purchase_cost - p.paid_now
                           + coalesce((select sum(c.cost_change) from public.purchase_corrections c where c.purchase_id = p.id and c.cost_change > 0), 0)),
   'TC-PUR-11: no purchase was ever paid more than it owed');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123f (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;

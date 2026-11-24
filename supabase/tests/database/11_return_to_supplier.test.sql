@@ -6,7 +6,7 @@
 -- Fixtures are fictitious and everything is rolled back at the end.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(94);
+select plan(95);
 
 create schema tests;
 grant usage on schema tests to authenticated, anon;
@@ -474,6 +474,11 @@ select is((select count(*)::int from public.attention_items where entity = 'supp
   'TC-INV-99l (R8): exactly one item per return with abs(D) >= 10, none for the others');
 select ok(tests.pool_conserved(tests.id('biz_a')) and tests.pool_conserved(tests.id('biz_a2')) and tests.pool_conserved(tests.id('biz_b')),
   'TC-COST-20 (returns): stock pools equal their movements, one history row each, in every shop');
+
+-- T10 (I3, additive): stock integrity of every shop this file used: no discrepancy
+reset role;
+select is((select count(*)::int from tests.ids i cross join lateral private.stock_integrity(i.v) s where i.k like 'biz%'), 0,
+  'TC-INV-123g (T10 I3): stock integrity: no discrepancy in any shop of this file');
 
 select * from finish();
 rollback;
