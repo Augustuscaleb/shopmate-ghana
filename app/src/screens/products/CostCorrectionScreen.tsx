@@ -7,7 +7,9 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Field, Notice } from '../../ui/components';
-import { Card, OfflineBar, ScreenHeader, StockChip } from '../../ui/surfaces';
+import { Card, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
+import { useFreshness } from '../../ui/useFreshness';
+import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
 import { colours, space, type } from '../../ui/theme';
 import { useConnectivity } from '../../ui/useConnectivity';
@@ -16,8 +18,10 @@ import { parseCedis } from '../../lib/money';
 import { checkCostCorrection, outcomeTone, type Outcome } from '../../services/productForm';
 import { ReadError, type Product, type ProductsService } from '../../services/products';
 
-export function CostCorrectionScreen({ productId, businessId, products, onBack, onSaved }: {
+export function CostCorrectionScreen({ productId, businessId, products, onBack, onSaved, visible }: {
   productId: string;
+  /** On screen (increment 2b: automatic refreshes only then). */
+  visible: boolean;
   businessId: string;
   products: ProductsService;
   onBack: () => void;
@@ -33,18 +37,47 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
   const [message, setMessage] = useState<Outcome | null>(null);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [result, setResult] = useState<{ changed: boolean; valueChange: number; stockValue: number } | null>(null);
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [stockChangedElsewhere, setStockChangedElsewhere] = useState(false);
 
   const load = async () => {
     setLoadError(null);
+    setLastAttemptAt(Date.now());
     try {
       const p = await products.getProduct(businessId, productId);
       if (!p) setLoadError("This product can't be found. It may have been deleted. Go back and refresh the list.");
-      else setProduct(p);
+      else { setProduct(p); setLoadedAt(new Date().toISOString()); }
     } catch (e) {
       setLoadError(e instanceof ReadError ? e.message : "We couldn't load this product. Please try again.");
     }
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Increment 2b: re-read the stock figures silently (another device may have restocked or
+   * corrected them). The typed cost and reason are kept; a failed refresh keeps the figures shown.
+   * Not after the result is shown, and never while saving.
+   */
+  const refreshSilently = async () => {
+    if (!product || result) return;
+    setLastAttemptAt(Date.now());
+    try {
+      const p = await products.getProduct(businessId, productId);
+      if (p && (p.stockQty !== product.stockQty || p.stockValue !== product.stockValue || p.costKnown !== product.costKnown)) {
+        // A correction from this device whose reply was lost may be what changed: not "another device"
+        const ownUnconfirmed = await products.hasUnconfirmed('set_cost', p.id).catch(() => true);
+        if (!ownUnconfirmed) setStockChangedElsewhere(true);
+      }
+      if (p) setProduct(p);
+      setLoadedAt(new Date().toISOString());
+      setRefreshFailed(false);
+    } catch {
+      setRefreshFailed(true);
+    }
+  };
+  useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy, refresh: () => { refreshSilently(); } });
 
   const submit = async () => {
     if (!product) return;
@@ -88,6 +121,8 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
           ) : (
             <FadeIn>
               <View style={styles.gap}>
+                {stockChangedElsewhere ? <Notice text="The stock was changed on another device. The latest figures are shown." /> : null}
+                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently(); }} /> : null}
                 <Card style={styles.section}>
                   <Text style={styles.sectionTitle}>Now</Text>
                   <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />

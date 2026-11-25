@@ -15,6 +15,8 @@ export const GENERIC_MESSAGE = 'Something went wrong on our side. Nothing was ch
  * read back, so nothing is saved twice. (OFFLINE_MESSAGE is for a change that was NOT sent.)
  */
 export const UNKNOWN_OUTCOME_MESSAGE = "The connection dropped before we got an answer, so we can't tell yet whether this was saved. Try again when you're connected — it won't be saved twice.";
+/** Increment 2b (owner wording, 25 Nov 2026): a category was renamed or archived on another device meanwhile. */
+export const CATEGORY_CHANGED_MESSAGE = 'This category was changed on another device. Nothing was saved. The list has been refreshed. Review it and try again.';
 export const UNCONFIRMED_MESSAGE = 'Your last change may already have been saved. Refresh the product and check its current details before trying again.';
 
 /** Codes that only a programming mistake can cause: the owner sees the generic message. */

@@ -163,6 +163,78 @@ Automated evidence exists for some of the same behaviour (for example PS-02 dupl
 
 **UX suggestion from the owner (future improvement; NOT implemented, no change made):** tapping a product in the list should open a **read-only product details view with an Edit button**, rather than opening the edit form directly. Recorded for a later increment. Increment 3 (S-37 product detail and movement history) is the natural place to consider it, subject to the owner's approval.
 
+## Stage 1C-2 increment 2b — two Android devices, same account (checklist; NOT YET TESTED)
+
+**Status: pending manual device verification. No entry below has been run on a phone.** The code is uncommitted and awaiting owner review. Automated evidence is separate (see [STAGE-1C-2-EXECUTION-BRIEF.md](../stages/STAGE-1C-2-EXECUTION-BRIEF.md), increment 2b). There is no cloud verification (D11). Multi-device readiness is **not** claimed until these checks are done.
+
+**Owner acceptance criterion (25 Nov 2026):** a change made on one device must become visible on another device after returning to the app or refreshing, without restarting the app.
+
+**Planned setup:**
+- **Phone A:** the Samsung Galaxy A06. **Phone B:** any second Android phone. Both run the installed EAS development build, loading the commit under test from the local Expo dev server.
+- **Backend:** the local Supabase stack on the owner's computer, with migration `20261125000300` applied (`npx supabase migration up`; no reset). All three devices on the same Wi-Fi.
+- **Data:** one fictitious account and shop, signed in on both phones. 35+ fictitious products from the seed script, run on the computer with the local stack, from the repository root:
+  1. Run it without `--confirm-shop` first. This is a dry run: it shows the shop and what it would add, and writes nothing.
+  2. Run it again with `--confirm-shop=<reference shown>` to add the products. Re-running adds nothing.
+
+  Use the fictitious test owner's email and password. Commands for each kind of terminal:
+
+  **macOS or Linux (Terminal, bash or zsh):**
+  ```bash
+  SHOPMATE_SEED_EMAIL='<test owner email>' SHOPMATE_SEED_PASSWORD='<password>' node scripts/seed-local-products.mjs
+  ```
+  ```bash
+  SHOPMATE_SEED_EMAIL='<test owner email>' SHOPMATE_SEED_PASSWORD='<password>' node scripts/seed-local-products.mjs --confirm-shop=<reference shown>
+  ```
+
+  **Windows PowerShell** (the `VAR=value` form above does not work there; single quotes keep special characters in the password as typed):
+  ```powershell
+  $env:SHOPMATE_SEED_EMAIL = '<test owner email>'
+  $env:SHOPMATE_SEED_PASSWORD = '<password>'
+  node scripts/seed-local-products.mjs
+  node scripts/seed-local-products.mjs --confirm-shop=<reference shown>
+  Remove-Item Env:SHOPMATE_SEED_PASSWORD, Env:SHOPMATE_SEED_EMAIL
+  ```
+
+  **Windows Command Prompt (cmd.exe)** (keep the quotes around the whole assignment, so characters such as `& | < >` in the password are taken literally; a `%` in the password may be changed by Command Prompt, so use PowerShell for such a password):
+  ```bat
+  set "SHOPMATE_SEED_EMAIL=<test owner email>"
+  set "SHOPMATE_SEED_PASSWORD=<password>"
+  node scripts\seed-local-products.mjs
+  node scripts\seed-local-products.mjs --confirm-shop=<reference shown>
+  set "SHOPMATE_SEED_PASSWORD="
+  set "SHOPMATE_SEED_EMAIL="
+  ```
+
+  On Windows the variables stay set for the rest of that terminal window; the last commands clear them. If the test account has more than one shop, also set `SHOPMATE_SEED_BUSINESS_ID` the same way.
+
+| ID | Steps | Expected | Status |
+|---|---|---|---|
+| MD-01 | Sign in on A, then on B, with the same account | Both reach Today for the same shop; More shows device codes A and B | NOT TESTED |
+| MD-02 | Log out on A | B stays signed in and keeps working; logging back in on A shows device code A again | NOT TESTED |
+| MD-03 | Close both apps completely and reopen | Both restore their login | NOT TESTED |
+| MD-04 | A changes a product's price. On B (Products open), switch to another app and back | B shows the new price; "Updated" time changes; no restart | NOT TESTED |
+| MD-05 | A adds a product. B pulls down to refresh | It appears on B | NOT TESTED |
+| MD-06 | A archives a product. B goes to Today, then back to Products | Gone from B's list; listed under Archived | NOT TESTED |
+| MD-07 | A changes a low-stock level so the product becomes Low. B returns to Today | B's low-stock figure reflects it | NOT TESTED |
+| MD-08 | Leave B on Products, untouched and unlocked, for 15 minutes; A changes a price | B shows the new price within 15 minutes, with no touch | NOT TESTED |
+| MD-09 | B opens a product to edit and types a new price. A renames it. B switches away and back | B: "This product was changed on another device…", the new name, and B's typed price still there; saving keeps A's name | NOT TESTED |
+| MD-10 | A and B both change the same product's price from their open copies; B saves second | B: "Someone else changed the price…"; nothing saved; the new price shown; saving again works | NOT TESTED |
+| MD-11 | A renames a category. B, still showing the old name, renames the same category | B: "This category was changed on another device. Nothing was saved. The list has been refreshed. Review it and try again."; B's list shows A's name | NOT TESTED |
+| MD-12 | A renames a category. B, still showing the old name, archives it | The same message; the category stays active | NOT TESTED |
+| MD-13 | A and B add a category with the same name | The second: "That name is already used…" | NOT TESTED |
+| MD-14 | B in Airplane mode; A changes a price; B turns Airplane mode off and returns to the app | The offline bar clears without "Check again"; the new price appears | NOT TESTED |
+| MD-15 | B in Airplane mode; switch away from the app and back | Products and Today stay on screen; "Last updated hh:mm · couldn't refresh" with Try again; nothing lost | NOT TESTED |
+| MD-16 | On B, type in the add-product form, switch to another app while A changes data, return | Typing intact; nothing jumps | NOT TESTED |
+| MD-17 | Leave B in the background for 20 minutes, then return | One refresh on return; no burst of refreshes | NOT TESTED |
+| MD-18 | With 35+ products, scroll down on B; A changes product 33; B switches away and back | Scroll position kept; product 33 updated (also covers D2-10 paging: more load when scrolling; "All N shown" at the end) | NOT TESTED |
+
+**Not covered here:**
+- stock changes from two devices at once (Restock and Adjust stock arrive in increment 4; database tests cover the locking);
+- tablets, the browser and iOS (staged requirements, not in this increment);
+- the plan device limit (not enforced; outstanding requirement).
+
+**Totals (18 checklist entries):** 0 PASS, 0 PARTIAL, 18 NOT TESTED, 0 BLOCKED.
+
 ## Issues found
 
 | # | Date | Step | What happened | Severity (blocker / major / minor) | Fix (commit) | Re-checked on phone (date) |

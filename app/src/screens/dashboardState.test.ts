@@ -7,6 +7,7 @@ import {
   revenueAccessibilityLabel,
   revenueCaption,
   staleNotice,
+  todayUpdatedLabel,
   type DashboardLoad,
 } from './dashboardState';
 
@@ -59,5 +60,15 @@ describe('Dashboard load states (S-10)', () => {
     expect(loadFailed(loading)).toEqual({ kind: 'error' });
     expect(loadFailed(error)).toEqual({ kind: 'error' });
     expect(staleNotice(error)).toBeNull();
+  });
+
+  it('TC-DASH-12 (increment 2b): "Updated" line under the revenue figure; a failed refresh keeps the last time', () => {
+    const now = new Date(2026, 10, 25, 10, 42, 30);
+    const ready = loadSucceeded(overview(), new Date(2026, 10, 25, 9, 5, 0));
+    expect(todayUpdatedLabel(ready, now)).toBe('Updated 09:05');
+    expect(todayUpdatedLabel(loadFailed(ready), now)).toBe("Last updated 09:05 · couldn't refresh");
+    expect(loadFailed(ready)).toMatchObject({ kind: 'ready', data: ready.kind === 'ready' ? ready.data : null });
+    expect(todayUpdatedLabel({ kind: 'loading' }, now)).toBeNull();
+    expect(todayUpdatedLabel({ kind: 'error' }, now)).toBeNull();
   });
 });

@@ -46,6 +46,7 @@
 |---|---|---|
 | 1 | **Foundations:** navigation shell, an inventory service layer (typed result parsers that reject non-integer money, as `app/src/services/dashboard.ts` does), request IDs saved before each write and reused on retry (the `app/src/services/account.ts` pattern), plain-language error messages (07), online/offline state for 🌐 actions (the shell and the online state depend on §7 items 2, 7 and 8) | none visible beyond the shell |
 | 2 | Products and categories | S-30, S-31, S-32 |
+| 2b | **Multi-device freshness and verification** (owner decision, 25 Nov 2026; before increment 3) | Today, S-30 – S-32, categories, Correct cost price |
 | 3 | Product detail and movement history | S-37 |
 | 4 | Restock and stock adjustment | S-33, S-34 |
 | 5 | Low stock and sharing | S-35 |
@@ -125,6 +126,69 @@ The database tests cover the comparison under the lock, a change by a second mem
 Some of this has automated evidence (for example PS-11 paging past 1,000 products, PS-17 – PS-19 concurrency), which doesn't count as a device check. These are owner-reported manual results, separate from the automated evidence above. There is no cloud verification: the migrations, including `20261125000300`, are not in any cloud project (D11). Results: [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2".
 
 *Future UX improvement (owner suggestion, 25 Nov 2026; NOT implemented):* tapping a product should open a read-only product details view with an Edit button, instead of opening the edit form directly. To be considered with S-37 (increment 3), subject to the owner's approval.
+
+**Increment 2b status (25 Nov 2026): implemented and verified locally; NOT committed; NOT device-tested; awaiting owner review.** Owner decisions (25 Nov 2026):
+- several devices on the same shop account are a core requirement, and the plan limit of 1, 2 or 3 devices stays in effect;
+- iOS, iPad, a browser for Windows and Mac, and staff accounts are staged product requirements, kept on the roadmap but not built in this increment;
+- offline changes beyond offline sales stay out of scope.
+
+**Multi-device readiness is NOT claimed:** it needs the two-Android-phone checks (MD-01 – MD-18).
+
+*Implemented (code, uncommitted). No migration, no new package, no native or EAS change, no Realtime:*
+- **Freshness (spec SY-74):** `app/src/lib/freshness.ts` holds pure, unit-tested rules:
+  - return to the app or to a screen: reload data older than 30 seconds;
+  - a visible screen in an active app: reload every 15 minutes;
+  - pull-to-refresh, Try again and this device's own save: always reload.
+
+  `app/src/ui/useFreshness.ts` applies them with React Native's built-in AppState:
+  - nothing reloads in the background, on a hidden screen, or while a save is in progress (a reload that falls due during a save runs after it);
+  - applied to Today, the product list, the product form, Categories and Correct cost price.
+- **"Updated hh:mm" (SY-06)** on Today and Products. After a failed refresh: "Last updated hh:mm · couldn't refresh" with a Try again button.
+- **Data safety:**
+  - a failed automatic refresh keeps the last data shown and never replaces a populated screen with an empty or error state;
+  - search text, category filter, sort, scroll position, an open price pop-up and unsaved form fields are never reset;
+  - the product list refreshes the rows already loaded, in place, up to 300;
+  - the edit form re-bases only untouched fields (the existing `rebaseValues`) and says "This product was changed on another device. The latest details are shown.";
+  - this device's own changes are not reported as another device's.
+- **Conflict-safe categories (no migration):**
+  - rename changes the row only if it is still active and still has the name the screen showed;
+  - archive likewise, if it still has the name shown;
+  - if nothing matched, the row is read back: already in the wanted state is confirmed (for example a retry after a lost reply); changed elsewhere is a conflict, and nothing is saved;
+  - the conflict message, in the owner's wording: "This category was changed on another device. Nothing was saved. The list has been refreshed. Review it and try again.";
+  - duplicate-name and in-use refusals are unchanged. Adding a category is unchanged (read-back after a lost reply; not request-ID idempotent; the lost-add note does not survive an app restart).
+- **Seed script for local testing:** `scripts/seed-local-products.mjs` adds 35 fictitious products and 3 fictitious categories to one shop on the local stack.
+  - It is a dry run by default; writing needs `--confirm-shop=<reference code>`.
+  - It accepts only a loopback API address, signs in as the owner (no admin key), never reads `.env`, and never resets, updates or deletes anything.
+  - It is idempotent: existing names are skipped, and request IDs are derived from the shop and the product name.
+
+*Review fixes (independent code review, 25 Nov 2026; all seven applied, uncommitted):*
+1. **Seed script on Windows or a path with spaces:** it exited silently without running. It now compares file URLs built the same way (`pathToFileURL`, symlinks resolved, Windows paths compared without regard to letter case) and starts `npx.cmd` through the shell on Windows.
+2. **Product list:** "loading more" stayed on after a refresh that failed while it had replaced a load-more. It is now cleared.
+3. **Product list:** no automatic refresh while a new search, filter or sort is loading, so the old filter's rows are never shown under the new filter.
+4. **Form and cost screens:** no "changed on another device" note while this device still has an unconfirmed request for the product (the existing request-ID store, `hasUnconfirmed`). The own-change window is now measured from when the refresh starts.
+5. **Product list:** no second refresh while one is running. A pull-down during it shows that refresh's spinner.
+6. **Hook:** a refresh postponed during a save is dropped when the screen is hidden, replaced by any refresh that runs, and run at most once after the save.
+7. **Seed script:** an archived seed category counts as present and is not re-created.
+
+The list rules (`screens/products/productListState.ts`) and the postponed-refresh rules (`lib/freshness.ts`) are now pure functions with regression tests:
+- LIST-01 – 06 and FRESH-20 – 23;
+- SEED-05 – 08: Windows and space-containing paths; `npx.cmd`; a real run from a folder with a space and through a symlink; an end-to-end rerun with an archived seed category;
+- PS-26: the unconfirmed state after a lost reply.
+
+*Second-review fixes (25 Nov 2026):*
+- **Pull-down spinner:** it belongs to one request, which turns it off when that request ends, whether it succeeds or fails. A search, filter or sort load that replaces it takes the spinner over. A pull-down during a running request joins that request. A replaced request can't turn the spinner off early, and it can no longer stay on (SPIN-01 – 06).
+- **Seed instructions:** commands for macOS and Linux, Windows PowerShell, and Windows Command Prompt, in the script header and the device checklist.
+
+*Outstanding requirement, NOT enforced:* the plan limit on devices logged in at once (1, 2 or 3; SEC-08). `register_device` does not check it, and there is no "log out other devices" (TC-SEC-07). It needs its own design and a migration, and has not been started.
+
+*Automated evidence (local, 25 Nov 2026):* totals are in IMPLEMENTATION-STATUS. New tests:
+- app: FRESH-01 – 05 and FRESH-10 – 13, MSG-03e, TC-DASH-12;
+- API: PS-21 – PS-25, using two separate clients signed in to the same owner account; PS-03, PS-10 and PS-13 now pass the name the screen showed;
+- seed script: SEED-01 – 08, including an automated end-to-end run on the local stack (dry run and wrong confirmation write nothing; 35 added; rerun adds 0; an archived seed category isn't re-created; 35 products, 35 names, 3 categories).
+
+The React Native lifecycle wiring itself (AppState events, timers) can't be exercised by these tests: typecheck and the bundle check only.
+
+*Manual device verification:* **pending.** Checklist MD-01 – MD-18 in [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2b".
 
 ## 4. Acceptance criteria and tests for every increment
 

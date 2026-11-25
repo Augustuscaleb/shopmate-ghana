@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DUPLICATE_NAME_MESSAGE, GENERIC_MESSAGE, MESSAGES, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, isInternalCode, messageFor } from './errorMessages';
+import { CATEGORY_CHANGED_MESSAGE, DUPLICATE_NAME_MESSAGE, GENERIC_MESSAGE, MESSAGES, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, isInternalCode, messageFor } from './errorMessages';
 
 describe('Plain-language error messages (07 E-02, E-04)', () => {
   it('MSG-01: no response shows the E-04 offline message', () => {
@@ -36,6 +36,12 @@ describe('Plain-language error messages (07 E-02, E-04)', () => {
     // The app always sends expected values, so these can only come from a programming mistake
     expect(isInternalCode('expected_values_required')).toBe(true);
     expect(isInternalCode('invalid_expected_values')).toBe(true);
+  });
+
+  it('MSG-03e: the category-conflict message (owner wording, increment 2b) is exact, plain and distinct', () => {
+    expect(CATEGORY_CHANGED_MESSAGE).toBe('This category was changed on another device. Nothing was saved. The list has been refreshed. Review it and try again.');
+    expect(CATEGORY_CHANGED_MESSAGE).not.toBe(DUPLICATE_NAME_MESSAGE);
+    expect(CATEGORY_CHANGED_MESSAGE).not.toMatch(/_|SQL|error code|exception|null|undefined/i);
   });
 
   it('MSG-04: messages are plain words: no codes, underscores or technical terms', () => {

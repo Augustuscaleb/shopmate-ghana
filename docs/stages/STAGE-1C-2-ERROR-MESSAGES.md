@@ -22,6 +22,14 @@
 | Correct cost price: the stock changed after the screen opened (nothing saved) | The stock changed while you were on this screen (now {qty}). Nothing was saved. Check the new figures, then save again. |
 | A category add confirmed by reading it back after a lost reply | {name} is saved in your categories. |
 
+### Added in increment 2b (owner wording, 25 Nov 2026)
+
+| When | Message |
+|---|---|
+| A category rename or archive from a screen that showed an older version (renamed or archived on another device meanwhile); nothing saved, the list reloads | This category was changed on another device. Nothing was saved. The list has been refreshed. Review it and try again. |
+| (screen notes, not errors) A product open for editing, or a cost correction, was changed on another device | This product was changed on another device. The latest details are shown. / The stock was changed on another device. The latest figures are shown. |
+| (indicator) A refresh failed; the last data stays on screen | Last updated {time} · couldn't refresh |
+
 **Fix in increment 2:** a known code now wins over the generic duplicate message. Before, `duplicate_product_name` (raised with SQLSTATE 23505) showed "That name is already used…" instead of its own message. Test: MSG-03b.
 
 **Category limitation:** the read-back after a lost category add relies on a note kept in the app's memory. It does **not** survive an app restart: after a restart, a retry of a lost add is refused as a duplicate ("That name is already used…") although the category exists and is shown in the list. Category writes do **not** have request-ID idempotency (the Stage 1A grant lets the app insert only `business_id` and `name`).

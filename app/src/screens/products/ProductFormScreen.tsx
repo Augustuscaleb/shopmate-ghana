@@ -7,23 +7,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Field, Notice } from '../../ui/components';
-import { Card, FilterChip, OfflineBar, ScreenHeader, StockChip } from '../../ui/surfaces';
+import { Card, FilterChip, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
+import { useFreshness } from '../../ui/useFreshness';
+import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
 import { colours, space, type } from '../../ui/theme';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { formatCedis } from '../../services/dashboard';
 import { UNIT_SUGGESTIONS, checkNewProduct, checkProductEdit, outcomeTone, rebaseValues, valuesFrom, type FormErrors, type Outcome, type ProductFormValues } from '../../services/productForm';
-import { ReadError, type Category, type Product, type ProductsService } from '../../services/products';
+import { ReadError, sameProduct, type Category, type Product, type ProductsService } from '../../services/products';
 
 const EMPTY: ProductFormValues = { name: '', categoryId: null, unit: '', sellingPrice: '', costPrice: '', openingStock: '', lowStockLevel: '5' };
 
-export function ProductFormScreen({ mode, productId, businessId, products, refreshKey, onBack, onSaved, onCorrectCost, onManageCategories }: {
+export function ProductFormScreen({ mode, productId, businessId, products, refreshKey, visible, onBack, onSaved, onCorrectCost, onManageCategories }: {
   mode: 'add' | 'edit';
   productId?: string;
   businessId: string;
   products: ProductsService;
   /** Changes after a save on a screen opened from this one: categories and stock figures reload; typing is kept. */
   refreshKey: number;
+  /** On screen (increment 2b: automatic refreshes only then). */
+  visible: boolean;
   onBack: () => void;
   onSaved: (message: string) => void;
   onCorrectCost: (productId: string) => void;
@@ -40,9 +44,15 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Outcome | null>(null);
   const [unconfirmed, setUnconfirmed] = useState(false);
+  /** Increment 2b: last successful load, last attempt, a failed automatic refresh, and a change seen. */
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [changedElsewhere, setChangedElsewhere] = useState(false);
 
   const load = async () => {
     setLoadError(null);
+    setLastAttemptAt(Date.now());
     try {
       const [cats, p] = await Promise.all([
         products.listCategories(businessId, { includeArchived: true }),
@@ -54,6 +64,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
         setProduct(p);
         setValues(valuesFrom(p));
       }
+      setLoadedAt(new Date().toISOString());
     } catch (e) {
       setLoadError(e instanceof ReadError ? e.message : "We couldn't load this product. Please try again.");
     } finally {
@@ -65,11 +76,46 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
   // A category added, or a cost corrected, on a screen opened from here: refresh what is shown
   // without touching what the owner has typed (E-03).
   const firstKey = useRef(refreshKey);
+  /** When this device's own change (on a screen opened from here) last triggered a reload. */
+  const ownChangeAt = useRef(0);
   useEffect(() => {
     if (refreshKey === firstKey.current) return;
+    ownChangeAt.current = Date.now();
     products.listCategories(businessId, { includeArchived: true }).then(setCategories).catch(() => { /* keep the old list */ });
     if (mode === 'edit' && productId) products.getProduct(businessId, productId).then((p) => { if (p) adopt(p); }).catch(() => { /* keep */ });
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Increment 2b: re-read silently (another device may have changed the product). What the owner
+   * typed is kept (rebaseValues); fields they didn't touch take the new values, with a note. A
+   * failed refresh keeps everything on screen and says "couldn't refresh". Never runs while saving.
+   */
+  const refreshSilently = async () => {
+    if (loading || loadError) return;
+    const startedAt = Date.now();
+    setLastAttemptAt(startedAt);
+    try {
+      const [cats, p] = await Promise.all([
+        products.listCategories(businessId, { includeArchived: true }),
+        mode === 'edit' && productId ? products.getProduct(businessId, productId) : Promise.resolve(null),
+      ]);
+      setCategories(cats);
+      if (mode === 'edit' && p && product && !sameProduct(p, product)) {
+        adopt(p);
+        // Not "another device" when the change may be this device's own: a cost correction or
+        // category change made from this form (measured from when this refresh started, so a slow
+        // network doesn't matter), or an edit whose reply was lost and is still unconfirmed.
+        const ownRecent = startedAt - ownChangeAt.current <= 10_000;
+        const ownUnconfirmed = await products.hasUnconfirmed('update_product', p.id).catch(() => true);
+        if (!ownRecent && !ownUnconfirmed) setChangedElsewhere(true);
+      }
+      setLoadedAt(new Date().toISOString());
+      setRefreshFailed(false);
+    } catch {
+      setRefreshFailed(true);
+    }
+  };
+  useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy, refresh: () => { refreshSilently(); } });
 
   /** Take a newer copy of the product as the base of the edit, keeping the owner's typing. */
   const adopt = (now: Product) => {
@@ -142,6 +188,8 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
           ) : (
             <FadeIn>
               <View style={styles.gap}>
+                {changedElsewhere ? <Notice text="This product was changed on another device. The latest details are shown." /> : null}
+                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently(); }} /> : null}
                 {mode === 'edit' && product ? <StockCard product={product} onCorrectCost={() => onCorrectCost(product.id)} disabled={offline} /> : null}
 
                 <Card style={styles.section}>

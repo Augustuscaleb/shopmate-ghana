@@ -35,7 +35,7 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 | P1A | Stage 1A — foundation | **COMPLETED AND VERIFIED** (☁️ 91/91) | — |
 | P1B | Stage 1B — login, onboarding, cloud tooling | **IMPLEMENTED, NOT FULLY VERIFIED**: approved, ☁️ 4 safeguard tests, 📱 TC-DEV-01–03; open sub-items in §3.2 | — |
 | P1C-1 | Stage 1C checkpoint 1 — inventory database | **IMPLEMENTED, NOT FULLY VERIFIED**: CI-passed and locally verified; **checkpoint closed** by the owner (24 Nov 2026); not ☁️ (D11 outstanding) | — |
-| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 committed (`0f13132`), device checks 14/14 PASS; increment 2 committed (`f6a405e`, CI #55): main flows manually exercised on the phone (owner-reported): 9 PASS, 4 PARTIAL, 11 detailed device checks NOT TESTED | P1C-1 closure ✅ |
+| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 committed (`0f13132`), device checks 14/14 PASS; increment 2 committed (`f6a405e`, CI #55): main flows manually exercised on the phone (owner-reported): 9 PASS, 4 PARTIAL, 11 detailed device checks NOT TESTED; increment 2b (multi-device freshness) implemented locally, uncommitted, two-phone checks pending | P1C-1 closure ✅ |
 | Ops-1 | Backup and restore, first restore drill (R-3, mandatory) | **REQUIRES OWNER DECISION** (start approval); designed only | Cloud project (exists) |
 | P1D+ | Stage 1 remaining: sales and offline sync, voids, cancellations, credit, expenses, closing, reports, export, settings, subscription, help (PLAN §11 "1D onwards") | **NOT STARTED**; sub-stage split **not yet planned** | P1C (stock functions); 1D plan |
 | Cloud | Apply migrations to the cloud and re-verify after each (decision 42, R-1, D11) | **REQUIRES OWNER DECISION** per batch | Owner approval |
@@ -105,6 +105,16 @@ All rows: evidence [test plan §0d](product-specification/10-test-plan.md) (Stag
 ### 3.4 Stage 1C-2 — inventory screens (IN PROGRESS; authorised 24 Nov 2026)
 
 Scope and order: [STAGE-1C-2-EXECUTION-BRIEF.md](stages/STAGE-1C-2-EXECUTION-BRIEF.md). Screens S-30 – S-39, Needs attention on the dashboard (D10). All backend functions exist (§4). Decisions D-0 – D-10 approved (§9).
+
+**Multi-device (owner decisions, 25 Nov 2026):** several devices on the same shop account are a **core requirement**, and the plan limit of 1, 2 or 3 devices stays in effect.
+- **Increment 2b** (freshness on return, visibility and every 15 minutes; "Updated" indicators; conflict-safe categories; two-Android-phone verification) comes before increment 3. Status: IMPLEMENTED locally, NOT VERIFIED on two devices.
+- **Staged product requirements,** kept on the roadmap and not yet planned in detail:
+  - iPhone;
+  - iPad and Android tablet layouts;
+  - a browser experience for Windows and Mac;
+  - staff accounts with roles, so that several people can work without overwriting each other.
+- **Outstanding, NOT enforced:** the plan device limit (SEC-08) and "log out other devices" (SEC-06, TC-SEC-07).
+- **Out of scope for now:** offline changes beyond offline sales.
 
 ### 3.5 Ops-1 — backup and restore (R-3, mandatory before real data)
 
@@ -181,7 +191,7 @@ The PLAN lists these as one block; their split into sub-stages and their order i
 | F-27 | Unpaid purchases, Pay supplier, corrections, returns | Backend IMPLEMENTED, NOT FULLY VERIFIED (incl. M2); screens NOT STARTED | S-38, S-39 |
 | F-28 | Needs attention list | Backend IMPLEMENTED, NOT FULLY VERIFIED (inventory types); screen NOT STARTED; sale-related types 1D | S-36 |
 
-Future items (01 §3: staff accounts, automated payments and reports, OTP, barcode, partial returns, decimals, suppliers, printing, photos, Twi, branches, web, iOS, dark mode) are **DEFERRED**; out-of-scope items (online store, lending, VAT/GRA invoicing, in-app payments) are **not planned**.
+Future items (01 §3: automated payments and reports, OTP, barcode, partial returns, decimals, suppliers, printing, photos, Twi, branches, dark mode) are **DEFERRED**. Staff accounts, web and iOS (including iPad) are **staged product requirements** (owner decision, 25 Nov 2026; §3.4), not yet planned in detail; out-of-scope items (online store, lending, VAT/GRA invoicing, in-app payments) are **not planned**.
 
 ## 4. Screen → backend → tests map
 
@@ -225,7 +235,7 @@ Future items (01 §3: staff accounts, automated payments and reports, OTP, barco
 | Area | Requirements and status (07, 06, RELEASE-READINESS) |
 |---|---|
 | Login | SEC-01 password rules (app ✅ CI, 📱; server side **decision 49 / R-4**); SEC-02 rate limits (Supabase defaults; **review before the pilot**: NOT STARTED); SEC-03 no account enumeration (✅ TC-AUTH-06); SEC-04 email confirmation (on; 📱 TC-DEV-01 step 4) |
-| Sessions and devices | SEC-05 secure storage (✅, 📱); SEC-06 log out other devices (NOT STARTED, TC-SEC-07); SEC-07 app lock (NOT STARTED, F-26); SEC-08 device limit per plan (from paid launch) |
+| Sessions and devices | SEC-05 secure storage (✅, 📱); SEC-06 log out other devices (NOT STARTED, TC-SEC-07); SEC-07 app lock (NOT STARTED, F-26); SEC-08 device limit per plan (owner decision 25 Nov 2026: stays in effect; **NOT enforced yet**: `register_device` doesn't check it; outstanding requirement) |
 | Data isolation and server rules | SEC-10, 14 (✅ CI for all current tables and 16 functions; ☁️ Stage 1 only); SEC-11, 12, 24, 25 (✅ CI for every current function); SEC-13 server recalculates sale totals (with `record_sale`, NOT STARTED) |
 | Secrets and admin | SEC-15 (✅ CI repository and bundle scans; decision 43); SEC-16 separate admin role for subscription payments (NOT STARTED) |
 | Integrity and audit | SEC-20 append-only (triggers created in Stage 1A for every append-only table, ☁️; Stage 1C writes to them re-checked ✅ CI); SEC-21 audit (✅ CI for current actions; rest with their functions, TC-SEC-08 partial); SEC-22 constraints (☁️ Stage 1); SEC-23 soft delete, outbox kept until confirmed (with 1D); SEC-26 re-authentication for cancellation (NOT STARTED, TC-SEC-09); SEC-27 closings immutable (☁️ TC-CLOSE-08) |

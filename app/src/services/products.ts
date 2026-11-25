@@ -10,7 +10,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appConnectivity, type ConnectivityMonitor } from '../lib/connectivity';
-import { OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, messageFor } from './errorMessages';
+import { CATEGORY_CHANGED_MESSAGE, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, messageFor } from './errorMessages';
 import { formatCedis } from './dashboard';
 import { asObject, bool, pesewas, text, uuid, wholeNumber } from './parse';
 import type { PendingRequests } from './pendingRequests';
@@ -55,13 +55,13 @@ export type Page<T> = { rows: T[]; total: number };
  * - unconfirmed: held back, because an earlier attempt's outcome is unknown and the inputs changed;
  * - conflict: not sent, because someone else changed the same thing since it was loaded.
  */
-export type ActionResult<T> =
+export type ActionResult<T, C = Product> =
   | { ok: true; data: T; reconciled?: boolean }
   | { ok: false; kind: 'refused'; code: string; message: string; details: string | null; sqlState?: string }
   | { ok: false; kind: 'not_sent'; message: string }
   | { ok: false; kind: 'no_response'; message: string }
   | { ok: false; kind: 'unconfirmed'; message: string; current?: Product }
-  | { ok: false; kind: 'conflict'; message: string; current: Product };
+  | { ok: false; kind: 'conflict'; message: string; current: C };
 
 /** The product fields an edit can change (update_product sets all five every time). */
 const EDIT_FIELDS = ['name', 'categoryId', 'unit', 'sellingPrice', 'lowStockLevel'] as const;
@@ -133,9 +133,20 @@ export function toProduct(row: unknown): Product {
   };
 }
 
+/** Two copies of a product show the same thing (increment 2b: "changed on another device"). */
+export function sameProduct(a: Product, b: Product): boolean {
+  return a.id === b.id && a.name === b.name && a.categoryId === b.categoryId && a.unit === b.unit
+    && a.sellingPrice === b.sellingPrice && a.stockQty === b.stockQty && a.stockValue === b.stockValue
+    && a.costKnown === b.costKnown && a.lowStockLevel === b.lowStockLevel && a.active === b.active;
+}
+
 /** update_product's p_expected: the five editable fields exactly as read from the server. */
 export function expectedValues(p: Product): Record<string, unknown> {
   return { name: p.name, selling_price: p.sellingPrice, category_id: p.categoryId, unit: p.unit, low_stock_level: p.lowStockLevel };
+}
+
+function categoryNotFound(): { ok: false; kind: 'refused'; code: string; message: string; details: null } {
+  return { ok: false, kind: 'refused', code: 'category_not_found', message: messageFor({ kind: 'definite', code: 'category_not_found', sqlState: 'P0002', details: null }), details: null };
 }
 
 /** Matches the unique index categories_name_uq: lower(btrim(name)). */
@@ -314,6 +325,15 @@ export class ProductsService {
       });
   }
 
+  /**
+   * Whether this device still has an attempt of `operation` on `id` with no definite answer (a
+   * lost reply). Used so a change that may be this device's own is never reported as "changed on
+   * another device" (increment 2b review, finding 4). Uses the existing request-ID store.
+   */
+  hasUnconfirmed(operation: 'update_product' | 'set_cost', id: string): Promise<boolean> {
+    return this.pending.has(`${operation}.${id}`);
+  }
+
   /** The owner has checked and wants to send a change even though an earlier attempt's outcome is unknown. */
   discardUnconfirmed(operation: 'create_product' | 'update_product' | 'set_product_archived' | 'set_cost', id: string): Promise<void> {
     return this.pending.discard(`${operation}.${id}`);
@@ -327,8 +347,8 @@ export class ProductsService {
    * - add: after an add whose reply was lost, a retry refused as a duplicate (23505) reads the
    *   category back; if an active category with that name exists, the add is reported as confirmed
    *   (the owner's intended result exists) rather than "already used";
-   * - rename, archive, restore: repeating them is harmless (same end state); archive and restore
-   *   only touch a row still in the other state, then read the row back to confirm.
+   * - rename, archive, restore: conditional writes with read-back (below), so a repeat is
+   *   confirmed and a change made on another device meanwhile is a conflict, not overwritten.
    */
   async createCategory(businessId: string, name: string): Promise<ActionResult<Category>> {
     const key = `${businessId}:${normalName(name)}`;
@@ -343,26 +363,55 @@ export class ProductsService {
     return res;
   }
 
-  renameCategory(businessId: string, id: string, name: string): Promise<ActionResult<Category>> {
-    return this.direct(() => this.client.from('categories').update({ name }).eq('business_id', businessId).eq('id', id)
-      .select('id, name, deleted_at').single());
+  /**
+   * Rename, conflict-safe (increment 2b; no migration): the row is changed only if it is still
+   * active and still has `seenName`, the name this screen showed. If nothing matched, the row is
+   * read back:
+   * - it already has the new name: confirmed (e.g. a retry after this device's lost reply);
+   * - it was renamed to something else, or archived, on another device: conflict, nothing changed
+   *   (`current` is the row as it is now, or null if it is gone);
+   * - it can't be found (deleted, or another shop's): refused.
+   * A duplicate name is still refused by the unique index.
+   */
+  async renameCategory(businessId: string, id: string, name: string, seenName: string): Promise<ActionResult<Category, Category | null>> {
+    const res = await this.direct(() => this.client.from('categories').update({ name })
+      .eq('business_id', businessId).eq('id', id).eq('name', seenName).is('deleted_at', null)
+      .select('id, name, deleted_at').maybeSingle(), { allowNone: true });
+    if (!res.ok) return res;
+    if (res.data) return { ok: true, data: res.data };
+    const row = await this.readCategory(businessId, id);
+    if (!row.ok) return row;
+    if (!row.data) return categoryNotFound();
+    if (!row.data.archived && row.data.name === name) return { ok: true, data: row.data, reconciled: true };
+    return { ok: false, kind: 'conflict', message: CATEGORY_CHANGED_MESSAGE, current: row.data };
   }
 
-  /** Archive (deleted_at) or restore. Archiving is refused while an active product uses it (D5). */
-  async setCategoryArchived(businessId: string, id: string, archived: boolean): Promise<ActionResult<Category>> {
+  /**
+   * Archive (deleted_at) or restore. Archiving is refused while an active product uses it (D5).
+   * Only a row still in the other state is changed, so a repeat keeps the original archive time.
+   * Archiving is also conflict-safe (increment 2b): with `seenName`, only a category that still has
+   * the name this screen showed is archived; one renamed on another device is a conflict.
+   * If nothing matched, the row is read back: already in the wanted state is confirmed.
+   */
+  async setCategoryArchived(businessId: string, id: string, archived: boolean, seenName?: string): Promise<ActionResult<Category, Category | null>> {
     const res = await this.direct(() => {
-      const req = this.client.from('categories').update({ deleted_at: archived ? new Date().toISOString() : null })
+      let req = this.client.from('categories').update({ deleted_at: archived ? new Date().toISOString() : null })
         .eq('business_id', businessId).eq('id', id);
-      // Only a row still in the other state is changed: a repeat keeps the original archive time
+      if (archived && seenName !== undefined) req = req.eq('name', seenName);
       return (archived ? req.is('deleted_at', null) : req.not('deleted_at', 'is', null)).select('id, name, deleted_at').maybeSingle();
     }, { allowNone: true });
-    if (!res.ok || res.data) return res as ActionResult<Category>;
-    // Nothing matched: already in the wanted state (e.g. a retry after a lost reply), or not found
-    const row = await this.direct(() => this.client.from('categories').select('id, name, deleted_at')
+    if (!res.ok) return res;
+    if (res.data) return { ok: true, data: res.data };
+    const row = await this.readCategory(businessId, id);
+    if (!row.ok) return row;
+    if (!row.data) return categoryNotFound();
+    if (row.data.archived === archived) return { ok: true, data: row.data, reconciled: true };
+    return { ok: false, kind: 'conflict', message: CATEGORY_CHANGED_MESSAGE, current: row.data };
+  }
+
+  private readCategory(businessId: string, id: string): Promise<ActionResult<Category | null, never>> {
+    return this.direct(() => this.client.from('categories').select('id, name, deleted_at')
       .eq('business_id', businessId).eq('id', id).maybeSingle(), { allowNone: true });
-    if (!row.ok) return row as ActionResult<Category>;
-    if (row.data && row.data.archived === archived) return { ok: true, data: row.data, reconciled: true };
-    return { ok: false, kind: 'refused', code: 'category_not_found', message: messageFor({ kind: 'definite', code: 'category_not_found', sqlState: 'P0002', details: null }), details: null };
   }
 
   private readonly lostCategoryAdds = new Set<string>();
@@ -411,9 +460,9 @@ export class ProductsService {
     return { ok: true, data: parseResult(data) };
   }
 
-  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<ActionResult<Category>>;
-  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>, opts: { allowNone: true }): Promise<ActionResult<Category | null>>;
-  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>, opts?: { allowNone: true }): Promise<ActionResult<Category | null>> {
+  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<ActionResult<Category, never>>;
+  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>, opts: { allowNone: true }): Promise<ActionResult<Category | null, never>>;
+  private async direct(run: () => PromiseLike<{ data: unknown; error: unknown }>, opts?: { allowNone: true }): Promise<ActionResult<Category | null, never>> {
     if (!this.connectivity.onlineActionsAllowed) return { ok: false, kind: 'not_sent', message: OFFLINE_MESSAGE };
     let data: unknown;
     let error: unknown;

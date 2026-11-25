@@ -14,8 +14,10 @@ import { ProductFormScreen } from './ProductFormScreen';
 import { CategoriesScreen } from './CategoriesScreen';
 import { CostCorrectionScreen } from './CostCorrectionScreen';
 
-export function ProductsArea({ businessId, products, stack, onStackChange }: {
+export function ProductsArea({ businessId, products, stack, onStackChange, visible }: {
   businessId: string;
+  /** The Products tab is selected (increment 2b: hidden screens don't refresh until shown). */
+  visible: boolean;
   products: ProductsService;
   stack: ProductsStack;
   onStackChange: (stack: ProductsStack) => void;
@@ -38,7 +40,7 @@ export function ProductsArea({ businessId, products, stack, onStackChange }: {
   return (
     <View style={styles.root}>
       <View style={[styles.root, route.name !== 'list' && styles.hidden]} importantForAccessibility={route.name === 'list' ? 'auto' : 'no-hide-descendants'}>
-        <ProductListScreen businessId={businessId} products={products} refreshKey={refreshKey}
+        <ProductListScreen businessId={businessId} products={products} refreshKey={refreshKey} visible={visible && route.name === 'list'}
           onAdd={() => go({ name: 'add' })} onOpen={(id) => go({ name: 'edit', productId: id })}
           onManageCategories={() => go({ name: 'categories' })} notice={route.name === 'list' ? notice : null} onNoticeShown={() => setNotice(null)} />
       </View>
@@ -48,13 +50,13 @@ export function ProductsArea({ businessId, products, stack, onStackChange }: {
         return (
           <View key={key} style={[styles.root, !top && styles.hidden]} importantForAccessibility={top ? 'auto' : 'no-hide-descendants'}>
             {r.name === 'add' || r.name === 'edit' ? (
-              <ProductFormScreen mode={r.name} productId={r.name === 'edit' ? r.productId : undefined} businessId={businessId} products={products}
+              <ProductFormScreen mode={r.name} visible={visible && top} productId={r.name === 'edit' ? r.productId : undefined} businessId={businessId} products={products}
                 refreshKey={refreshKey} onBack={back} onSaved={savedToList}
                 onCorrectCost={(id) => go({ name: 'cost', productId: id })} onManageCategories={() => go({ name: 'categories' })} />
             ) : r.name === 'categories' ? (
-              <CategoriesScreen businessId={businessId} products={products} onBack={back} onChanged={() => setRefreshKey((k) => k + 1)} />
+              <CategoriesScreen visible={visible && top} businessId={businessId} products={products} onBack={back} onChanged={() => setRefreshKey((k) => k + 1)} />
             ) : r.name === 'cost' ? (
-              <CostCorrectionScreen productId={r.productId} businessId={businessId} products={products} onBack={back} onSaved={savedBack} />
+              <CostCorrectionScreen visible={visible && top} productId={r.productId} businessId={businessId} products={products} onBack={back} onSaved={savedBack} />
             ) : null}
           </View>
         );

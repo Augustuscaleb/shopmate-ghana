@@ -10,11 +10,12 @@ import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ConnectivityMonitor } from '../app/src/lib/connectivity';
-import { DUPLICATE_NAME_MESSAGE, GENERIC_MESSAGE, MESSAGES, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, messageFor } from '../app/src/services/errorMessages';
+import { CATEGORY_CHANGED_MESSAGE, DUPLICATE_NAME_MESSAGE, GENERIC_MESSAGE, MESSAGES, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, messageFor } from '../app/src/services/errorMessages';
 import { PendingRequests } from '../app/src/services/pendingRequests';
 import { classifyRpcError } from '../app/src/services/rpcErrors';
 import { PAGE_SIZE, ProductsService, expectedValues, type ProductQuery } from '../app/src/services/products';
 import { fakeSecureStore } from '../app/src/testing/fakeSecureStore';
+import { DashboardService } from '../app/src/services/dashboard';
 import { signedInOwner, testTarget } from './target';
 
 const target = testTarget();
@@ -54,14 +55,29 @@ async function ownerWithShop(label: string, fetchFn?: typeof fetch) {
   const client: SupabaseClient = createClient(target.apiUrl, target.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false }, global: fetchFn ? { fetch: fetchFn } : undefined,
   });
-  const { error } = await client.auth.signUp({ email: `owner.${label}.${run}@example.test`, password: `Test-${randomUUID()}`, options: { data: { full_name: `Test Owner ${label}` } } });
+  const email = `owner.${label}.${run}@example.test`;
+  const password = `Test-${randomUUID()}`;
+  const { error } = await client.auth.signUp({ email, password, options: { data: { full_name: `Test Owner ${label}` } } });
   if (error) throw error;
   const shop = await client.rpc('create_business', { p_request_id: randomUUID(), p_name: `Service Shop ${label}`, p_type: 'provision' });
   if (shop.error) throw shop.error;
   const { store, data } = fakeSecureStore();
   const connectivity = new ConnectivityMonitor();
   const svc = new ProductsService(client, new PendingRequests(store, randomUUID), connectivity);
-  return { client, svc, businessId: shop.data.business_id as string, pendingData: data, connectivity };
+  return { client, svc, businessId: shop.data.business_id as string, pendingData: data, connectivity, email, password };
+}
+
+/**
+ * A SECOND device signed in to the same owner account (increment 2b): its own client and login
+ * session, its own request-ID store and its own online state, as on a second phone.
+ */
+async function secondDevice(owner: { email: string; password: string; businessId: string }) {
+  const client: SupabaseClient = createClient(target.apiUrl, target.anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await client.auth.signInWithPassword({ email: owner.email, password: owner.password });
+  if (error) throw error;
+  const { store } = fakeSecureStore();
+  const svc = new ProductsService(client, new PendingRequests(store, randomUUID), new ConnectivityMonitor());
+  return { client, svc, businessId: owner.businessId };
 }
 
 const q = (over: Partial<ProductQuery> = {}): ProductQuery =>
@@ -109,13 +125,13 @@ describe.skipIf(target.mode === 'cloud')('ProductsService against the local API 
     expect(drinks).toMatchObject({ name: 'Drinks', archived: false });
     expect(await A.svc.createCategory(A.businessId, 'Drinks')).toMatchObject({ ok: false, kind: 'refused', message: DUPLICATE_NAME_MESSAGE });
     const soap = ok(await A.svc.createCategory(A.businessId, 'Soap'));
-    expect(ok(await A.svc.renameCategory(A.businessId, soap.id, 'Toiletries')).name).toBe('Toiletries');
-    expect(await A.svc.renameCategory(A.businessId, soap.id, 'Drinks')).toMatchObject({ ok: false, message: DUPLICATE_NAME_MESSAGE });
+    expect(ok(await A.svc.renameCategory(A.businessId, soap.id, 'Toiletries', 'Soap')).name).toBe('Toiletries');
+    expect(await A.svc.renameCategory(A.businessId, soap.id, 'Drinks', 'Toiletries')).toMatchObject({ ok: false, message: DUPLICATE_NAME_MESSAGE });
 
     ok(await A.svc.createProduct(A.businessId, fields('Coke 50cl', { categoryId: drinks.id })));
-    expect(await A.svc.setCategoryArchived(A.businessId, drinks.id, true)).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_in_use });
+    expect(await A.svc.setCategoryArchived(A.businessId, drinks.id, true, 'Drinks')).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_in_use });
 
-    expect(ok(await A.svc.setCategoryArchived(A.businessId, soap.id, true)).archived).toBe(true);
+    expect(ok(await A.svc.setCategoryArchived(A.businessId, soap.id, true, 'Toiletries')).archived).toBe(true);
     expect((await A.svc.listCategories(A.businessId)).map((c) => c.name)).toEqual(['Drinks']);
     expect((await A.svc.listCategories(A.businessId, { includeArchived: true })).map((c) => [c.name, c.archived])).toEqual([['Drinks', false], ['Toiletries', true]]);
     // An archived category can't be chosen for a product
@@ -238,16 +254,18 @@ describe.skipIf(target.mode === 'cloud')('ProductsService against the local API 
   it('PS-13: category rename, archive and restore whose replies are lost: the retry confirms the state; archive time is kept', async () => {
     const prov = (await A.svc.listCategories(A.businessId)).find((c) => c.name === 'Provisions')!;
     drop.dropNextReply('/rest/v1/categories');
-    expect(await A.svc.renameCategory(A.businessId, prov.id, 'Provisions & Grains')).toMatchObject({ kind: 'no_response' });
+    expect(await A.svc.renameCategory(A.businessId, prov.id, 'Provisions & Grains', 'Provisions')).toMatchObject({ kind: 'no_response' });
     await A.svc.checkConnection(A.businessId);
-    expect(ok(await A.svc.renameCategory(A.businessId, prov.id, 'Provisions & Grains')).name).toBe('Provisions & Grains');
+    // The retry still names the old name (the screen hasn't reloaded): the read-back sees the new name and confirms it
+    const retriedRename = await A.svc.renameCategory(A.businessId, prov.id, 'Provisions & Grains', 'Provisions');
+    expect(retriedRename).toMatchObject({ ok: true, reconciled: true, data: { name: 'Provisions & Grains' } });
 
     drop.dropNextReply('/rest/v1/categories');
-    expect(await A.svc.setCategoryArchived(A.businessId, prov.id, true)).toMatchObject({ kind: 'no_response' });
+    expect(await A.svc.setCategoryArchived(A.businessId, prov.id, true, 'Provisions & Grains')).toMatchObject({ kind: 'no_response' });
     await A.svc.checkConnection(A.businessId);
     const first = await A.client.from('categories').select('deleted_at').eq('id', prov.id).single();
     expect(first.data!.deleted_at).not.toBeNull();
-    expect(await A.svc.setCategoryArchived(A.businessId, prov.id, true)).toMatchObject({ ok: true, reconciled: true, data: { archived: true } });
+    expect(await A.svc.setCategoryArchived(A.businessId, prov.id, true, 'Provisions & Grains')).toMatchObject({ ok: true, reconciled: true, data: { archived: true } });
     const again = await A.client.from('categories').select('deleted_at').eq('id', prov.id).single();
     expect(again.data!.deleted_at).toBe(first.data!.deleted_at);
 
@@ -256,7 +274,7 @@ describe.skipIf(target.mode === 'cloud')('ProductsService against the local API 
     await A.svc.checkConnection(A.businessId);
     expect(await A.svc.setCategoryArchived(A.businessId, prov.id, false)).toMatchObject({ ok: true, reconciled: true, data: { archived: false } });
     // A category that doesn't exist (or belongs to another shop) is a definite refusal
-    expect(await A.svc.setCategoryArchived(A.businessId, randomUUID(), true)).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_not_found });
+    expect(await A.svc.setCategoryArchived(A.businessId, randomUUID(), true, 'Anything')).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_not_found });
   });
 
   it('PS-14: quick price change from a stale copy keeps another user\'s newer name, unit, category and level', async () => {
@@ -383,10 +401,129 @@ describe.skipIf(target.mode === 'cloud')('ProductsService against the local API 
       .toMatchObject({ ok: false, message: MESSAGES.not_a_member });
     expect(await B.svc.createCategory(A.businessId, 'Intruder')).toMatchObject({ ok: false, kind: 'refused' });
     const aCat = (await A.svc.listCategories(A.businessId))[0];
-    expect((await B.svc.renameCategory(A.businessId, aCat.id, 'Intruder')).ok).toBe(false);
+    expect(await B.svc.renameCategory(A.businessId, aCat.id, 'Intruder', aCat.name)).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_not_found });
+    expect(await B.svc.setCategoryArchived(A.businessId, aCat.id, true, aCat.name)).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_not_found });
+    expect(await B.svc.setCategoryArchived(A.businessId, aCat.id, false)).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_not_found });
     expect((await A.svc.listCategories(A.businessId))[0].name).toBe(aCat.name);
     // B's own product with the same name as one of A's is fine (names are per shop)
     ok(await B.svc.createProduct(B.businessId, fields('Milo sachet')));
+  });
+
+  // ───────── Increment 2b: two devices signed in to the same owner account ─────────
+
+  it('PS-21: a change made on device 1 is seen by device 2 on its next read (list, product, categories, Today)', async () => {
+    const one = await ownerWithShop('svc-md1');
+    const two = await secondDevice(one);
+    const dashTwo = new DashboardService(two.client);
+    const drinks = ok(await one.svc.createCategory(one.businessId, 'Test Drinks'));
+    const made = ok(await one.svc.createProduct(one.businessId, fields('Test Cola (fictitious)', { openingStock: 2, costPrice: 300, lowStockLevel: 5 })));
+    // Device 2 sees the new product, the category and the Today figures
+    expect((await two.svc.listProducts(two.businessId, q())).rows.map((p) => p.name)).toEqual(['Test Cola (fictitious)']);
+    expect((await two.svc.listCategories(two.businessId)).map((c) => c.name)).toEqual(['Test Drinks']);
+    expect(await dashTwo.fetchOverview(two.businessId)).toMatchObject({ productCount: 1, lowStockCount: 1 });
+    // Device 1 changes price, name, category and level; device 2's next reads show every change
+    const loaded = (await one.svc.getProduct(one.businessId, made.productId))!;
+    ok(await one.svc.saveEdit(one.businessId, loaded, { name: 'Test Cola 50cl (fictitious)', categoryId: drinks.id, unit: 'bottle', sellingPrice: 450, lowStockLevel: 1 }));
+    expect(await two.svc.getProduct(two.businessId, made.productId)).toMatchObject({ name: 'Test Cola 50cl (fictitious)', categoryId: drinks.id, unit: 'bottle', sellingPrice: 450, lowStockLevel: 1 });
+    expect(await dashTwo.fetchOverview(two.businessId)).toMatchObject({ productCount: 1, lowStockCount: 0 });
+    // Archive on device 1: gone from device 2's list, listed under archived; restore brings it back
+    ok(await one.svc.setArchived(one.businessId, made.productId, true));
+    expect((await two.svc.listProducts(two.businessId, q())).total).toBe(0);
+    expect((await two.svc.listProducts(two.businessId, q({ archived: true }))).total).toBe(1);
+    expect(await dashTwo.fetchOverview(two.businessId)).toMatchObject({ productCount: 0 });
+    ok(await one.svc.setArchived(one.businessId, made.productId, false));
+    expect((await two.svc.listProducts(two.businessId, q())).total).toBe(1);
+    // Category renamed on device 1: device 2's chips show the new name
+    ok(await one.svc.renameCategory(one.businessId, drinks.id, 'Test Soft drinks', 'Test Drinks'));
+    expect((await two.svc.listCategories(two.businessId)).map((c) => c.name)).toEqual(['Test Soft drinks']);
+  });
+
+  it('PS-22: a rename from a stale screen on device 2 is a conflict: nothing changed, the current row returned', async () => {
+    const one = await ownerWithShop('svc-md2');
+    const two = await secondDevice(one);
+    const cat = ok(await one.svc.createCategory(one.businessId, 'Test Snacks'));
+    // Both devices show "Test Snacks"; device 1 renames first
+    ok(await one.svc.renameCategory(one.businessId, cat.id, 'Test Biscuits', 'Test Snacks'));
+    const stale = await two.svc.renameCategory(two.businessId, cat.id, 'Test Crisps', 'Test Snacks');
+    expect(stale).toEqual({ ok: false, kind: 'conflict', message: CATEGORY_CHANGED_MESSAGE, current: { id: cat.id, name: 'Test Biscuits', archived: false } });
+    expect((await one.svc.listCategories(one.businessId)).map((c) => c.name)).toEqual(['Test Biscuits']);
+    // From the refreshed list (seen name = the current name), device 2's rename goes through
+    expect(ok(await two.svc.renameCategory(two.businessId, cat.id, 'Test Crisps', 'Test Biscuits')).name).toBe('Test Crisps');
+  });
+
+  it('PS-23: an archive from a stale screen after a rename elsewhere is a conflict; the category stays active', async () => {
+    const one = await ownerWithShop('svc-md3');
+    const two = await secondDevice(one);
+    const cat = ok(await one.svc.createCategory(one.businessId, 'Test Toiletries'));
+    ok(await one.svc.renameCategory(one.businessId, cat.id, 'Test Soaps', 'Test Toiletries'));
+    expect(await two.svc.setCategoryArchived(two.businessId, cat.id, true, 'Test Toiletries'))
+      .toEqual({ ok: false, kind: 'conflict', message: CATEGORY_CHANGED_MESSAGE, current: { id: cat.id, name: 'Test Soaps', archived: false } });
+    expect((await one.svc.listCategories(one.businessId, { includeArchived: true })).map((c) => [c.name, c.archived])).toEqual([['Test Soaps', false]]);
+    // A category archived on device 1, then renamed from a stale device 2: conflict (current shows it archived)
+    ok(await one.svc.setCategoryArchived(one.businessId, cat.id, true, 'Test Soaps'));
+    expect(await two.svc.renameCategory(two.businessId, cat.id, 'Test Bath', 'Test Soaps'))
+      .toEqual({ ok: false, kind: 'conflict', message: CATEGORY_CHANGED_MESSAGE, current: { id: cat.id, name: 'Test Soaps', archived: true } });
+    // Archiving it again from device 2 is simply confirmed (already archived)
+    expect(await two.svc.setCategoryArchived(two.businessId, cat.id, true, 'Test Soaps')).toMatchObject({ ok: true, reconciled: true, data: { archived: true } });
+  });
+
+  it('PS-24: in-use and duplicate refusals are unchanged with two devices', async () => {
+    const one = await ownerWithShop('svc-md4');
+    const two = await secondDevice(one);
+    const cat = ok(await one.svc.createCategory(one.businessId, 'Test Grains'));
+    ok(await one.svc.createProduct(one.businessId, fields('Test Rice 1kg (fictitious)', { categoryId: cat.id })));
+    expect(await two.svc.setCategoryArchived(two.businessId, cat.id, true, 'Test Grains')).toMatchObject({ ok: false, kind: 'refused', message: MESSAGES.category_in_use });
+    // Both devices add the same name: the second is refused as a duplicate
+    ok(await one.svc.createCategory(one.businessId, 'Test Oils'));
+    expect(await two.svc.createCategory(two.businessId, 'test oils')).toMatchObject({ ok: false, kind: 'refused', message: DUPLICATE_NAME_MESSAGE });
+    // Restoring an archived category while an active one has the same name is refused as a duplicate
+    const old = ok(await one.svc.createCategory(one.businessId, 'Test Spices'));
+    ok(await one.svc.setCategoryArchived(one.businessId, old.id, true, 'Test Spices'));
+    ok(await two.svc.createCategory(two.businessId, 'Test Spices'));
+    expect(await one.svc.setCategoryArchived(one.businessId, old.id, false)).toMatchObject({ ok: false, kind: 'refused', message: DUPLICATE_NAME_MESSAGE });
+  });
+
+  it('PS-25: product edits from two devices of the same account: no clash keeps both changes; a clash is refused', async () => {
+    const one = await ownerWithShop('svc-md5');
+    const two = await secondDevice(one);
+    const made = ok(await one.svc.createProduct(one.businessId, fields('Test Sugar (fictitious)')));
+    const seenByOne = (await one.svc.getProduct(one.businessId, made.productId))!;
+    const seenByTwo = (await two.svc.getProduct(two.businessId, made.productId))!;
+    // Device 2 renames; device 1 (opened before) changes only the price: both survive
+    ok(await two.svc.saveEdit(two.businessId, seenByTwo, { ...seenByTwo, name: 'Test Sugar 1kg (fictitious)' }));
+    ok(await one.svc.changeSellingPrice(one.businessId, seenByOne, 1600));
+    expect(await two.svc.getProduct(two.businessId, made.productId)).toMatchObject({ name: 'Test Sugar 1kg (fictitious)', sellingPrice: 1600 });
+    // Both change the price from the same copy: the later one is told, nothing overwritten
+    const base = (await one.svc.getProduct(one.businessId, made.productId))!;
+    ok(await one.svc.changeSellingPrice(one.businessId, base, 1700));
+    expect(await two.svc.changeSellingPrice(two.businessId, base, 1800)).toMatchObject({ ok: false, kind: 'conflict', current: { sellingPrice: 1700 } });
+    expect((await one.svc.getProduct(one.businessId, made.productId))!.sellingPrice).toBe(1700);
+  });
+
+  it("PS-26 (review finding 4): after this device's own lost reply, the change is reported as unconfirmed, not as another device's", async () => {
+    const coke = (await A.svc.listProducts(A.businessId, q({ search: 'Coke' }))).rows[0];
+    expect(await A.svc.hasUnconfirmed('update_product', coke.id)).toBe(false);
+    drop.dropNextReply();
+    expect(await A.svc.changeSellingPrice(A.businessId, coke, coke.sellingPrice + 5)).toMatchObject({ kind: 'no_response' });
+    // The server has the change (what an automatic refresh would now see) ...
+    expect((await A.svc.getProduct(A.businessId, coke.id))!.sellingPrice).toBe(coke.sellingPrice + 5);
+    // ... and this device knows it may be its own: the screen must not say "another device"
+    expect(await A.svc.hasUnconfirmed('update_product', coke.id)).toBe(true);
+    // A second device of the same account has nothing unconfirmed
+    const other = await secondDevice({ email: A.email, password: A.password, businessId: A.businessId });
+    expect(await other.svc.hasUnconfirmed('update_product', coke.id)).toBe(false);
+    // Retrying the same change confirms it; nothing is unconfirmed any more
+    await A.svc.checkConnection(A.businessId);
+    expect(ok(await A.svc.changeSellingPrice(A.businessId, coke, coke.sellingPrice + 5))).toEqual({ changed: true });
+    expect(await A.svc.hasUnconfirmed('update_product', coke.id)).toBe(false);
+    // The same holds for a cost correction
+    const milo = (await A.svc.listProducts(A.businessId, q({ search: 'Milo' }))).rows[0];
+    drop.dropNextReply();
+    expect(await A.svc.setCost(A.businessId, milo.id, 135, 'Test reason')).toMatchObject({ kind: 'no_response' });
+    expect(await A.svc.hasUnconfirmed('set_cost', milo.id)).toBe(true);
+    await A.svc.checkConnection(A.businessId);
+    ok(await A.svc.setCost(A.businessId, milo.id, 135, 'Test reason'));
+    expect(await A.svc.hasUnconfirmed('set_cost', milo.id)).toBe(false);
   });
 
   it('PS-11: server pagination past the 1,000-row limit: every product is reachable, none twice', async () => {

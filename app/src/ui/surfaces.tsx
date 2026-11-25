@@ -114,6 +114,28 @@ export function OfflineBar({ onCheck }: { onCheck: () => void }) {
   );
 }
 
+/**
+ * "Updated 10:42" (SY-06, increment 2b). After a failed refresh: "Last updated 10:42 · couldn't
+ * refresh", in the warning colour, with a "Try again" button; the data on screen is kept.
+ */
+export function UpdatedLine({ label, failed, onRetry, onGreen = false }: {
+  label: string | null; failed: boolean; onRetry?: () => void; onGreen?: boolean;
+}) {
+  if (!label) return null;
+  const colour = failed ? (onGreen ? colours.marketGold : colours.warnText) : (onGreen ? colours.onGreenMuted : colours.stone);
+  return (
+    <View style={styles.updatedRow} accessibilityLiveRegion={failed ? 'polite' : 'none'}>
+      <Text style={[styles.updatedText, { color: colour }]} numberOfLines={2}>{label}</Text>
+      {failed && onRetry ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Try again to refresh" onPress={onRetry} hitSlop={8}
+          style={({ pressed }) => [styles.updatedButton, pressed && styles.pressed]}>
+          <Text style={[styles.updatedButtonText, { color: onGreen ? colours.surface : colours.shopGreen }]}>Try again</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 /** Placeholder rows while a list loads. */
 export function ListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
@@ -161,6 +183,10 @@ export function SuccessFlash({ message, onDone }: { message: string | null; onDo
 }
 
 const styles = StyleSheet.create({
+  updatedRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
+  updatedText: { fontSize: type.caption, fontWeight: '600', flexShrink: 1 },
+  updatedButton: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: space.xs },
+  updatedButtonText: { fontSize: type.caption, fontWeight: '800', textDecorationLine: 'underline' },
   pressed: { opacity: 0.75 },
   card: { backgroundColor: colours.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colours.sand },
   header: { backgroundColor: colours.shopGreen, paddingTop: TOP_INSET + space.md, paddingHorizontal: space.md, paddingBottom: space.lg, gap: space.xs, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },

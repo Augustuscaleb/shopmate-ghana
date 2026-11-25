@@ -20,6 +20,8 @@ import { appConnectivity, type Connectivity } from '../lib/connectivity';
 import { PRODUCTS_HOME, pop as popProducts, type ProductsStack } from '../navigation/productsStack';
 import type { ProductsService } from '../services/products';
 import { ProductsArea } from './products/ProductsArea';
+import { UpdatedLine } from '../ui/surfaces';
+import { useFreshness } from '../ui/useFreshness';
 import { classifyRpcError, looksLikeNetworkFailure } from '../services/rpcErrors';
 import type { Business, Device } from '../services/account';
 import {
@@ -39,6 +41,7 @@ import {
   revenueAccessibilityLabel,
   revenueCaption,
   staleNotice,
+  todayUpdatedLabel,
   type ActivityView,
   type DashboardLoad,
 } from './dashboardState';
@@ -84,30 +87,48 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
   const [load, setLoad] = useState<DashboardLoad>({ kind: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchOverview = useCallback(async (asRefresh = false) => {
-    if (asRefresh) setRefreshing(true);
-    else setLoad({ kind: 'loading' });
+  /** When the figures were last loaded or attempted (increment 2b freshness throttle). */
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const token = useRef(0);
+  /**
+   * 'initial': first load (skeleton). 'pull': pull-to-refresh or Try again (spinner).
+   * 'silent': automatic refresh (increment 2b): nothing changes on screen until the answer.
+   * Figures already shown are never replaced by placeholders: a failed refresh keeps them
+   * (loadFailed) with "couldn't refresh".
+   */
+  const fetchOverview = useCallback(async (mode: 'initial' | 'pull' | 'silent' = 'initial') => {
+    const mine = ++token.current;
+    setLastAttemptAt(Date.now());
+    if (mode === 'pull') setRefreshing(true);
+    else if (mode === 'initial') setLoad((l) => (l.kind === 'ready' ? l : { kind: 'loading' }));
     try {
       const data = await dashboard.fetchOverview(business.id);
       connectivity.reportServerResponse();
-      setLoad(loadSucceeded(data));
+      if (mine === token.current) setLoad(loadSucceeded(data));
     } catch (e) {
       // Only a request with no server response means "offline"; a server error means online
       if (looksLikeNetworkFailure(e as never)) connectivity.reportNoResponse();
       else if (classifyRpcError(e as never).kind === 'definite') connectivity.reportServerResponse();
       // Keep figures that were already shown (with a notice); only show the error state when there are none
-      setLoad(loadFailed);
+      if (mine === token.current) setLoad(loadFailed);
     } finally {
-      setRefreshing(false);
+      if (mine === token.current) setRefreshing(false);
     }
   }, [dashboard, business.id, connectivity]);
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
+  // Increment 2b: reload when the app returns, when Today is shown again, and every 15 minutes
+  useFreshness({
+    visible: tab === 'today' && !accountOpen,
+    lastLoadedAt: lastAttemptAt,
+    refresh: () => fetchOverview(load.kind === 'ready' ? 'silent' : 'initial'),
+  });
+
   // Returning to Today after the Products tab: refresh the figures (product count, low stock)
   const previousTab = useRef<Tab>(HOME_TAB);
   const setTab = useCallback((next: Tab) => {
-    if (next === 'today' && previousTab.current === 'products') fetchOverview(load.kind === 'ready');
+    if (next === 'today' && previousTab.current === 'products') fetchOverview(load.kind === 'ready' ? 'silent' : 'initial');
     // Tapping Products while already on it returns to the product list
     if (next === 'products' && previousTab.current === 'products') setProductsStack(PRODUCTS_HOME);
     previousTab.current = next;
@@ -146,7 +167,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
   // The Products area stays mounted once opened, so a half-typed form survives a visit to another tab
   const productsArea = productsOpened || tab === 'products' ? (
     <View style={[styles.root, tab !== 'products' && styles.hidden]} importantForAccessibility={tab === 'products' ? 'auto' : 'no-hide-descendants'}>
-      <ProductsArea businessId={business.id} products={products} stack={productsStack} onStackChange={setProductsStack} />
+      <ProductsArea businessId={business.id} products={products} stack={productsStack} onStackChange={setProductsStack} visible={tab === 'products' && !accountOpen} />
     </View>
   ) : null;
 
@@ -157,7 +178,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
       {tab === 'products' ? null : <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={tab === 'today'
-          ? <RefreshControl refreshing={refreshing} onRefresh={() => fetchOverview(true)} colors={[colours.shopGreen]} progressViewOffset={TOP_INSET} />
+          ? <RefreshControl refreshing={refreshing} onRefresh={() => fetchOverview('pull')} colors={[colours.shopGreen]} progressViewOffset={TOP_INSET} />
           : undefined}
       >
         <FadeIn animationKey={tab}>
@@ -167,7 +188,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
               ownerName={ownerName}
               load={load}
               offline={online === 'offline'}
-              onRetry={() => fetchOverview(load.kind === 'ready')}
+              onRetry={() => fetchOverview(load.kind === 'ready' ? 'pull' : 'initial')}
               onOpenAccount={() => setAccountOpen(true)}
               onNavigate={setTab}
               onAddProduct={() => openProducts([...PRODUCTS_HOME, { name: 'add' }])}
@@ -239,6 +260,7 @@ function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount,
             <Text style={styles.cardCaption}>
               {revenueCaption(load)}
             </Text>
+            <UpdatedLine label={todayUpdatedLabel(load, now)} failed={load.kind === 'ready' && load.refreshFailed} onRetry={onRetry} />
           </View>
         </View>
 

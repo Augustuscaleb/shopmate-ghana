@@ -1,4 +1,5 @@
 import { formatCedis, formatTime, type DashboardOverview } from '../services/dashboard';
+import { updatedLabel } from '../lib/freshness';
 
 /**
  * Load state and display text for the Today dashboard (S-10), kept free of React Native so
@@ -54,4 +55,10 @@ export function activityView(load: DashboardLoad): ActivityView {
 export function staleNotice(load: DashboardLoad): string | null {
   if (load.kind !== 'ready' || !load.refreshFailed) return null;
   return `We couldn't update the figures. These are from your last update at ${formatTime(load.updatedAt)}. Check your internet connection, then try again.`;
+}
+
+/** "Updated 10:42" under the revenue figure (SY-06, increment 2b); null while nothing is shown. */
+export function todayUpdatedLabel(load: DashboardLoad, now: Date): string | null {
+  if (load.kind !== 'ready') return null;
+  return updatedLabel(load.updatedAt, now, load.refreshFailed);
 }

@@ -8,7 +8,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Field, Notice } from '../../ui/components';
-import { Card, EmptyState, FilterChip, ListSkeleton, OfflineBar, ScreenHeader, SearchField, StockChip, SuccessFlash } from '../../ui/surfaces';
+import { Card, EmptyState, FilterChip, ListSkeleton, OfflineBar, ScreenHeader, SearchField, StockChip, SuccessFlash, UpdatedLine } from '../../ui/surfaces';
+import { useFreshness } from '../../ui/useFreshness';
+import { updatedLabel } from '../../lib/freshness';
 import { FadeIn, PressableScale } from '../../ui/animated';
 import { BoxIcon, SearchIcon, TagIcon } from '../../ui/icons';
 import { colours, radius, space, touch, type } from '../../ui/theme';
@@ -17,14 +19,15 @@ import { formatCedis } from '../../services/dashboard';
 import { pesewasToInput } from '../../lib/money';
 import { checkSellingPrice } from '../../services/productForm';
 import { PAGE_SIZE, ReadError, type Category, type CategoryFilter, type Product, type ProductSort, type ProductsService } from '../../services/products';
+import {
+  canLoadMore, filterLoadFailed, filterLoadStarted, listLoaded, loadMoreFailed, loadMoreStarted, loadMoreSucceeded,
+  planRefresh, refreshFailed, refreshSucceeded, spinnerOnDone, spinnerOnPull, spinnerOnSupersede, type ListState, type SpinnerOwner,
+} from './productListState';
 
-type ListState =
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'ready'; rows: Product[]; total: number; loadingMore: boolean; moreError: string | null; reloading: boolean };
-
-export function ProductListScreen({ businessId, products, onAdd, onOpen, onManageCategories, notice, onNoticeShown, refreshKey }: {
+export function ProductListScreen({ businessId, products, onAdd, onOpen, onManageCategories, notice, onNoticeShown, refreshKey, visible }: {
   businessId: string;
+  /** On screen (Products tab selected and nothing on top): automatic refreshes run only then. */
+  visible: boolean;
   /** Changes after a save on another screen of the tab: the list and categories reload. */
   refreshKey: number;
   products: ProductsService;
@@ -42,7 +45,9 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   const [archived, setArchived] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [state, setState] = useState<ListState>({ kind: 'loading' });
-  const [refreshing, setRefreshing] = useState(false);
+  /** The request that owns the pull-down spinner (rules in productListState.ts). */
+  const [spinnerOwner, setSpinnerOwner] = useState<SpinnerOwner>(null);
+  const refreshing = spinnerOwner !== null;
   const [priceFor, setPriceFor] = useState<Product | null>(null);
   const [flash, setFlash] = useState<string | null>(notice);
   const token = useRef(0);
@@ -53,42 +58,90 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
     return () => clearTimeout(t);
   }, [search]);
 
-  const loadCategories = useCallback(async () => {
-    try { setCategories(await products.listCategories(businessId)); } catch { /* the list shows its own error */ }
-  }, [products, businessId, refreshKey]);
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  const load = useCallback(async (asRefresh = false) => {
+  /** Categories for the filter chips; a failed reload keeps the chips already shown. */
+  const loadCategories = useCallback(async () => {
+    try { setCategories(await products.listCategories(businessId)); } catch { /* keep the chips already shown */ }
+  }, [products, businessId]);
+
+  /** A new search, filter or sort: the first page of the new list. */
+  const load = useCallback(async () => {
     const mine = ++token.current;
-    if (asRefresh) setRefreshing(true);
-    else setState((s) => (s.kind === 'ready' ? { ...s, reloading: true } : { kind: 'loading' }));
+    setLastAttemptAt(Date.now());
+    setState(filterLoadStarted);
+    // Replacing a pull-to-refresh: this load now owns its spinner, and turns it off when it ends
+    setSpinnerOwner((o) => spinnerOnSupersede(o, mine));
     try {
       const page = await products.listProducts(businessId, { search: query, category, archived, sort, offset: 0, limit: PAGE_SIZE });
-      if (mine === token.current) setState({ kind: 'ready', rows: page.rows, total: page.total, loadingMore: false, moreError: null, reloading: false });
+      if (mine === token.current) setState(listLoaded(page, new Date()));
     } catch (e) {
-      if (mine === token.current) setState({ kind: 'error', message: e instanceof ReadError ? e.message : "We couldn't load your products. Please try again." });
+      if (mine === token.current) setState(filterLoadFailed(e instanceof ReadError ? e.message : "We couldn't load your products. Please try again."));
     } finally {
-      if (mine === token.current) setRefreshing(false);
+      setSpinnerOwner((o) => spinnerOnDone(o, mine));
     }
-  }, [products, businessId, query, category, archived, sort, refreshKey]);
+  }, [products, businessId, query, category, archived, sort]);
+
+  /** The token of the silent refresh now running, if any (one at a time; review finding 5). */
+  const refreshInFlight = useRef<number | null>(null);
+
+  /**
+   * Refresh the SAME list (same search, filters and sort) without disturbing the screen
+   * (increment 2b): the rows already loaded are reloaded in place, so scroll position survives.
+   * A failed refresh keeps every row on screen and shows "couldn't refresh"; it never replaces a
+   * populated list with an empty or error state. Pull-to-refresh uses this too, with the spinner.
+   */
+  const refreshList = useCallback(async ({ spinner = false } = {}) => {
+    const plan = planRefresh(stateRef.current, refreshInFlight.current !== null && refreshInFlight.current === token.current, PAGE_SIZE);
+    if (plan.kind === 'load') { load(); loadCategories(); return; }
+    if (plan.kind === 'skip') {
+      // A refresh is already running, or a new search, filter or sort is loading (its answer is
+      // the fresh list): a pull-down shows the spinner until that request answers.
+      // Either way the running request (refresh, or the new search/filter load) owns the spinner
+      if (spinner) setSpinnerOwner(spinnerOnPull(token.current));
+      return;
+    }
+    const mine = ++token.current;
+    refreshInFlight.current = mine;
+    setLastAttemptAt(Date.now());
+    setSpinnerOwner((o) => (spinner ? spinnerOnPull(mine) : spinnerOnSupersede(o, mine)));
+    loadCategories();
+    try {
+      const page = await products.listProducts(businessId, { search: query, category, archived, sort, offset: 0, limit: plan.limit });
+      if (mine === token.current) setState((s) => refreshSucceeded(s, page, new Date()));
+    } catch {
+      if (mine === token.current) setState(refreshFailed);
+    } finally {
+      if (refreshInFlight.current === mine) refreshInFlight.current = null;
+      setSpinnerOwner((o) => spinnerOnDone(o, mine));
+    }
+  }, [products, businessId, query, category, archived, sort, load, loadCategories]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCategories(); }, [loadCategories]);
+  // After a save on another screen of this tab: refresh in place
+  const firstRefreshKey = useRef(refreshKey);
+  useEffect(() => { if (refreshKey !== firstRefreshKey.current) refreshList(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Increment 2b: when the app returns, when the list is shown again, and every 15 minutes
+  useFreshness({ visible, lastLoadedAt: lastAttemptAt, refresh: () => { refreshList(); } });
   useEffect(() => { if (notice) { setFlash(notice); onNoticeShown(); } }, [notice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
-    if (state.kind !== 'ready' || state.loadingMore || state.rows.length >= state.total) return;
+    const current = stateRef.current;
+    if (current.kind !== 'ready' || !canLoadMore(current)) return;
+    // A refresh or new filter that starts meanwhile changes the token: this answer is then
+    // dropped, and that load clears "loading more" whether it succeeds or fails.
     const mine = token.current;
-    setState({ ...state, loadingMore: true, moreError: null });
+    setState(loadMoreStarted);
     try {
-      const page = await products.listProducts(businessId, { search: query, category, archived, sort, offset: state.rows.length, limit: PAGE_SIZE });
-      if (mine !== token.current) return;
-      setState((s) => s.kind === 'ready'
-        ? { ...s, rows: [...s.rows, ...page.rows.filter((r) => !s.rows.some((x) => x.id === r.id))], total: page.total, loadingMore: false }
-        : s);
+      const page = await products.listProducts(businessId, { search: query, category, archived, sort, offset: current.rows.length, limit: PAGE_SIZE });
+      if (mine === token.current) setState((s) => loadMoreSucceeded(s, page));
     } catch (e) {
-      if (mine === token.current) setState((s) => s.kind === 'ready' ? { ...s, loadingMore: false, moreError: e instanceof ReadError ? e.message : 'Could not load more.' } : s);
+      if (mine === token.current) setState((s) => loadMoreFailed(s, e instanceof ReadError ? e.message : 'Could not load more.'));
     }
-  }, [state, products, businessId, query, category, archived, sort]);
+  }, [products, businessId, query, category, archived, sort]);
 
   const categoryName = useCallback((id: string | null) => (id ? categories.find((c) => c.id === id)?.name ?? null : null), [categories]);
   const filtered = !!query.trim() || category.kind !== 'all';
@@ -98,7 +151,7 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
 
   const header = (
     <View style={styles.controls}>
-      {online === 'offline' ? <OfflineBar onCheck={() => { products.checkConnection(businessId).then((ok) => { if (ok) load(); }); }} /> : null}
+      {online === 'offline' ? <OfflineBar onCheck={() => { products.checkConnection(businessId).then((ok) => { if (ok) refreshList(); }); }} /> : null}
       <SuccessFlash message={flash} onDone={() => setFlash(null)} />
       <SearchField value={search} onChangeText={setSearch} placeholder="Search products" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow} keyboardShouldPersistTaps="handled">
@@ -122,6 +175,10 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   return (
     <View style={styles.root}>
       <ScreenHeader title="Products" subtitle={subtitle}>
+        {state.kind === 'ready' ? (
+          <UpdatedLine label={updatedLabel(state.updatedAt, new Date(), state.refreshFailed)} failed={state.refreshFailed}
+            onRetry={() => refreshList({ spinner: true })} onGreen />
+        ) : null}
         <View style={styles.headerAction}>
           <Button label="+ Add product" kind="secondary" onPress={onAdd} disabled={online === 'offline'} />
         </View>
@@ -147,7 +204,7 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
         windowSize={7}
         removeClippedSubviews={Platform.OS === 'android'}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { load(true); loadCategories(); }} colors={[colours.shopGreen]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refreshList({ spinner: true }); }} colors={[colours.shopGreen]} />}
         ListEmptyComponent={
           state.kind === 'loading' ? <ListSkeleton /> :
           state.kind === 'error' ? (
@@ -247,22 +304,31 @@ function QuickPriceSheet({ product, businessId, products, onClose, onSaved, onRe
     else setOutcome(res.message);
   };
 
+  // No autoFocus on the price field: on iPhone, focusing while the sheet is still appearing opened
+  // the number pad on its own and the sheet was displaced out of view. The owner taps the field.
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}>
         <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close" onPress={onClose} />
+        {/*
+          iPhone fix: the sheet can never be taller than the space left above the keyboard; if the
+          keyboard and large text leave less room, its contents scroll instead of being pushed out
+          of view. Taps on the buttons work while the keyboard is open.
+        */}
         <FadeIn style={styles.sheet}>
-          <Text style={styles.sheetTitle} accessibilityRole="header">Change price</Text>
-          <Text style={styles.sheetSubtitle} numberOfLines={2}>{base.name} · now {formatCedis(base.sellingPrice)}</Text>
-          <Field label="New selling price (GH₵)" value={text} onChangeText={(t) => { setText(t); setError(undefined); }} keyboardType="decimal-pad"
-            error={error} hint="The change is recorded in the shop's history." autoFocus selectTextOnFocus />
-          {outcome ? <Notice tone="info" text={outcome} /> : null}
-          {online === 'offline' ? <Notice tone="error" text="This needs internet. Your data is safe — try again when you're connected." /> : null}
-          <Button label="Save price" onPress={save} busy={busy} disabled={online === 'offline'} />
-          {unconfirmed ? (
-            <Button label="I've checked — save this price" kind="secondary" onPress={async () => { await products.discardUnconfirmed('update_product', base.id); setUnconfirmed(false); save(); }} />
-          ) : null}
-          <Button label="Cancel" kind="link" onPress={onClose} />
+          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" bounces={false}>
+            <Text style={styles.sheetTitle} accessibilityRole="header">Change price</Text>
+            <Text style={styles.sheetSubtitle} numberOfLines={2}>{base.name} · now {formatCedis(base.sellingPrice)}</Text>
+            <Field label="New selling price (GH₵)" value={text} onChangeText={(t) => { setText(t); setError(undefined); }} keyboardType="decimal-pad"
+              error={error} hint="The change is recorded in the shop's history." selectTextOnFocus />
+            {outcome ? <Notice tone="info" text={outcome} /> : null}
+            {online === 'offline' ? <Notice tone="error" text="This needs internet. Your data is safe — try again when you're connected." /> : null}
+            <Button label="Save price" onPress={save} busy={busy} disabled={online === 'offline'} />
+            {unconfirmed ? (
+              <Button label="I've checked — save this price" kind="secondary" onPress={async () => { await products.discardUnconfirmed('update_product', base.id); setUnconfirmed(false); save(); }} />
+            ) : null}
+            <Button label="Cancel" kind="link" onPress={onClose} />
+          </ScrollView>
         </FadeIn>
       </KeyboardAvoidingView>
     </Modal>
@@ -290,7 +356,8 @@ const styles = StyleSheet.create({
   footer: { gap: space.sm, marginTop: space.md },
   endText: { textAlign: 'center', color: colours.stone, fontSize: type.caption, marginVertical: space.lg },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(28,27,25,0.45)' },
-  sheet: { backgroundColor: colours.surface, borderTopLeftRadius: radius.lg + 4, borderTopRightRadius: radius.lg + 4, padding: space.lg, paddingBottom: space.xl + space.lg, gap: space.md },
+  sheet: { backgroundColor: colours.surface, borderTopLeftRadius: radius.lg + 4, borderTopRightRadius: radius.lg + 4, maxHeight: '100%', overflow: 'hidden' },
+  sheetContent: { padding: space.lg, paddingBottom: space.xl + space.lg, gap: space.md },
   sheetTitle: { fontSize: type.title, fontWeight: '800', color: colours.ink },
   sheetSubtitle: { fontSize: type.body, color: colours.stone },
 });
