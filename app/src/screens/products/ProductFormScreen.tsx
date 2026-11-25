@@ -9,6 +9,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Vi
 import { Button, Field, Notice } from '../../ui/components';
 import { Card, FilterChip, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
 import { useFreshness } from '../../ui/useFreshness';
+import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
 import { colours, space, type } from '../../ui/theme';
@@ -29,7 +30,8 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
   /** On screen (increment 2b: automatic refreshes only then). */
   visible: boolean;
   onBack: () => void;
-  onSaved: (message: string) => void;
+  /** After a successful save; `productId` is the product saved (a new product's Details opens, A-1). */
+  onSaved: (message: string, productId: string) => void;
   onCorrectCost: (productId: string) => void;
   onManageCategories: () => void;
 }) {
@@ -49,27 +51,29 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
   const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [changedElsewhere, setChangedElsewhere] = useState(false);
+  /** Stage 1C-3.1 (Review-2 finding 1): an older answer never replaces a newer one. */
+  const reads = useLatestRequest();
+  const readBoth = () => Promise.all([
+    products.listCategories(businessId, { includeArchived: true }),
+    mode === 'edit' && productId ? products.getProduct(businessId, productId) : Promise.resolve(null),
+  ]);
 
   const load = async () => {
     setLoadError(null);
     setLastAttemptAt(Date.now());
-    try {
-      const [cats, p] = await Promise.all([
-        products.listCategories(businessId, { includeArchived: true }),
-        mode === 'edit' && productId ? products.getProduct(businessId, productId) : Promise.resolve(null),
-      ]);
+    await reads.run(readBoth, ([cats, p]) => {
       setCategories(cats);
+      setLoading(false);
       if (mode === 'edit') {
         if (!p) { setLoadError("This product can't be found. It may have been deleted. Go back and refresh the list."); return; }
         setProduct(p);
         setValues(valuesFrom(p));
       }
       setLoadedAt(new Date().toISOString());
-    } catch (e) {
-      setLoadError(e instanceof ReadError ? e.message : "We couldn't load this product. Please try again.");
-    } finally {
+    }, (e) => {
       setLoading(false);
-    }
+      setLoadError(e instanceof ReadError ? e.message : "We couldn't load this product. Please try again.");
+    });
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -81,8 +85,14 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
   useEffect(() => {
     if (refreshKey === firstKey.current) return;
     ownChangeAt.current = Date.now();
-    products.listCategories(businessId, { includeArchived: true }).then(setCategories).catch(() => { /* keep the old list */ });
-    if (mode === 'edit' && productId) products.getProduct(businessId, productId).then((p) => { if (p) adopt(p); }).catch(() => { /* keep */ });
+    // Not while the first load is still running or has failed: that load (or Try again) reads it all
+    if (loading || loadError) return;
+    // Replaces any read still running (its answer may predate this device's own change)
+    reads.run(readBoth, ([cats, p]) => {
+      setCategories(cats);
+      if (p) adopt(p);
+      setLoadedAt(new Date().toISOString());
+    }, () => { /* keep what is shown */ });
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
@@ -90,16 +100,16 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
    * typed is kept (rebaseValues); fields they didn't touch take the new values, with a note. A
    * failed refresh keeps everything on screen and says "couldn't refresh". Never runs while saving.
    */
-  const refreshSilently = async () => {
+  const refreshSilently = async ({ retry = false } = {}) => {
     if (loading || loadError) return;
+    // An automatic refresh while a read is running would only repeat it (Review-2 finding 3)
+    if (reads.running && !retry) return;
     const startedAt = Date.now();
     setLastAttemptAt(startedAt);
-    try {
-      const [cats, p] = await Promise.all([
-        products.listCategories(businessId, { includeArchived: true }),
-        mode === 'edit' && productId ? products.getProduct(businessId, productId) : Promise.resolve(null),
-      ]);
+    await reads.run(readBoth, async ([cats, p]) => {
       setCategories(cats);
+      setLoadedAt(new Date().toISOString());
+      setRefreshFailed(false);
       if (mode === 'edit' && p && product && !sameProduct(p, product)) {
         adopt(p);
         // Not "another device" when the change may be this device's own: a cost correction or
@@ -109,11 +119,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
         const ownUnconfirmed = await products.hasUnconfirmed('update_product', p.id).catch(() => true);
         if (!ownRecent && !ownUnconfirmed) setChangedElsewhere(true);
       }
-      setLoadedAt(new Date().toISOString());
-      setRefreshFailed(false);
-    } catch {
-      setRefreshFailed(true);
-    }
+    }, () => setRefreshFailed(true));
   };
   useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy, refresh: () => { refreshSilently(); } });
 
@@ -135,7 +141,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
       setBusy(true);
       const res = await products.createProduct(businessId, c.value);
       setBusy(false);
-      if (res.ok) { onSaved(`${c.value.name} added`); return; }
+      if (res.ok) { onSaved(`${c.value.name} added`, res.data.productId); return; }
       setUnconfirmed(res.kind === 'unconfirmed');
       setMessage({ tone: outcomeTone(res.kind), text: res.message });
     } else if (product) {
@@ -144,7 +150,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
       setBusy(true);
       const res = await products.saveEdit(businessId, product, c.value);
       setBusy(false);
-      if (res.ok) { onSaved(res.data.changed ? `${c.value.name} saved` : 'No changes to save'); return; }
+      if (res.ok) { onSaved(res.data.changed ? `${c.value.name} saved` : 'No changes to save', product.id); return; }
       if (res.kind === 'conflict' || (res.kind === 'unconfirmed' && res.current)) adopt(res.current!);
       setUnconfirmed(res.kind === 'unconfirmed');
       setMessage({ tone: outcomeTone(res.kind), text: res.message });
@@ -168,7 +174,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
             setBusy(true);
             const res = await products.setArchived(businessId, product.id, archiving);
             setBusy(false);
-            if (res.ok) onSaved(archiving ? `${product.name} archived` : `${product.name} restored`);
+            if (res.ok) onSaved(archiving ? `${product.name} archived` : `${product.name} restored`, product.id);
             else setMessage({ tone: outcomeTone(res.kind), text: res.message });
           },
         },
@@ -189,7 +195,7 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
             <FadeIn>
               <View style={styles.gap}>
                 {changedElsewhere ? <Notice text="This product was changed on another device. The latest details are shown." /> : null}
-                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently(); }} /> : null}
+                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
                 {mode === 'edit' && product ? <StockCard product={product} onCorrectCost={() => onCorrectCost(product.id)} disabled={offline} /> : null}
 
                 <Card style={styles.section}>

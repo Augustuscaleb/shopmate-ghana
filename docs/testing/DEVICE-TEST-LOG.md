@@ -163,9 +163,44 @@ Automated evidence exists for some of the same behaviour (for example PS-02 dupl
 
 **UX suggestion from the owner (future improvement; NOT implemented, no change made):** tapping a product in the list should open a **read-only product details view with an Edit button**, rather than opening the edit form directly. Recorded for a later increment. Increment 3 (S-37 product detail and movement history) is the natural place to consider it, subject to the owner's approval.
 
-## Stage 1C-2 increment 2b — two Android devices, same account (checklist; NOT YET TESTED)
+## Stage 1C-2 increment 2b — two devices, same account (owner-reported results recorded 2026-11-25; checklist partly done)
 
-**Status: pending manual device verification. No entry below has been run on a phone.** The code is uncommitted and awaiting owner review. Automated evidence is separate (see [STAGE-1C-2-EXECUTION-BRIEF.md](../stages/STAGE-1C-2-EXECUTION-BRIEF.md), increment 2b). There is no cloud verification (D11). Multi-device readiness is **not** claimed until these checks are done.
+**Status:**
+- the code is committed in `75f8aa6` ([CI #57](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45674601006) passed);
+- owner-reported device results are recorded below: the iPhone quick price sheet (6 scenarios) and the cross-device freshness scenario XD-01;
+- the two-phone checklist MD-01 – MD-18 is **partly** done: 2 PARTIAL, 16 NOT TESTED.
+
+Automated evidence is separate (see [STAGE-1C-2-EXECUTION-BRIEF.md](../stages/STAGE-1C-2-EXECUTION-BRIEF.md), increment 2b). There is no cloud verification (D11). Multi-device readiness is **not** claimed until the remaining checks are done. The same evidence is summarised in [STAGE-1C-3-PLAN.md](../stages/STAGE-1C-3-PLAN.md) §2.1.
+
+### iPhone quick price sheet fix: 6 scenarios (owner-reported, reported 2026-11-25)
+
+**Device:** iPhone 13 Pro Max, iOS 27.2.1, Expo Go. **Code:** commit `75f8aa6`. **Backend:** the local stack. **Evidence:** owner-reported manual results; no screenshots or logs.
+
+| Scenario | Status | Observations reported |
+|---|---|---|
+| QPS-D1 Open "Change price" (initial sheet behaviour) | **PASS** | The sheet appeared; the keyboard did not open by itself |
+| QPS-D2 Tap the price field (keyboard interaction) | **PASS** | The number pad opened when the field was tapped |
+| QPS-D3 Use the sheet with the keyboard open | **PASS** | The sheet stayed visible and its field and buttons stayed reachable |
+| QPS-D4 Save a new price | **PASS** | Saving worked |
+| QPS-D5 Close the sheet (Cancel; backdrop) | **PASS** | Cancel closed it; tapping the backdrop closed it |
+| QPS-D6 About 130 % text size (enlarged text) | **PASS** | The sheet stayed usable |
+
+**Totals (6 scenarios):** 6 PASS. Not reported separately: the same sheet steps on the Galaxy A06 after the fix; the owner reported the app working correctly on Android in general. These scenarios don't change any Increment 2 check; D2-12 is an Android check.
+
+### Cross-device freshness scenario XD-01 (owner-reported, reported 2026-11-25)
+
+| Scenario | Devices | Status |
+|---|---|---|
+| **XD-01:** a product change made on one phone appeared on the other phone without a manual refresh and without restarting the app | iPhone 13 Pro Max (Expo Go) and Samsung Galaxy A06 (Android 16), same owner account, local stack | **PASS** |
+
+**Not recorded:**
+- which trigger showed the change on the second phone (returning to the app, returning to the screen, or the 15-minute refresh);
+- which product field changed;
+- which phone made the change.
+
+XD-01 doesn't pass any individual MD check on its own; see MD-01 and MD-04 below.
+
+### Two-phone checklist MD-01 – MD-18
 
 **Owner acceptance criterion (25 Nov 2026):** a change made on one device must become visible on another device after returning to the app or refreshing, without restarting the app.
 
@@ -209,10 +244,10 @@ Automated evidence exists for some of the same behaviour (for example PS-02 dupl
 
 | ID | Steps | Expected | Status |
 |---|---|---|---|
-| MD-01 | Sign in on A, then on B, with the same account | Both reach Today for the same shop; More shows device codes A and B | NOT TESTED |
+| MD-01 | Sign in on A, then on B, with the same account | Both reach Today for the same shop; More shows device codes A and B | **PARTIAL**: the same account was used on both phones (iPhone and A06; XD-01); the device codes A and B were not reported |
 | MD-02 | Log out on A | B stays signed in and keeps working; logging back in on A shows device code A again | NOT TESTED |
 | MD-03 | Close both apps completely and reopen | Both restore their login | NOT TESTED |
-| MD-04 | A changes a product's price. On B (Products open), switch to another app and back | B shows the new price; "Updated" time changes; no restart | NOT TESTED |
+| MD-04 | A changes a product's price. On B (Products open), switch to another app and back | B shows the new price; "Updated" time changes; no restart | **PARTIAL**: XD-01 shows a product change appearing on the other phone without a manual refresh or restart; the exact MD-04 steps (switching away and back), the field changed and the "Updated" time change were not recorded |
 | MD-05 | A adds a product. B pulls down to refresh | It appears on B | NOT TESTED |
 | MD-06 | A archives a product. B goes to Today, then back to Products | Gone from B's list; listed under Archived | NOT TESTED |
 | MD-07 | A changes a low-stock level so the product becomes Low. B returns to Today | B's low-stock figure reflects it | NOT TESTED |
@@ -233,7 +268,32 @@ Automated evidence exists for some of the same behaviour (for example PS-02 dupl
 - tablets, the browser and iOS (staged requirements, not in this increment);
 - the plan device limit (not enforced; outstanding requirement).
 
-**Totals (18 checklist entries):** 0 PASS, 0 PARTIAL, 18 NOT TESTED, 0 BLOCKED.
+**Totals (18 checklist entries):** 0 PASS, 2 PARTIAL (MD-01, MD-04), 16 NOT TESTED, 0 BLOCKED. Separately recorded: XD-01 PASS, and QPS-D1 – QPS-D6 6/6 PASS. The Increment 2 totals above are unchanged: 9 PASS, 4 PARTIAL, 11 NOT TESTED.
+
+## Stage 1C-3.1 — Product Details (checklist written; NOT TESTED)
+
+**Status: no owner-reported device evidence yet. Every check below is NOT TESTED.** The 1C-3.1 code is in the working tree only (not committed or pushed when this was written), so it can't yet be run on the phones. Automated results are recorded separately in [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md) and are not device evidence. Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md) (DET-06 corrected in plan revision 9 to follow spec 08 rev 2 §9.3).
+
+Devices: Samsung Galaxy A06 (Android 16, development build) and iPhone 13 Pro Max (Expo Go), local development stack with migration `20261125000300`, fictitious data only. DET-13 needs both phones.
+
+| ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
+|---|---|---|---|
+| DET-01 | Row tap opens Details, not the form | NOT TESTED | NOT TESTED |
+| DET-02 | All fields for a product with stock and a cost | NOT TESTED | NOT TESTED |
+| DET-03 | Margin GH₵ 2.00 and 20 % for GH₵ 10.00 / GH₵ 8.00; "(about)" only on estimates | NOT TESTED | NOT TESTED |
+| DET-04 | No stock with a last known cost (needs stock adjusted to 0; no Adjust stock screen yet) | NOT TESTED | NOT TESTED |
+| DET-05 | Product with no cost: "Not known", margin "Not known", no Stock value | NOT TESTED | NOT TESTED |
+| DET-06 | (a) Failed refresh: price and stock kept as stale; cost "Not available right now" with no figure; margin hidden; Stock value hidden. (b) Failed first load: error with Try again, no figures | NOT TESTED | NOT TESTED |
+| DET-07 | Cost above price: minus sign, red, "Loss" | NOT TESTED | NOT TESTED |
+| DET-08 | Archive from Details; actions disabled with the reason; Restore | NOT TESTED | NOT TESTED |
+| DET-09 | Archived category "(archived)"; "No category" | NOT TESTED | NOT TESTED |
+| DET-10 | Edit → Save returns to Details, refreshed, "… saved" | NOT TESTED | NOT TESTED |
+| DET-11 | Edit → Back (and Android Back) returns to Details unchanged | NOT TESTED | NOT TESTED |
+| DET-12 | Back from Details keeps list search, filters, sort, scroll | NOT TESTED | NOT TESTED |
+| DET-13 | Two phones: change on A appears on B; note only for the other phone's change | NOT TESTED (two phones) | |
+| DET-14 | Add a product: its Details opens | NOT TESTED | NOT TESTED |
+
+Also to repeat after 1C-3.1 (plan §7): D2-11, D2-12, D2-13, MD-09, MD-10 — NOT TESTED for 1C-3.1. Earlier results for those checks were recorded before 1C-3.1 and do not count for it.
 
 ## Issues found
 

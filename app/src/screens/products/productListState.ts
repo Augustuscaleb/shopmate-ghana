@@ -9,6 +9,9 @@
  *   way, and a failed refresh must never leave the OLD filter's rows under the NEW filter
  *   (finding 3).
  * - No second refresh while one is already running (finding 5).
+ * - No second first load: while the first load (or a "Try again" load) is still running, a
+ *   refresh (the app returning, the screen shown again) waits for it instead of starting the
+ *   same load again (Stage 1C-3.1, Review-2 finding 3).
  */
 import type { Page, Product } from '../../services/products';
 
@@ -40,11 +43,12 @@ export function filterLoadFailed(message: string): ListState {
 /** What a refresh request should do now. */
 export type RefreshPlan =
   | { kind: 'load' }                 // nothing usable on screen: do a normal first load
-  | { kind: 'skip'; why: 'filter_loading' | 'already_refreshing' }
+  | { kind: 'skip'; why: 'filter_loading' | 'already_refreshing' | 'first_loading' }
   | { kind: 'refresh'; limit: number };
 
-export function planRefresh(s: ListState, refreshInFlight: boolean, pageSize: number): RefreshPlan {
-  if (s.kind !== 'ready') return { kind: 'load' };
+/** `loadInFlight`: the latest request is a first-page load that hasn't answered yet. */
+export function planRefresh(s: ListState, refreshInFlight: boolean, pageSize: number, loadInFlight = false): RefreshPlan {
+  if (s.kind !== 'ready') return loadInFlight ? { kind: 'skip', why: 'first_loading' } : { kind: 'load' };
   if (s.reloading) return { kind: 'skip', why: 'filter_loading' };
   if (refreshInFlight) return { kind: 'skip', why: 'already_refreshing' };
   return { kind: 'refresh', limit: Math.min(Math.max(s.rows.length, pageSize), MAX_REFRESH_ROWS) };

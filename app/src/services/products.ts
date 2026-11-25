@@ -12,7 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { appConnectivity, type ConnectivityMonitor } from '../lib/connectivity';
 import { CATEGORY_CHANGED_MESSAGE, OFFLINE_MESSAGE, UNCONFIRMED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, messageFor } from './errorMessages';
 import { formatCedis } from './dashboard';
-import { asObject, bool, pesewas, text, uuid, wholeNumber } from './parse';
+import { ResultError, asObject, bool, pesewas, text, uuid, wholeNumber } from './parse';
 import type { PendingRequests } from './pendingRequests';
 import { classifyRpcError, looksLikeNetworkFailure, type ErrorLike } from './rpcErrors';
 import type { NewProductFields, ProductFields } from './productForm';
@@ -31,6 +31,13 @@ export type Product = {
 };
 
 export type Category = { id: string; name: string; archived: boolean };
+
+/** The newest product_cost_history row whose avg_cost is not null (Stage 1C-3.1, cost state 2). */
+export type LastKnownCostRow = {
+  /** avg_cost exactly as the server stores it: numeric(18,4) pesewas per unit, e.g. "112.5". */
+  avgCost: string;
+  effectiveAt: string;
+};
 
 /** 'lowest_stock' sorts by stock quantity, fewest first. It is not a low-stock filter (see the brief). */
 export type ProductSort = 'name' | 'lowest_stock';
@@ -199,6 +206,27 @@ export class ProductsService {
     if (error) throw this.readFailed(error);
     this.connectivity.reportServerResponse();
     return data ? toProduct(data) : null;
+  }
+
+  /**
+   * The newest cost-history row of this product that has an average (Stage 1C-3.1, P-3 state 2):
+   * product_cost_history for this shop and product, avg_cost not null, newest effective_at first,
+   * then newest created_at; one row. Read under row-level security (members of the shop only).
+   * null when there is none. avg_cost is returned exactly as stored (numeric, pesewas per unit).
+   */
+  async getLastKnownCost(businessId: string, productId: string): Promise<LastKnownCostRow | null> {
+    const { data, error } = await this.client.from('product_cost_history').select('avg_cost, effective_at')
+      .eq('business_id', businessId).eq('product_id', productId).not('avg_cost', 'is', null)
+      .order('effective_at', { ascending: false }).order('created_at', { ascending: false })
+      .limit(1).maybeSingle();
+    if (error) throw this.readFailed(error);
+    this.connectivity.reportServerResponse();
+    if (!data) return null;
+    const o = asObject(data, 'cost history');
+    const avg = o.avg_cost;
+    const avgCost = typeof avg === 'number' && Number.isFinite(avg) ? String(avg) : typeof avg === 'string' ? avg : null;
+    if (avgCost === null || !/^-?\d+(\.\d+)?$/.test(avgCost)) throw new ResultError('avg_cost');
+    return { avgCost, effectiveAt: text(o, 'effective_at') as string };
   }
 
   /** All categories of the shop, page by page (never more than CATEGORY_PAGE rows per request). */

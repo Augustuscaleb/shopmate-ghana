@@ -9,6 +9,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { Button, Field, Notice } from '../../ui/components';
 import { Card, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
 import { useFreshness } from '../../ui/useFreshness';
+import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
 import { colours, space, type } from '../../ui/theme';
@@ -42,16 +43,18 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [stockChangedElsewhere, setStockChangedElsewhere] = useState(false);
 
+  /** Stage 1C-3.1 (Review-2 finding 1): an older answer never replaces a newer one. */
+  const reads = useLatestRequest();
+
   const load = async () => {
     setLoadError(null);
     setLastAttemptAt(Date.now());
-    try {
-      const p = await products.getProduct(businessId, productId);
+    await reads.run(() => products.getProduct(businessId, productId), (p) => {
       if (!p) setLoadError("This product can't be found. It may have been deleted. Go back and refresh the list.");
       else { setProduct(p); setLoadedAt(new Date().toISOString()); }
-    } catch (e) {
+    }, (e) => {
       setLoadError(e instanceof ReadError ? e.message : "We couldn't load this product. Please try again.");
-    }
+    });
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -60,22 +63,21 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
    * corrected them). The typed cost and reason are kept; a failed refresh keeps the figures shown.
    * Not after the result is shown, and never while saving.
    */
-  const refreshSilently = async () => {
+  const refreshSilently = async ({ retry = false } = {}) => {
     if (!product || result) return;
+    // An automatic refresh while a read is running would only repeat it (Review-2 finding 3)
+    if (reads.running && !retry) return;
     setLastAttemptAt(Date.now());
-    try {
-      const p = await products.getProduct(businessId, productId);
+    await reads.run(() => products.getProduct(businessId, productId), async (p) => {
+      if (p) setProduct(p);
+      setLoadedAt(new Date().toISOString());
+      setRefreshFailed(false);
       if (p && (p.stockQty !== product.stockQty || p.stockValue !== product.stockValue || p.costKnown !== product.costKnown)) {
         // A correction from this device whose reply was lost may be what changed: not "another device"
         const ownUnconfirmed = await products.hasUnconfirmed('set_cost', p.id).catch(() => true);
         if (!ownUnconfirmed) setStockChangedElsewhere(true);
       }
-      if (p) setProduct(p);
-      setLoadedAt(new Date().toISOString());
-      setRefreshFailed(false);
-    } catch {
-      setRefreshFailed(true);
-    }
+    }, () => setRefreshFailed(true));
   };
   useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy, refresh: () => { refreshSilently(); } });
 
@@ -122,7 +124,7 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
             <FadeIn>
               <View style={styles.gap}>
                 {stockChangedElsewhere ? <Notice text="The stock was changed on another device. The latest figures are shown." /> : null}
-                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently(); }} /> : null}
+                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
                 <Card style={styles.section}>
                   <Text style={styles.sectionTitle}>Now</Text>
                   <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />

@@ -51,6 +51,8 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   const [priceFor, setPriceFor] = useState<Product | null>(null);
   const [flash, setFlash] = useState<string | null>(notice);
   const token = useRef(0);
+  /** The token of the first-page load now running, if any (no duplicate first load; Review-2 finding 3). */
+  const loadInFlight = useRef<number | null>(null);
 
   // Search runs 300 ms after typing stops
   useEffect(() => {
@@ -70,6 +72,7 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   /** A new search, filter or sort: the first page of the new list. */
   const load = useCallback(async () => {
     const mine = ++token.current;
+    loadInFlight.current = mine;
     setLastAttemptAt(Date.now());
     setState(filterLoadStarted);
     // Replacing a pull-to-refresh: this load now owns its spinner, and turns it off when it ends
@@ -80,6 +83,7 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
     } catch (e) {
       if (mine === token.current) setState(filterLoadFailed(e instanceof ReadError ? e.message : "We couldn't load your products. Please try again."));
     } finally {
+      if (loadInFlight.current === mine) loadInFlight.current = null;
       setSpinnerOwner((o) => spinnerOnDone(o, mine));
     }
   }, [products, businessId, query, category, archived, sort]);
@@ -93,9 +97,11 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
    * A failed refresh keeps every row on screen and shows "couldn't refresh"; it never replaces a
    * populated list with an empty or error state. Pull-to-refresh uses this too, with the spinner.
    */
-  const refreshList = useCallback(async ({ spinner = false } = {}) => {
-    const plan = planRefresh(stateRef.current, refreshInFlight.current !== null && refreshInFlight.current === token.current, PAGE_SIZE);
-    if (plan.kind === 'load') { load(); loadCategories(); return; }
+  const refreshList = useCallback(async ({ spinner = false, afterSave = false } = {}) => {
+    const plan = planRefresh(stateRef.current, refreshInFlight.current !== null && refreshInFlight.current === token.current, PAGE_SIZE,
+      loadInFlight.current !== null && loadInFlight.current === token.current);
+    // A first load that started before this device's own save may miss it: replace it
+    if (plan.kind === 'load' || (plan.kind === 'skip' && plan.why === 'first_loading' && afterSave)) { load(); loadCategories(); return; }
     if (plan.kind === 'skip') {
       // A refresh is already running, or a new search, filter or sort is loading (its answer is
       // the fresh list): a pull-down shows the spinner until that request answers.
@@ -123,7 +129,7 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   useEffect(() => { loadCategories(); }, [loadCategories]);
   // After a save on another screen of this tab: refresh in place
   const firstRefreshKey = useRef(refreshKey);
-  useEffect(() => { if (refreshKey !== firstRefreshKey.current) refreshList(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (refreshKey !== firstRefreshKey.current) refreshList({ afterSave: true }); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // Increment 2b: when the app returns, when the list is shown again, and every 15 minutes
   useFreshness({ visible, lastLoadedAt: lastAttemptAt, refresh: () => { refreshList(); } });
   useEffect(() => { if (notice) { setFlash(notice); onNoticeShown(); } }, [notice]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -271,8 +277,11 @@ function ProductRow({ product, categoryName, index, onOpen, onChangePrice, price
   );
 }
 
-/** S-32 Quick price change: new selling price only (cost corrections are a separate, audited action, D-5). */
-function QuickPriceSheet({ product, businessId, products, onClose, onSaved, onRefreshed }: {
+/**
+ * S-32 Quick price change: new selling price only (cost corrections are a separate, audited action, D-5).
+ * Opened from the list and from Product Details (Stage 1C-3.1).
+ */
+export function QuickPriceSheet({ product, businessId, products, onClose, onSaved, onRefreshed }: {
   product: Product | null; businessId: string; products: ProductsService; onClose: () => void; onSaved: (p: Product, price: number) => void;
   onRefreshed: (p: Product) => void;
 }) {

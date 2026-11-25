@@ -9,6 +9,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Vi
 import { Button, Field, Notice } from '../../ui/components';
 import { Card, EmptyState, ListSkeleton, OfflineBar, ScreenHeader, UpdatedLine } from '../../ui/surfaces';
 import { useFreshness } from '../../ui/useFreshness';
+import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
 import { TagIcon } from '../../ui/icons';
@@ -43,6 +44,9 @@ export function CategoriesScreen({ businessId, products, onBack, onChanged, visi
   const shown = useRef<Category[] | null>(null);
   shown.current = categories;
 
+  /** Stage 1C-3.1 (Review-2 finding 1): an older answer never replaces a newer one. */
+  const reads = useLatestRequest();
+
   /**
    * Loads the list. If a list is already shown, a failed reload keeps it (with "couldn't refresh")
    * instead of replacing it with an error (increment 2b). The name being typed is never touched.
@@ -50,21 +54,23 @@ export function CategoriesScreen({ businessId, products, onBack, onChanged, visi
   const load = async (): Promise<Category[] | null> => {
     setLoadError(null);
     setLastAttemptAt(Date.now());
-    try {
-      const list = await products.listCategories(businessId, { includeArchived: true });
+    let latest: Category[] | null = null;
+    await reads.run(() => products.listCategories(businessId, { includeArchived: true }), (list) => {
+      latest = list;
       setCategories(list);
       setLoadedAt(new Date().toISOString());
       setRefreshFailed(false);
-      return list;
-    } catch (e) {
+    }, (e) => {
       if (shown.current !== null) setRefreshFailed(true);
       else setLoadError(e instanceof ReadError ? e.message : "We couldn't load your categories. Please try again.");
-      return null;
-    }
+    });
+    // null when this read failed or a newer one replaced it (that newer read updates the screen)
+    return latest;
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Increment 2b: when the app returns, when this screen is shown again, and every 15 minutes
-  useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy: busy !== null, refresh: () => { load(); } });
+  // Increment 2b: when the app returns, when this screen is shown again, and every 15 minutes.
+  // Not while a read is already running: it would only repeat it (Review-2 finding 3).
+  useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy: busy !== null, refresh: () => { if (!reads.running) load(); } });
 
   /** Another device renamed or archived this category meanwhile: show the latest list. */
   const conflicted = async (id: string, text: string) => {
@@ -74,6 +80,8 @@ export function CategoriesScreen({ businessId, products, onBack, onChanged, visi
     const now = list?.find((c) => c.id === id);
     setEditing((e) => {
       if (!e || e.id !== id) return e;
+      // The read failed or a newer one replaced it: nothing is known yet, so keep the typing as it is
+      if (list === null) return e;
       // Gone or archived: nothing left to rename. Renamed: keep the typing, show the new name.
       if (!now || now.archived) return null;
       return { ...e, seenName: now.name, error: undefined, note: `It is now called "${now.name}".` };

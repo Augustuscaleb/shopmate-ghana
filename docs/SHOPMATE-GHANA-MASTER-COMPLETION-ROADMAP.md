@@ -18,14 +18,25 @@
 
 Rules kept from the project: a plan mentioning an item is **not** evidence; CI or local passes say nothing about the cloud or a phone (test plan §0); a local or CI migration is **not** a cloud migration; cloud and production operations need separate authorisation (D11); frozen migrations and approved behaviour are preserved.
 
-## 1. Current-state summary (24 Nov 2026)
+## 1. Current-state summary (24 Nov 2026; repository facts updated 25 Nov 2026)
 
-- **Repository:** branch `claude/elegant-babbage-a2rfd2`, HEAD `7d29d4d`; [CI #51](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45487659376) passed: database 1017/1017 (15 files), API 133/133 (17 files), app 25/25 (8 files), plus typecheck, secret scan, dependency gate, Android bundle export and bundle scan. No pull request; nothing merged.
-- **Done:** Stage 1A (foundation) and 1B (login and onboarding) approved; Today dashboard built and owner-tested on a phone; Stage 1C-1 (inventory **database** functions, T1–T10, plus M2) built, CI-passed and **closed by the owner for its local/CI scope (24 Nov 2026)**, with fresh local evidence at `44d9d55`.
-- **Cloud:** the development project has only the **5 Stage 1 migrations** (☁️ cloud run 43260965124, 12 Nov 2026). The **12 Stage 1C migrations** are **not** applied (D11). There is **no production project** yet (CLOUD-SETUP-LOG: "a separate production project will be created before real data").
-- **In progress:** Stage 1C-2 screens (authorised 24 Nov 2026), increment 1 first. **Not started:** sales and offline sync (1D); credit; expenses; cash count and closing; reports; CSV export; settings, subscription, help; backup (R-3); pilot.
+- **Repository:** branch `claude/elegant-babbage-a2rfd2`, HEAD `75f8aa6` (Stage 1C-2 increment 2b); [CI #57](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45674601006) passed (secret scan, dependency audit, typecheck, database tests, API tests, app unit tests, Android bundle export and bundle scan). The local runs on that tree: database 1051/1051 (16 files), API 177/177 (21 files), app 124/124 (23 files). No pull request; nothing merged. *(Before: HEAD `7d29d4d`, CI #51 on 24 Nov 2026.)*
+- **Done:**
+  - Stage 1A (foundation) and 1B (login and onboarding) approved;
+  - Today dashboard built and owner-tested on a phone;
+  - Stage 1C-1 (inventory **database** functions, T1–T10, plus M2) built, CI-passed and **closed by the owner for its local/CI scope (24 Nov 2026)**, with fresh local evidence at `44d9d55`;
+  - Stage 1C-2 increments 1 (`0f13132`), 2 (`f6a405e`) and 2b (`75f8aa6`) committed and CI-passed. Increment 2b includes the `update_product` expected-values migration `20261125000300`, **local and CI only**.
+- **Cloud:** the development project has only the **5 Stage 1 migrations** (☁️ cloud run 43260965124, 12 Nov 2026). The **13 Stage 1C migrations** (`20261123000100` – `20261125000300`; 18 migration files in the repository) are **not** applied (D11). There is **no production project** yet (CLOUD-SETUP-LOG: "a separate production project will be created before real data").
+- **In progress:**
+  - Stage 1C-2 screens (authorised 24 Nov 2026): increments 1, 2 and 2b done.
+  - Owner decision P-1 (25 Nov 2026): **Stage 1C-3** (Product Experience & Visual Redesign; [plan](stages/STAGE-1C-3-PLAN.md); **G-1 approved 25 Nov 2026 for increment 1C-3.1 only**: implemented in the working tree, not committed, device checks NOT TESTED; 1C-3.2 onwards not started) runs **before** the remaining 1C-2 increments.
+- **Not started:** sales and offline sync (1D); credit; expenses; cash count and closing; reports; CSV export; settings, subscription, help; backup (R-3); pilot; PC and browser access (PW-1).
 - **Gates:** G1, G2, G3 **not reached**. **Real shop data is not allowed** (G2 needs R-1, R-2, R-3, among others).
-- **Next decisions:** D11 cloud migration; `expo-network` installation and any development build it needs (D-2); the remaining items in §9.
+- **Next decisions:**
+  - D11 cloud migration;
+  - `expo-network` installation and any development build it needs (D-2);
+  - approval to start Stage 1C-3 (G-1) and the other open items in its plan (§10 there);
+  - the remaining items in §9.
 
 ## 2. Phase overview and order
 
@@ -35,7 +46,9 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 | P1A | Stage 1A — foundation | **COMPLETED AND VERIFIED** (☁️ 91/91) | — |
 | P1B | Stage 1B — login, onboarding, cloud tooling | **IMPLEMENTED, NOT FULLY VERIFIED**: approved, ☁️ 4 safeguard tests, 📱 TC-DEV-01–03; open sub-items in §3.2 | — |
 | P1C-1 | Stage 1C checkpoint 1 — inventory database | **IMPLEMENTED, NOT FULLY VERIFIED**: CI-passed and locally verified; **checkpoint closed** by the owner (24 Nov 2026); not ☁️ (D11 outstanding) | — |
-| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 committed (`0f13132`), device checks 14/14 PASS; increment 2 committed (`f6a405e`, CI #55): main flows manually exercised on the phone (owner-reported): 9 PASS, 4 PARTIAL, 11 detailed device checks NOT TESTED; increment 2b (multi-device freshness) implemented locally, uncommitted, two-phone checks pending | P1C-1 closure ✅ |
+| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 committed (`0f13132`), device checks 14/14 PASS; increment 2 committed (`f6a405e`, CI #55): main flows manually exercised on the phone (owner-reported): 9 PASS, 4 PARTIAL, 11 detailed device checks NOT TESTED; increment 2b (multi-device freshness, iOS quick price fix) committed (`75f8aa6`, CI #57); iPhone quick price sheet 6/6 scenarios PASS and cross-device freshness XD-01 PASS (owner-reported); two-phone checklist MD-01 – MD-18: 2 PARTIAL, 16 NOT TESTED. **Remaining increments (S-37 movement history, S-33/34, S-35, S-38, S-39, S-36) paused until after Stage 1C-3** (P-1) | P1C-1 closure ✅ |
+| P1C-3 | **Stage 1C-3 — Product Experience & Visual Redesign** ([plan](stages/STAGE-1C-3-PLAN.md)): read-only Product Details (read-only part of S-37); design system v2 (system font); redesign of all existing screens; portrait **and** landscape on all phones and tablets (Android, iOS); motion and accessibility | **IN PROGRESS: 1C-3.1 (Product Details) implemented in the working tree, NOT committed, device checks NOT TESTED; 1C-3.2 – 1C-3.6 NOT started** (owner decisions P-1 – P-5, S-1, M-1, R-1, W-1, 25 Nov 2026; G-1 approved 25 Nov 2026 for 1C-3.1 only) | 1C-2 increments 1 – 2b ✅; owner approval (G-1) ✅ for 1C-3.1; spec 08 revision 2 **approved at C-1a** (25 Nov 2026; specification set 5.2); the physical gallery review **C-1b** (A06 and iPhone, after 1C-3.2) still required before screen redesign; Android development build approval (B-1) in 1C-3.5. **iOS release (plan rev. 6, §6.5 item 4):** final iPhone and iPad checks (orientation, safe areas, release-readiness) on an approved iOS development or TestFlight build, required before the iOS release gate and before release for real-shop use; they block the **iOS release only, not Stage 1C-3 acceptance**; Apple account and iOS build need separate approval (**B-2**); which gate is the iOS release gate is still an owner decision (**IG-1**) |
+| PW-1 | **PC and browser access (Windows and macOS)**: browser access, desktop layouts and navigation, secure browser sessions, larger-screen workflows, browser testing (§3.6a) | **NOT STARTED**: required product direction (owner, 25 Nov 2026); scheduled **after Stage 1C-3** (scheduling decision W-1); detailed plan not yet written | P1C-3 complete (design system); **D11 before any cross-network testing**; owner decisions on the technical basis, browser session security and hosting |
 | Ops-1 | Backup and restore, first restore drill (R-3, mandatory) | **REQUIRES OWNER DECISION** (start approval); designed only | Cloud project (exists) |
 | P1D+ | Stage 1 remaining: sales and offline sync, voids, cancellations, credit, expenses, closing, reports, export, settings, subscription, help (PLAN §11 "1D onwards") | **NOT STARTED**; sub-stage split **not yet planned** | P1C (stock functions); 1D plan |
 | Cloud | Apply migrations to the cloud and re-verify after each (decision 42, R-1, D11) | **REQUIRES OWNER DECISION** per batch | Owner approval |
@@ -47,6 +60,8 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 
 **Required order and why:**
 1. **1C-1 closure → 1C-2**: screens need the stock functions and the owner's 1C-2 decisions.
+   - **1C-2 increments 1 – 2b → Stage 1C-3 → the remaining 1C-2 increments** (owner decision P-1, 25 Nov 2026). The remaining inventory screens, and the S-37 movement history, are built once, in the new design system.
+   - **Stage 1C-3 → PW-1** (scheduling decision W-1): browser support uses the 1C-3 design system. PW-1 needs **D11** before any cross-network testing. Its position relative to 1D is decided when its own plan is written.
 2. **1C-2 before 1D** follows the PLAN §11 stage order. The hard technical dependency of sales is on **1C-1** (products, the stock pool and sale-time cost); 1C-2 is what lets an owner create and stock products in the app, so a usable New Sale (S-20) needs it.
 3. **1D (sales, outbox, sync)** before credit, closing and reports: credit sales, voids, cancellations, cash count and every report line depend on recorded sales (05 §4 – §11).
 4. **Expenses** before **cash count and reports** (C-80, C-47).
@@ -102,17 +117,24 @@ All rows: evidence [test plan §0d](product-specification/10-test-plan.md) (Stag
 
 **Remaining for 1C-1:** checkpoint **closed** by the owner (24 Nov 2026; [STAGE-1C-PLAN.md](stages/STAGE-1C-PLAN.md) §5a; local evidence [2026-11-24-stage1c1-closure-local.log](test-evidence/2026-11-24-stage1c1-closure-local.log)). Still outstanding: cloud application and re-verification (D11); monitoring findings L1 – L3, I6 ([STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §5).
 
-### 3.4 Stage 1C-2 — inventory screens (IN PROGRESS; authorised 24 Nov 2026)
+### 3.4 Stage 1C-2 — inventory screens (IN PROGRESS; authorised 24 Nov 2026) and Stage 1C-3 (PLANNED)
 
 Scope and order: [STAGE-1C-2-EXECUTION-BRIEF.md](stages/STAGE-1C-2-EXECUTION-BRIEF.md). Screens S-30 – S-39, Needs attention on the dashboard (D10). All backend functions exist (§4). Decisions D-0 – D-10 approved (§9).
 
+**Sequence (owner decision P-1, 25 Nov 2026):**
+1. Increments 1, 2 and 2b are committed (`0f13132`, `f6a405e`, `75f8aa6`).
+2. **Stage 1C-3** ([STAGE-1C-3-PLAN.md](stages/STAGE-1C-3-PLAN.md)) is in progress: 1C-3.1 implemented (not committed, NOT device-tested); 1C-3.2 onwards need their own go-ahead.
+3. The remaining 1C-2 increments follow Stage 1C-3, in the new design system: S-37 movement history, S-33/34, S-35, S-38, S-39, S-36.
+
 **Multi-device (owner decisions, 25 Nov 2026):** several devices on the same shop account are a **core requirement**, and the plan limit of 1, 2 or 3 devices stays in effect.
-- **Increment 2b** (freshness on return, visibility and every 15 minutes; "Updated" indicators; conflict-safe categories; two-Android-phone verification) comes before increment 3. Status: IMPLEMENTED locally, NOT VERIFIED on two devices.
-- **Staged product requirements,** kept on the roadmap and not yet planned in detail:
-  - iPhone;
-  - iPad and Android tablet layouts;
-  - a browser experience for Windows and Mac;
-  - staff accounts with roles, so that several people can work without overwriting each other.
+- **Increment 2b** (freshness on return, visibility and every 15 minutes; "Updated" indicators; conflict-safe categories; iOS quick price fix): **committed** (`75f8aa6`, CI #57).
+  - Device evidence (owner-reported): cross-device freshness **XD-01 PASS** (iPhone and Galaxy A06: a product change appeared on the other phone without a manual refresh or restart); iPhone quick price sheet **6/6 scenarios PASS**.
+  - The two-phone checklist is **partly** done: MD-01 and MD-04 PARTIAL, MD-02, MD-03 and MD-05 – MD-18 NOT TESTED.
+  - Multi-device readiness is not claimed until the remaining checks are done.
+- **Staged product requirements:**
+  - **iPhone, and Android tablet and iPad layouts, in portrait and landscape:** planned in **Stage 1C-3** (responsive layouts and the orientation unlock in increment 1C-3.5; final iPhone and iPad checks on an approved iOS development or TestFlight build before the iOS release gate and before release for real-shop use, which block the iOS release only, not Stage 1C-3 acceptance; separate approval **B-2**; the iOS release gate itself, G2 or the pilot gate, is owner decision **IG-1**);
+  - **a browser experience for Windows and Mac:** milestone **PW-1** (§3.6a), after Stage 1C-3;
+  - **staff accounts with roles,** so that several people can work without overwriting each other: not yet planned in detail.
 - **Outstanding, NOT enforced:** the plan device limit (SEC-08) and "log out other devices" (SEC-06, TC-SEC-07).
 - **Out of scope for now:** offline changes beyond offline sales.
 
@@ -143,6 +165,24 @@ The PLAN lists these as one block; their split into sub-stages and their order i
 | Settings, subscription, help, log out | F-23, F-24, F-25, F-26 | S-70 – S-74 | subscription: admin role (SEC-16) | TC-SEC-07 |
 | Security items not yet built | SEC-06, 07, 08, 26, 30, 32 – 35 | | | TC-SEC-06, 07, 09 |
 
+### 3.6a Future milestone PW-1: PC and browser access (Windows and macOS) — NOT STARTED
+
+**Owner decisions (25 Nov 2026):** browser access on Windows PCs and Macs is a **required product direction** and a **separate milestone**, scheduled **after Stage 1C-3** ([STAGE-1C-3-PLAN.md](stages/STAGE-1C-3-PLAN.md) §11). It is not part of Stage 1C-3. A phone app that adapts to a wide window is not treated as a PC experience.
+
+| Area | To be planned and delivered |
+|---|---|
+| Browser access | The app in current Chrome, Edge, Firefox and Safari on Windows and macOS. Technical basis to be decided (Expo web with `react-native-web` and `react-dom`, which are new packages, or a separate web front end) |
+| Desktop layouts and navigation | Side navigation instead of the bottom tab bar; multi-column screens; wide, sortable tables for products and stock; no stretched phone layouts |
+| Secure browser authentication and sessions | A reviewed design, because the phones' secure storage (SEC-05) isn't available in browsers: where the session lives, protection against cross-site scripting and request forgery, timeouts, "log out of this browser", shared shop computers. SEC-01 – SEC-08 applied to browsers; browsers counted in the device-limit requirement |
+| Larger-screen workflows | Keyboard-first entry and shortcuts, faster bulk work, printing or exporting lists, mouse and hover behaviour |
+| Compatibility and performance testing | A browser matrix (Windows 10/11 with Chrome and Edge; macOS with Safari and Chrome; Firefox), 1280 – 1920 px widths, 100 – 200 % zoom, NVDA and VoiceOver, keyboard-only use, load time on a modest PC and a slow connection; shop isolation, concurrency and freshness re-verified with a browser and a phone together |
+
+**Dependencies:**
+- Stage 1C-3 complete (shared design system);
+- **D11 addressed before any cross-network testing:** the Stage 1C migrations applied to the cloud and re-verified, with the owner's approval per batch;
+- owner decisions on the technical basis, browser session security and hosting;
+- its own detailed plan, reviewed and approved before any browser work starts.
+
 ### 3.7 Gates, pilot and launch
 
 | Item | Status | Criteria (source) |
@@ -156,7 +196,7 @@ The PLAN lists these as one block; their split into sub-stages and their order i
 | Usability targets TC-UX-01 – 04; TC-ATTN-07 | NOT STARTED | Pilot |
 | **Stage 3 refinement** | BLOCKED | Fix pilot problems; PLAN's "likely additions" (manager/cashier accounts, top pilot requests) are not yet committed scope (Q-19) |
 | **Stage 4 paid launch** | BLOCKED | Stage 2 checkpoint passed; manual MoMo subscriptions live (PLAN §9.1); buy Google Play, Supabase Pro, domain, email/SMS provider; replace built-in email before public launch (PLAN §8.1); plan limits and SEC-08 enforced only from paid launch (01 §4) |
-| **Stage 5 growth** | DEFERRED | Payment automation research, phone OTP, barcode, suppliers, more offline, branches, Twi, iOS, web (PLAN §11; 01 §3) |
+| **Stage 5 growth** | DEFERRED | Payment automation research, phone OTP, barcode, suppliers, more offline, branches, Twi (PLAN §11; 01 §3). **iOS and web are no longer Stage 5 items** (owner decisions, 25 Nov 2026): iPhone and iPad support is planned in Stage 1C-3 (P1C-3), and browser access on Windows and macOS is milestone PW-1 (§3.6a) |
 
 ### 3.8 Original MVP features (01 §2) — coverage
 
@@ -191,7 +231,7 @@ The PLAN lists these as one block; their split into sub-stages and their order i
 | F-27 | Unpaid purchases, Pay supplier, corrections, returns | Backend IMPLEMENTED, NOT FULLY VERIFIED (incl. M2); screens NOT STARTED | S-38, S-39 |
 | F-28 | Needs attention list | Backend IMPLEMENTED, NOT FULLY VERIFIED (inventory types); screen NOT STARTED; sale-related types 1D | S-36 |
 
-Future items (01 §3: automated payments and reports, OTP, barcode, partial returns, decimals, suppliers, printing, photos, Twi, branches, dark mode) are **DEFERRED**. Staff accounts, web and iOS (including iPad) are **staged product requirements** (owner decision, 25 Nov 2026; §3.4), not yet planned in detail; out-of-scope items (online store, lending, VAT/GRA invoicing, in-app payments) are **not planned**.
+Future items (01 §3: automated payments and reports, OTP, barcode, partial returns, decimals, suppliers, printing, photos, Twi, branches, dark mode) are **DEFERRED**. Staff accounts, web and iOS (including iPad) are **staged product requirements** (owner decisions, 25 Nov 2026; §3.4): **iOS and iPad in Stage 1C-3** ([plan](stages/STAGE-1C-3-PLAN.md)), **web as milestone PW-1** (§3.6a), **staff accounts** not yet planned in detail; out-of-scope items (online store, lending, VAT/GRA invoicing, in-app payments) are **not planned**.
 
 ## 4. Screen → backend → tests map
 
@@ -209,7 +249,7 @@ Future items (01 §3: automated payments and reports, OTP, barcode, partial retu
 | S-34 Stock adjustment | NOT STARTED (1C-2) | `adjust_stock` | TC-INV-70 – 80; TC-COST-06; TC-LOSS-01, 02; TC-PUR-09 |
 | S-35 Low stock | NOT STARTED (1C-2) | `low_stock_products` | TC-INV-122, 132 |
 | S-36 Needs attention | NOT STARTED (1C-2: inventory items; 1D: sale items) | `attention_items` reads; `acknowledge_attention` | TC-ATTN-02, 03, 05, 06; TC-INV-120, 130 |
-| S-37 Product detail | NOT STARTED (1C-2) | `products`, `stock_movements`, `product_cost_history` reads | TC-COST-04 (history rows); no read-specific tests yet |
+| S-37 Product detail | NOT STARTED. **Read-only Product Details planned in Stage 1C-3 (1C-3.1)**; movement history follows Stage 1C-3 (1C-2) | `products`, `stock_movements`, `product_cost_history` reads | TC-COST-04 (history rows); no read-specific tests yet (planned in 1C-3.1) |
 | S-38 Unpaid purchases | NOT STARTED (1C-2) | `unpaid_purchases` (M2 fields), `pay_supplier`, `supplier_payments` reads | TC-INV-81 – 90; TC-PUR-03, 04, 10, 11; M2-01 – 70, M2-API-1 – 2 |
 | S-39 Correct purchase / Return to supplier | NOT STARTED (1C-2) | `correct_purchase`, `return_to_supplier` | TC-INV-91 – 110; TC-PUR-05 – 08, 12 – 16 |
 | S-40 Customers; S-41 Customer form; S-42 Customer detail; S-43 Record payment; S-44 Balance change | NOT STARTED | `record_payment`, `adjust_balance`, `write_off`, `undo_write_off`; customers direct writes | TC-CRED-01 – 12 |
@@ -226,6 +266,7 @@ Future items (01 §3: automated payments and reports, OTP, barcode, partial retu
 | `20261111000100` – `20261111000500` (Stage 1A) | ✅ | ☁️ applied and verified (12 Nov 2026) | no project yet |
 | `20261123000100` – `20261125000100` (T1 – T10) | ✅ CI #48 – #51 | **not applied** (D11) | no project yet |
 | `20261125000200` (M2) | ✅ CI #51 | **not applied** (D11) | no project yet |
+| `20261125000300` (`update_product` expected values, Stage 1C-2 increment 2) | ✅ CI #55 – #57; fresh-database check on a disposable local stack | **not applied** (D11) | no project yet |
 | Stage 1D+ migrations | not written | — | — |
 
 **Frozen / must not change:** every committed migration, in particular `20261124000300_supplier_payments.sql` (T7). Later changes only through new additive migrations, as T9-C2 and M2 did.
@@ -242,7 +283,7 @@ Future items (01 §3: automated payments and reports, OTP, barcode, partial retu
 | Privacy | SEC-30 crash reports without personal data (NOT STARTED; TC-SEC-06); SEC-31 data minimisation (schema has no ID or address fields; not separately verified); SEC-32 privacy notice; SEC-33 CSV warning; SEC-34 deletion on request; SEC-35 shared texts; all NOT STARTED. SEC-36 local encryption: accepted as future [A] |
 | Transport, backup, dependencies | SEC-40 HTTPS (Supabase endpoints; not separately tested); SEC-41 backups with restore (**R-3 open**, §3.5); SEC-42 dependency alerts (✅ CI gate; Dependabot configured); **R-5: PRs #1, #2 open; #3, #4 auto-closed before the instruction: owner decision** |
 | Offline / sync | 06 SY-01 – 75; F-21: NOT STARTED (needs `expo-sqlite`, a dependency decision, D-17) |
-| Cloud verification | Decision 42; R-1: Stage 1 ☁️; re-verification outstanding for 12 migrations (D11) |
+| Cloud verification | Decision 42; R-1: Stage 1 ☁️; re-verification outstanding for the 13 Stage 1C migrations (D11) |
 | Device journey | R-2: closed by owner-approved exception; KI-1 re-check on every installed build |
 | Tracker accuracy | R-6: in place (test plan §0, §0d; §0d includes the M2 tests and CI #51) |
 
@@ -301,7 +342,8 @@ Future items (01 §3: automated payments and reports, OTP, barcode, partial retu
 | D-8 | Sell and Customers tabs: hidden or "coming later" | 1C-2 increment 1 | **Approved:** five tabs; Sell and Customers "coming later" |
 | D-9 | Device-test backend: cloud (needs D11 first) or local stack; installed build (EAS needs approval) | 1C-2 increment 9 | **Approved:** local development stack; D11 separate |
 | D-10 | Evidence for "end to end against the local stack" (manual vs UI test tool) | 1C-2 | **Approved:** automated tests + manual checklists; no UI automation |
-| D-11 | **Cloud migration of the 12 Stage 1C migrations** and cloud re-verification (D11, R-1) | Device tests against the cloud; G2 | Owner approves the cloud batch; then cloud verification run |
+| D-11 | **Cloud migration of the 13 Stage 1C migrations** (including `20261125000300`) and cloud re-verification (D11, R-1) | Device tests against the cloud; G2 | Owner approves the cloud batch; then cloud verification run |
+| IG-1 | **Which gate is the iOS release gate:** G2, or the pilot gate if iPhones take part in the pilot. Not yet decided: there's no evidence yet on whether iPhones will participate in the pilot | iOS release for real-shop use (Stage 1C-3 plan §6.5 item 4) | Owner decides, once pilot device plans are known |
 | D-12 | **1D plan** and the split of "1D onwards" into sub-stages | 1D | Claude drafts a 1D plan on request; owner approves |
 | D-13 | **M3** specification clarification batch (Q-3 – Q-7) | Reports | Claude drafts the clarification batch; owner approves |
 | D-14 | **Ops-1 start** (backup implementation, R-3) | G2 | Owner approves Ops-1 start |

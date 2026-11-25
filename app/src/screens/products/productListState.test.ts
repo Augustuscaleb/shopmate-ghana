@@ -124,4 +124,14 @@ describe('Pull-down spinner ownership (review 2, finding 2)', () => {
     // The new rule clears it
     expect(spinnerOnDone(spinnerOnDone(spinnerOnSupersede(spinnerOnPull(1), 2), 1), 2)).toBeNull();
   });
+
+  it('LIST-07: no duplicate first load: a refresh while the first (or a Try again) load is running waits for it (Review-2 finding 3)', () => {
+    // The app returns to the foreground during the first load: before the fix this started it again
+    expect(planRefresh({ kind: 'loading' }, false, 30, true)).toEqual({ kind: 'skip', why: 'first_loading' });
+    expect(planRefresh({ kind: 'error', message: 'x' }, false, 30, true)).toEqual({ kind: 'skip', why: 'first_loading' });
+    // Once it has answered (nothing in flight), a refresh with nothing on screen is a normal load
+    expect(planRefresh({ kind: 'loading' }, false, 30, false)).toEqual({ kind: 'load' });
+    // A list on screen is unaffected
+    expect(planRefresh(ready(5, 5), false, 30, false)).toEqual({ kind: 'refresh', limit: 30 });
+  });
 });
