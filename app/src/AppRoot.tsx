@@ -9,6 +9,8 @@ import { newRequestId } from './lib/requestId';
 import { parseAuthRedirect } from './auth/deepLinks';
 import { AccountService, type Business, type Device } from './services/account';
 import { DashboardService } from './services/dashboard';
+import { PendingRequests } from './services/pendingRequests';
+import { ProductsService } from './services/products';
 import { Loading, Notice, Screen, Button } from './ui/components';
 import { ConfigErrorScreen } from './screens/ConfigErrorScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
@@ -36,6 +38,8 @@ function ConfiguredApp({ cfg }: { cfg: { supabaseUrl: string; supabaseAnonKey: s
 function SignedApp({ client }: { client: SupabaseClient }) {
   const account = useMemo(() => new AccountService(client, expoSecureStore, newRequestId), [client]);
   const dashboard = useMemo(() => new DashboardService(client), [client]);
+  // Request IDs of product writes are kept on the phone until the server answers (lost-reply safety)
+  const products = useMemo(() => new ProductsService(client, new PendingRequests(expoSecureStore, newRequestId)), [client]);
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = still loading
   const [recovery, setRecovery] = useState(false);
   const [linkError, setLinkError] = useState<string>();
@@ -78,7 +82,7 @@ function SignedApp({ client }: { client: SupabaseClient }) {
   if (session && recovery) {
     return <SetNewPasswordScreen client={client} email={session.user.email ?? ''} onDone={() => setRecovery(false)} />;
   }
-  if (session) return <OwnerArea account={account} dashboard={dashboard} onSignOut={signOut} />;
+  if (session) return <OwnerArea account={account} dashboard={dashboard} products={products} onSignOut={signOut} />;
 
   return (
     <>
@@ -106,7 +110,9 @@ type OwnerState =
   | { name: 'setup' }
   | { name: 'ready'; business: Business; device: Device };
 
-function OwnerArea({ account, dashboard, onSignOut }: { account: AccountService; dashboard: DashboardService; onSignOut: () => void }) {
+function OwnerArea({ account, dashboard, products, onSignOut }: {
+  account: AccountService; dashboard: DashboardService; products: ProductsService; onSignOut: () => void;
+}) {
   const [state, setState] = useState<OwnerState>({ name: 'loading' });
 
   const finish = useCallback(async (business: Business) => {
@@ -141,6 +147,6 @@ function OwnerArea({ account, dashboard, onSignOut }: { account: AccountService;
     case 'setup':
       return <ShopSetupScreen account={account} onSignOut={onSignOut} onCreated={(b) => finish(b).catch(load)} />;
     case 'ready':
-      return <HomeScreen business={state.business} device={state.device} dashboard={dashboard} onSignOut={onSignOut} />;
+      return <HomeScreen business={state.business} device={state.device} dashboard={dashboard} products={products} onSignOut={onSignOut} />;
   }
 }

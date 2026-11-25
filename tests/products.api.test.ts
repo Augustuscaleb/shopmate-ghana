@@ -19,11 +19,18 @@ let businessB: string;
 const create = (client: SupabaseClient, business: string, fields: Record<string, unknown>, requestId: string = randomUUID()) =>
   client.rpc('create_product', { p_request_id: requestId, p_business_id: business, ...fields });
 
-const update = (client: SupabaseClient, business: string, productId: string, fields: Record<string, unknown>) =>
-  client.rpc('update_product', {
+/**
+ * update_product with the expected values it now requires (migration 20261125000300): the five
+ * fields as this client can read them right now. When the client can't read the product (another
+ * shop's, or unknown), null is sent; the access and lookup checks refuse before that matters.
+ */
+const update = async (client: SupabaseClient, business: string, productId: string, fields: Record<string, unknown>) => {
+  const { data } = await client.from('products').select('name, selling_price, category_id, unit, low_stock_level').eq('id', productId).maybeSingle();
+  return client.rpc('update_product', {
     p_request_id: randomUUID(), p_business_id: business, p_product_id: productId,
-    p_category_id: null, p_unit: null, p_low_stock_level: 5, ...fields,
+    p_category_id: null, p_unit: null, p_low_stock_level: 5, p_expected: data ?? null, ...fields,
   });
+};
 
 const archive = (client: SupabaseClient, business: string, productId: string, archived: boolean) =>
   client.rpc('set_product_archived', { p_request_id: randomUUID(), p_business_id: business, p_product_id: productId, p_archived: archived });

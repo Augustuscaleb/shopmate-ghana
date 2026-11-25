@@ -16,6 +16,11 @@ grant select, insert, update on tests.ids to authenticated;
 grant select on tests.ids to anon;
 create function tests.id(p_k text) returns uuid language sql stable as $$ select v from tests.ids where k = p_k $$;
 grant execute on function tests.id(text) to authenticated, anon;
+create function tests.cur(p_product uuid) returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('name', p.name, 'selling_price', p.selling_price, 'category_id', p.category_id,
+                            'unit', p.unit, 'low_stock_level', p.low_stock_level)
+  from public.products p where p.id = p_product $$;  -- the five fields as last read (update_product p_expected)
+grant execute on function tests.cur(uuid) to authenticated;
 create table tests.results (k text primary key, r jsonb);
 grant select, insert on tests.results to authenticated;
 create function tests.r(p_k text) returns jsonb language sql stable as $$ select r from tests.results where k = p_k $$;
@@ -61,12 +66,12 @@ insert into tests.ids select 'cat_toil', id from public.categories where busines
 reset role;
 select ok((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'])
            from pg_proc p where p.oid in ('public.create_product(uuid,uuid,text,bigint,uuid,text,bigint,integer,integer)'::regprocedure,
-                                          'public.update_product(uuid,uuid,uuid,text,bigint,uuid,text,integer)'::regprocedure,
+                                          'public.update_product(uuid,uuid,uuid,text,bigint,uuid,text,integer,jsonb)'::regprocedure,
                                           'public.set_product_archived(uuid,uuid,uuid,boolean)'::regprocedure)),
   'TC-INV-20a: the three product functions exist, run as SECURITY DEFINER with explicit checks, and have an empty search_path');
 select ok(not exists (
   select 1 from (values ('public.create_product(uuid,uuid,text,bigint,uuid,text,bigint,integer,integer)'),
-                        ('public.update_product(uuid,uuid,uuid,text,bigint,uuid,text,integer)'),
+                        ('public.update_product(uuid,uuid,uuid,text,bigint,uuid,text,integer,jsonb)'),
                         ('public.set_product_archived(uuid,uuid,uuid,boolean)')) f(sig)
   where has_function_privilege('anon', f.sig, 'execute')
      or not has_function_privilege('authenticated', f.sig, 'execute')),
@@ -121,7 +126,7 @@ select is((select count(*) from public.products where business_id = tests.id('bi
   'TC-INV-21h: the repeat created no second product');
 select is((select count(*) from public.stock_movements where product_id = tests.id('milo'))::int, 1,
   'TC-INV-21i: the repeat wrote no second opening movement');
-select throws_ok($q$select public.update_product('44444444-4444-4444-4444-444444444401', tests.id('biz_a'), tests.id('milo'), 'X', 1, null, null, 5)$q$,
+select throws_ok($q$select public.update_product('44444444-4444-4444-4444-444444444401', tests.id('biz_a'), tests.id('milo'), 'X', 1, null, null, 5, tests.cur(tests.id('milo')))$q$,
   '22023', 'request_id_reused', 'TC-INV-21j: a request ID cannot be reused for a different function');
 
 -- Only required fields
@@ -220,9 +225,9 @@ select lives_ok($q$insert into tests.ids select 'b_milo', tests.mk(tests.id('biz
   'TC-INV-26a: the same product name is allowed in a different shop');
 select throws_ok($q$select tests.mk(tests.id('biz_a'), 'Intruder product', 100)$q$, '42501', 'not_a_member',
   'TC-INV-26b: owner B cannot create a product in shop A');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Hacked', 1, null, null, 5)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Hacked', 1, null, null, 5, tests.cur(tests.id('milo')))$q$,
   '42501', 'not_a_member', 'TC-INV-26c: owner B cannot update shop A''s product through shop A');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_b'), tests.id('milo'), 'Hacked', 1, null, null, 5)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_b'), tests.id('milo'), 'Hacked', 1, null, null, 5, tests.cur(tests.id('milo')))$q$,
   'P0002', 'product_not_found', 'TC-INV-26d: owner B cannot update shop A''s product by passing their own shop');
 select throws_ok($q$select public.set_product_archived(gen_random_uuid(), tests.id('biz_b'), tests.id('milo'), true)$q$,
   'P0002', 'product_not_found', 'TC-INV-26e: owner B cannot archive shop A''s product');
@@ -259,7 +264,7 @@ reset role;
 select tests.as_user('00000000-0000-0000-0000-0000000000a1');
 set local role authenticated;
 insert into tests.results select 'upd1',
-  public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 175, tests.id('cat_toil'), 'pack', 4);
+  public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 175, tests.id('cat_toil'), 'pack', 4, tests.cur(tests.id('milo')));
 select ok((select name = 'Milo sachet 20g' and selling_price = 175 and category_id = tests.id('cat_toil') and unit = 'pack' and low_stock_level = 4
            from public.products where id = tests.id('milo')) and (tests.r('upd1') ->> 'changed')::boolean,
   'TC-INV-27a: name, price, category, unit and low-stock level are updated');
@@ -270,7 +275,7 @@ select ok((select (before ->> 'selling_price')::bigint = 150 and (after ->> 'sel
                   and before ->> 'name' = 'Milo sachet' and after ->> 'name' = 'Milo sachet 20g'
            from public.audit_log where action = 'update_product' and entity_id = tests.id('milo')),
   'TC-INV-27c: the change is audit-logged old -> new, including the price (04 §2.1)');
-select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 550, null, null, 5)$q$,
+select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 550, null, null, 5, tests.cur(tests.id('soap')))$q$,
   'TC-INV-27d: (setup) a quick price change: only the price of Soap bar changes');
 select ok((select (select array_agg(k order by k) from jsonb_object_keys(before) k) = array['selling_price']
               and (select array_agg(k order by k) from jsonb_object_keys(after) k) = array['selling_price']
@@ -279,29 +284,29 @@ select ok((select (select array_agg(k order by k) from jsonb_object_keys(before)
   'TC-INV-27d: the audit entry lists only the fields that changed (price 500 -> 550)');
 
 insert into tests.results select 'upd_same',
-  public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 175, tests.id('cat_toil'), 'pack', 4);
+  public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 175, tests.id('cat_toil'), 'pack', 4, tests.cur(tests.id('milo')));
 select ok(not (tests.r('upd_same') ->> 'changed')::boolean
           and (select count(*) = 1 from public.audit_log where action = 'update_product' and entity_id = tests.id('milo')),
   'TC-INV-27e: an update that changes nothing is reported as unchanged and not audit-logged');
 
 -- (a statement does not see changes made by a function it calls, so calls and checks are separate)
-insert into tests.results select 'upd_case', public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'MILO SACHET 20G', 175, null, null, 4);
+insert into tests.results select 'upd_case', public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'MILO SACHET 20G', 175, null, null, 4, tests.cur(tests.id('milo')));
 select ok((tests.r('upd_case') ->> 'changed')::boolean
           and (select name = 'MILO SACHET 20G' and category_id is null and unit is null from public.products where id = tests.id('milo')),
   'TC-INV-27f: a product can change the letter case of its own name, and clear its category and unit');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), ' soap BAR ', 175, null, null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), ' soap BAR ', 175, null, null, 4, tests.cur(tests.id('milo')))$q$,
   '23505', 'duplicate_product_name', 'TC-INV-27g: renaming to another product''s name (any case) is refused');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 0, null, null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 0, null, null, 4, tests.cur(tests.id('milo')))$q$,
   '22023', 'invalid_selling_price', 'TC-INV-27h: update refuses price 0');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100000001, null, null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100000001, null, null, 4, tests.cur(tests.id('milo')))$q$,
   '22023', 'invalid_selling_price', 'TC-INV-27i: update refuses a price above GH₵ 1,000,000');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), '  ', 100, null, null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), '  ', 100, null, null, 4, tests.cur(tests.id('milo')))$q$,
   '22023', 'name_required', 'TC-INV-27j: update refuses a blank name');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100, null, null, 100001)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100, null, null, 100001, tests.cur(tests.id('milo')))$q$,
   '22023', 'invalid_low_stock_level', 'TC-INV-27k: update refuses a low-stock level above 100,000');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100, tests.id('cat_b'), null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo', 100, tests.id('cat_b'), null, 4, tests.cur(tests.id('milo')))$q$,
   'P0002', 'category_not_found', 'TC-INV-27l: update refuses another shop''s category');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), gen_random_uuid(), 'Milo', 100, null, null, 4)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), gen_random_uuid(), 'Milo', 100, null, null, 4, tests.cur(gen_random_uuid()))$q$,
   'P0002', 'product_not_found', 'TC-INV-27m: update refuses an unknown product');
 
 -- ===========================================================================
@@ -321,7 +326,7 @@ select throws_ok($q$select tests.mk(tests.id('biz_a'), 'milo sachet 20g', 100)$q
 select ok(not (public.set_product_archived(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), true) ->> 'changed')::boolean
           and (select count(*) = 1 from public.audit_log where action = 'archive_product' and entity_id = tests.id('milo')),
   'TC-INV-28e: archiving an archived product changes nothing and is not logged again');
-insert into tests.results select 'upd_archived', public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 180, null, null, 4);
+insert into tests.results select 'upd_archived', public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo sachet 20g', 180, null, null, 4, tests.cur(tests.id('milo')));
 select ok((tests.r('upd_archived') ->> 'changed')::boolean
           and (select not active and selling_price = 180 from public.products where id = tests.id('milo')),
   'TC-INV-28f: an archived product can still be edited (it stays archived)');
@@ -341,7 +346,7 @@ select tests.as_user('00000000-0000-0000-0000-0000000000a1');
 set local role authenticated;
 select isnt(tests.mk(tests.id('biz_a'), 'RICE 1KG', 1600), null,
   'TC-INV-28i: a deleted product''s name can be reused (uniqueness covers non-deleted products only)');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('rice'), 'Rice', 100, null, null, 5)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('rice'), 'Rice', 100, null, null, 5, tests.cur(tests.id('rice')))$q$,
   'P0002', 'product_not_found', 'TC-INV-28j: a deleted product cannot be edited');
 select throws_ok($q$select public.set_product_archived(gen_random_uuid(), tests.id('biz_a'), tests.id('rice'), false)$q$,
   'P0002', 'product_not_found', 'TC-INV-28k: a deleted product cannot be restored');
@@ -359,7 +364,7 @@ select throws_ok($q$update public.categories set business_id = tests.id('biz_b')
   '42501', null, 'TC-INV-30d: a category cannot be moved to another shop');
 
 -- Toiletries: used by the active product 'Soap bar'
-select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, tests.id('cat_toil'), null, 5)$q$,
+select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, tests.id('cat_toil'), null, 5, tests.cur(tests.id('soap')))$q$,
   'TC-INV-30e: (setup) Soap bar is put in Toiletries');
 select throws_ok($q$update public.categories set deleted_at = now() where id = tests.id('cat_toil')$q$,
   'P0001', 'category_in_use', 'TC-INV-30f: a category used by an active product cannot be archived (D5)');
@@ -375,13 +380,13 @@ select lives_ok($q$update public.categories set deleted_at = now() where id = te
   'TC-INV-30j: a category used only by archived products can be archived');
 select throws_ok($q$select public.set_product_archived(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), false)$q$,
   '22023', 'category_archived', 'TC-INV-30k: an archived product in an archived category cannot be restored until its category changes');
-select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, null, null, 5)$q$,
+select lives_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, null, null, 5, tests.cur(tests.id('soap')))$q$,
   'TC-INV-30l: (setup) its category is cleared');
 select ok((public.set_product_archived(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), false) ->> 'active')::boolean,
   'TC-INV-30m: then it can be restored');
 select throws_ok($q$select public.create_product(gen_random_uuid(), tests.id('biz_a'), 'Shampoo', 900, p_category_id => tests.id('cat_toil'))$q$,
   '22023', 'category_archived', 'TC-INV-30n: a new product cannot be put in an archived category');
-select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, tests.id('cat_toil'), null, 5)$q$,
+select throws_ok($q$select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('soap'), 'Soap bar', 500, tests.id('cat_toil'), null, 5, tests.cur(tests.id('soap')))$q$,
   '22023', 'category_archived', 'TC-INV-30o: an existing product cannot be moved into an archived category');
 select lives_ok($q$update public.categories set deleted_at = null where id = tests.id('cat_toil')$q$,
   'TC-INV-30p: an archived category can be restored');

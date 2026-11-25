@@ -54,4 +54,13 @@ describe('Request IDs for internet-only writes (SEC-24, 09 §4.3)', () => {
     await store.setItemAsync('shopmate.pending.restock.p1', 'not json');
     expect(await pending.reserve('restock.p1', { qty: 1 })).toEqual({ kind: 'ready', requestId: 'id-1', reused: false });
   });
+
+  it('REQ-08: has() reports an attempt still waiting for a definite answer (increment 2)', async () => {
+    const { pending } = setup();
+    expect(await pending.has('update_product.p1')).toBe(false);
+    await pending.reserve('update_product.p1', { price: 1 });
+    expect(await pending.has('update_product.p1')).toBe(true);
+    await pending.settle('update_product.p1');
+    expect(await pending.has('update_product.p1')).toBe(false);
+  });
 });

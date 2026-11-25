@@ -12,7 +12,7 @@ export type TabDefinition = { key: TabKey; label: string; availability: TabAvail
 export const TABS: readonly TabDefinition[] = [
   { key: 'today', label: 'Today', availability: 'ready' },
   { key: 'sell', label: 'Sell', availability: 'later' },
-  { key: 'products', label: 'Products', availability: 'later' }, // S-30 arrives in Stage 1C-2 increment 2
+  { key: 'products', label: 'Products', availability: 'ready' }, // S-30 – S-32 (Stage 1C-2 increment 2)
   { key: 'customers', label: 'Customers', availability: 'later' },
   { key: 'more', label: 'More', availability: 'ready' },
 ] as const;

@@ -8,10 +8,25 @@
 |---|---|
 | No answer from the server (offline, timeout) | This needs internet. Your data is safe — try again when you're connected. |
 | An internal or unknown error | Something went wrong on our side. Nothing was changed. Please try again. If it keeps happening, contact support. |
-| An earlier change's outcome is unknown and the owner submits different details | Your last change may already have been saved, because the connection dropped before we got an answer. Check the product's history before trying again. |
+| An earlier change's outcome is unknown and the owner submits different details | Your last change may already have been saved. Refresh the product and check its current details before trying again. *(owner wording, 25 Nov 2026; replaces the earlier reference to the product's history)* |
 | A duplicate name from a direct write (categories) | That name is already used. Choose a different name. |
 
-## Messages by error code (58)
+### Added in increment 2 (for owner review; not yet approved)
+
+| When | Message |
+|---|---|
+| Sent, but no answer came back (outcome unknown; retry is safe) | The connection dropped before we got an answer, so we can't tell yet whether this was saved. Try again when you're connected — it won't be saved twice. |
+| The general "no answer" message above is now used only when nothing was sent (offline) | *(unchanged wording)* |
+| Quick price or edit: someone else changed the price meanwhile (nothing saved) | Someone else changed the price to GH₵ {new price} while you were editing. Nothing was saved. Check it, then save again to use your price. |
+| Edit: someone else changed other edited fields meanwhile (nothing saved) | Someone else changed this product's {fields} while you were editing. Nothing was saved. The latest values are shown; check them, then save again. |
+| Correct cost price: the stock changed after the screen opened (nothing saved) | The stock changed while you were on this screen (now {qty}). Nothing was saved. Check the new figures, then save again. |
+| A category add confirmed by reading it back after a lost reply | {name} is saved in your categories. |
+
+**Fix in increment 2:** a known code now wins over the generic duplicate message. Before, `duplicate_product_name` (raised with SQLSTATE 23505) showed "That name is already used…" instead of its own message. Test: MSG-03b.
+
+**Category limitation:** the read-back after a lost category add relies on a note kept in the app's memory. It does **not** survive an app restart: after a restart, a retry of a lost add is refused as a duplicate ("That name is already used…") although the category exists and is shown in the list. Category writes do **not** have request-ID idempotency (the Stage 1A grant lets the app insert only `business_id` and `name`).
+
+## Messages by error code (59)
 
 | Area | Code | Message |
 |---|---|---|
@@ -30,6 +45,7 @@
 | Products and categories | `category_archived` | That category is archived. Choose another category. |
 | Products and categories | `category_in_use` | This category still has products. Move them to another category first. |
 | Products and categories | `product_not_found` | This product can't be found. It may have been deleted. Go back and refresh the list. |
+| Products and categories | `product_changed` | Someone else changed this product just now. Nothing was saved. The latest details are shown; check them, then save again. *(increment 2 review; raised by `update_product` when the expected values differ, migration 20261125000300, local only)* |
 | Products and categories | `product_archived` | This product is archived. Restore it before recording a restock. |
 | Cost correction (T4) | `zero_stock` | There is no stock to value. Record a restock first; its cost becomes the average. |
 | Cost correction (T4) | `negative_stock` | Stock is below zero. Record the missing restock or correct the count first. |
@@ -79,6 +95,6 @@
 - **`refund_required` (S-39, increment 7):** the server also returns the exact refund in the error details, as JSON `{"refund_amount": <pesewas>}` (`correct_purchase`, worked out under the purchase lock: the amount paid beyond the corrected cost). The screen must show that amount exactly, formatted as GH₵, and send it back unchanged; the app never calculates or estimates the refund itself. Verified against the real local API by test APPERR-05 (`tests/app-error-handling.test.ts`: details `{ refund_amount: 300 }` for a GH₵ 3.00 excess).
 - **`paid_from_required` and `invalid_paid_from`** share one message on purpose.
 
-## Internal codes (19): the owner sees the general message
+## Internal codes (21): the owner sees the general message
 
-These can only come from a programming mistake or an impossible range, never from normal use: `archived_flag_required`, `change_mismatch`, `empty_movement`, `invalid_correction_type`, `invalid_limit`, `invalid_offset`, `message_data_must_be_object`, `products_required`, `purchase_movement_not_found`, `qty_required`, `request_id_required`, `request_id_reused`, `type_required`, `unexpected_outflow_movement`, `value_required`, `average_out_of_range`, `stock_qty_out_of_range`, `stock_value_out_of_range`, `amount_out_of_range`.
+These can only come from a programming mistake or an impossible range, never from normal use: `archived_flag_required`, `change_mismatch`, `empty_movement`, `invalid_correction_type`, `invalid_limit`, `invalid_offset`, `message_data_must_be_object`, `products_required`, `purchase_movement_not_found`, `qty_required`, `request_id_required`, `request_id_reused`, `type_required`, `unexpected_outflow_movement`, `value_required`, `average_out_of_range`, `stock_qty_out_of_range`, `stock_value_out_of_range`, `amount_out_of_range`. Added in the increment 2 review: `expected_values_required` and `invalid_expected_values` (`update_product` called without, or with malformed, expected values; the app always sends them).

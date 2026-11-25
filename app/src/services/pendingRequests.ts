@@ -55,6 +55,12 @@ export class PendingRequests {
     return { kind: 'ready', requestId: id, reused: false };
   }
 
+  /** True while an earlier attempt of `operation` has no definite answer (increment 2). */
+  async has(operation: string): Promise<boolean> {
+    const raw = await this.store.getItemAsync(this.key(operation));
+    return raw !== null && this.parse(raw) !== null;
+  }
+
   /** The server answered (success or refusal): nothing is pending any more. */
   async settle(operation: string): Promise<void> {
     await this.store.deleteItemAsync(this.key(operation));

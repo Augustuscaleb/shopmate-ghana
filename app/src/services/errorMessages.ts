@@ -9,7 +9,13 @@ import type { RpcFailure } from './rpcErrors';
 /** E-04: online-only actions attempted offline, or a request with no response. */
 export const OFFLINE_MESSAGE = "This needs internet. Your data is safe — try again when you're connected.";
 export const GENERIC_MESSAGE = 'Something went wrong on our side. Nothing was changed. Please try again. If it keeps happening, contact support.';
-export const UNCONFIRMED_MESSAGE = "Your last change may already have been saved, because the connection dropped before we got an answer. Check the product's history before trying again.";
+/**
+ * Increment 2 (for owner review): a write was SENT but no answer came back, so its outcome is
+ * unknown. Retrying is safe: product changes reuse their request ID and category changes are
+ * read back, so nothing is saved twice. (OFFLINE_MESSAGE is for a change that was NOT sent.)
+ */
+export const UNKNOWN_OUTCOME_MESSAGE = "The connection dropped before we got an answer, so we can't tell yet whether this was saved. Try again when you're connected — it won't be saved twice.";
+export const UNCONFIRMED_MESSAGE = 'Your last change may already have been saved. Refresh the product and check its current details before trying again.';
 
 /** Codes that only a programming mistake can cause: the owner sees the generic message. */
 const INTERNAL = new Set([
@@ -17,6 +23,8 @@ const INTERNAL = new Set([
   'message_data_must_be_object', 'products_required', 'purchase_movement_not_found', 'qty_required', 'request_id_required',
   'request_id_reused', 'type_required', 'unexpected_outflow_movement', 'value_required', 'average_out_of_range',
   'stock_qty_out_of_range', 'stock_value_out_of_range', 'amount_out_of_range',
+  // update_product expected values (the app always sends them correctly)
+  'expected_values_required', 'invalid_expected_values',
 ]);
 
 export const MESSAGES: Readonly<Record<string, string>> = {
@@ -38,6 +46,7 @@ export const MESSAGES: Readonly<Record<string, string>> = {
   category_in_use: 'This category still has products. Move them to another category first.',
   product_not_found: "This product can't be found. It may have been deleted. Go back and refresh the list.",
   product_archived: 'This product is archived. Restore it before recording a restock.',
+  product_changed: 'Someone else changed this product just now. Nothing was saved. The latest details are shown; check them, then save again.',
   // Cost correction (T4)
   zero_stock: 'There is no stock to value. Record a restock first; its cost becomes the average.',
   negative_stock: 'Stock is below zero. Record the missing restock or correct the count first.',
@@ -100,7 +109,9 @@ export function isInternalCode(code: string): boolean {
 /** The message to show for a failed call. */
 export function messageFor(failure: RpcFailure): string {
   if (failure.kind === 'no_response') return OFFLINE_MESSAGE;
-  if (failure.sqlState === UNIQUE_VIOLATION) return DUPLICATE_NAME_MESSAGE;
   if (INTERNAL.has(failure.code)) return GENERIC_MESSAGE;
-  return MESSAGES[failure.code] ?? GENERIC_MESSAGE;
+  // A known code wins (e.g. duplicate_product_name is raised with SQLSTATE 23505 too)
+  if (failure.code in MESSAGES) return MESSAGES[failure.code];
+  if (failure.sqlState === UNIQUE_VIOLATION) return DUPLICATE_NAME_MESSAGE;
+  return GENERIC_MESSAGE;
 }

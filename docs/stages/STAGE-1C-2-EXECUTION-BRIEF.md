@@ -21,7 +21,7 @@
 
 **Navigation (03 §"Navigation"):** bottom tabs Today · Sell · Products · Customers · More. Only Today exists today (`app/src/screens/HomeScreen.tsx`, S-10).
 
-## 2. Server functions each screen uses (all exist; none needs changing)
+## 2. Server functions each screen uses (all exist; one prepared change, below)
 
 | Screen | Writes (server functions, idempotent with a request ID) | Reads |
 |---|---|---|
@@ -37,6 +37,8 @@
 | Today (S-10) | none | `inventory_summary` (already used), open attention count (D10) |
 
 `check_stock_integrity` has no screen in the specification; it isn't needed by 1C-2.
+
+**Prepared change (owner-approved for local preparation, 25 Nov 2026; NOT applied to any cloud project):** `update_product` gains a trailing `p_expected` argument (migration `20261125000300_update_product_expected_values.sql`). See the increment 2 status below.
 
 ## 3. Recommended order (each increment reviewed and CI-passed before the next)
 
@@ -55,6 +57,52 @@
 Reasons for the order: the service layer and error handling are shared by every screen; S-37 is the entry point for S-39; S-36's action buttons lead to S-31, S-33, S-34, S-37 and S-39, so it comes once those exist.
 
 **Increment 1 status: committed in `0f13132` ([CI #53](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45506392419) passed); owner-reported device checks complete on the local stack (25 Nov 2026; Samsung Galaxy A06, Android 16): all 14 checklist entries PASS.** Five-tab shell (D-7, D-8) with the More tab keeping Log out; pure navigation model; online-state monitor fed by request outcomes (`expo-network` **not installed**: needs separate approval, and a new development build to verify, D-2); server-error classifier; request-ID store (reuse on retry, release on a definite answer, hold back changed inputs after an unknown outcome); strict result readers; the message table ([STAGE-1C-2-ERROR-MESSAGES.md](STAGE-1C-2-ERROR-MESSAGES.md)); the visual foundation ([STAGE-1C-2-VISUAL-DESIGN.md](STAGE-1C-2-VISUAL-DESIGN.md)): tokens, reduced-motion-aware touch feedback, entrances and skeleton loading, using only React Native's built-in Animated API. A shared reduce-motion state (reduced until the phone's setting is known; one native check and subscription). Tests: app 66/66 (41 new), API 139/139 (6 new, `tests/app-error-handling.test.ts`), database 1017/1017; typecheck, scans and bundle export passed. No backend change. **Device check:** complete (owner-reported manual evidence, 25 Nov 2026): 14 PASS, 0 PARTIAL, 0 NOT TESTED, 0 BLOCKED, recorded in [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md); automated evidence is CI #53. Not covered: partial animation scales and manufacturer motion settings, and the cloud project (D11 outstanding).
+
+**Increment 2 status (25 Nov 2026): implemented and verified locally; NOT committed, NOT device-tested; awaiting owner review.** Scope S-30, S-31, S-32, category management from the S-30 filter (owner decision) and "Correct cost price" (`set_cost`, D-5). One backend change was prepared locally (the `update_product` concurrency protection below): it has been applied to the local stack only, **not to any cloud project** (D11). No new dependency.
+
+*Implemented (code, uncommitted):*
+- **S-30 Products list:** server-paginated (`range` + exact count, 30 per page; never limited by `max_rows`); search; category chips (All, each category, No category, Manage categories); archived products; pull-to-refresh; loading, empty, error and offline states. **Sort: "A–Z" or "Lowest stock".** "Lowest stock" is a *sort* by stock quantity, lowest first. It is **not** a low-stock filter and does not compare stock with each product's low-stock level (PostgREST can't compare two columns). The owner accepted it as a temporary, accurately labelled option (25 Nov 2026). The true low-stock list is S-35 (increment 5, `low_stock_products`).
+- **S-31 Add / Edit product:** add (`create_product`, with optional cost and opening stock); edit (`update_product`); archive and restore (`set_product_archived`); a read-only stock summary; "Correct cost price" (`set_cost`, reason required).
+- **S-32 Quick price change** from the list.
+- **Categories:** add, rename, archive (refused while in use, D5) and restore, written directly under RLS.
+- **Android Back:** one screen at a time inside Products, then Today, then out of the app. Products keeps its screens (and typed input) while another tab is open.
+
+*Data-integrity handling (review of 25 Nov 2026):*
+- **Write outcomes are reported as one of:** confirmed; definitely not saved (a refusal, or offline so nothing was sent); may have been saved (sent, no answer: retry is safe); held back (an earlier attempt is unconfirmed); or changed by someone else (nothing sent). New messages, for owner review, are listed in [STAGE-1C-2-ERROR-MESSAGES.md](STAGE-1C-2-ERROR-MESSAGES.md).
+- **Categories (read-back reconciliation; NOT request-ID idempotent):** the Stage 1A grant lets the app insert only `business_id` and `name`, so the app can't choose the row's id and category writes have no request ID.
+  - After an add whose reply was lost, a retry refused as a duplicate (23505) reads the category back. If an active category with that name exists, the add is reported as saved, not "already used".
+  - **Limitation:** that "lost add" note is kept in the app's memory only and does **not** survive an app restart. After a restart, the retry is refused as "That name is already used…", although the category exists and appears in the list.
+  - Rename, archive and restore are safe to repeat. Archive and restore only touch a row still in the other state (so a repeat keeps the original archive time) and then read the row back to confirm.
+- **Concurrent product edits: server-side protection (prepared locally).** `update_product` sets all five editable fields (name, selling price, category, unit, low-stock level) on every call. Migration `20261125000300_update_product_expected_values.sql` therefore adds `p_expected jsonb default null`: the five fields as the caller last read them.
+  - **Comparison:** after the product row is locked `FOR UPDATE`, in the same transaction as the update, the server compares them with the current row. Any difference is refused with **`product_changed`**: no update, no audit entry, and the request ID is not used up.
+  - **No unconditional path:** a caller that omits the values (or sends null) is refused with `expected_values_required`; malformed values are refused with `invalid_expected_values`. Both codes are internal, so the owner sees the general message.
+  - **Deliberate behaviour change:** callers that omit the values are now refused. No deployed client calls `update_product` (the Stage 1C migrations are not in the cloud), and every existing test caller was updated to send the values.
+  - **Unchanged:** authorisation, field validation and its error codes, the category and duplicate-name checks, the lock order, the audit entry, the response `{product_id, changed}`, and request-ID replay (a retry returns the stored result before any comparison).
+  - **The function is dropped and recreated** (its argument list changes), with the same privileges: authenticated only.
+- **The app:**
+  - re-reads the product before saving and merges three-way: untouched fields take the server's current values, edited fields are sent as typed, and a clash on an edited field is a conflict;
+  - sends the re-read values as `p_expected`, so a change landing between the re-read and the save is refused by the server and shown as "Someone else changed this product just now. Nothing was saved…" with the latest details;
+  - keeps the request-ID fingerprint on the intended change only (not on `p_expected`), so a retry after a lost reply reuses its ID;
+  - if the newer value may be this phone's own lost change, shows the "held back" message instead: "Your last change may already have been saved. Refresh the product and check its current details before trying again." (owner wording, 25 Nov 2026).
+
+  Quick price change uses the same path. `set_cost` changes only the stock value (stock × cost, from the stock at that moment); the cost screen re-reads the stock first and asks again if it changed.
+- **To use this on the phone,** the owner's local stack needs the new migration (`npx supabase migration up` on the owner's computer; a reset is not needed and would delete local test data). Otherwise every edit is refused by the old function with the generic message.
+
+*Automated evidence (local, 25 Nov 2026):*
+
+| Suite | Result |
+|---|---|
+| Database | 1051/1051, including 34 in `16_update_product_expected.test.sql`; the 25 existing `update_product` calls in files 05, 06, 07 and 13 now pass expected values, with their assertions unchanged |
+| API | 160/160, including 21 in `tests/products-service.api.test.ts` |
+| App | 97/97 |
+| Checks | Typecheck, secret scan, dependency audit and Android bundle export passed |
+
+The database tests cover the comparison under the lock, a change by a second member between read and save, retries, the refused request ID being reusable, missing and malformed values, and unauthorised and anonymous callers. The API tests run the real `ProductsService` against the local stack, including:
+- another change injected between the app's re-read and its save, which is refused and not overwritten;
+- two phones saving at the same moment, where exactly one wins, in five rounds;
+- lost replies, duplicate names and isolation between shops.
+
+*Manual device verification:* **pending.** Nothing in increment 2 has been seen on a phone yet. Checklist: [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2".
 
 ## 4. Acceptance criteria and tests for every increment
 

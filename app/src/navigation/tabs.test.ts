@@ -7,7 +7,8 @@ describe('Bottom tabs (03 navigation; D-7, D-8)', () => {
     expect(HOME_TAB).toBe('today');
   });
 
-  it('NAV-02: Sell and Customers are "later"; Today and More are ready (More keeps Log out)', () => {
+  it('NAV-02: Sell and Customers are "later"; Today, Products (increment 2) and More are ready (More keeps Log out)', () => {
+    expect(tabDefinition('products').availability).toBe('ready');
     expect(tabDefinition('sell').availability).toBe('later');
     expect(tabDefinition('customers').availability).toBe('later');
     expect(tabDefinition('today').availability).toBe('ready');

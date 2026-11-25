@@ -17,6 +17,11 @@ grant select, insert on tests.ids to authenticated;
 grant select on tests.ids to anon;
 create function tests.id(p_k text) returns uuid language sql stable as $$ select v from tests.ids where k = p_k $$;
 grant execute on function tests.id(text) to authenticated, anon;
+create function tests.cur(p_product uuid) returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('name', p.name, 'selling_price', p.selling_price, 'category_id', p.category_id,
+                            'unit', p.unit, 'low_stock_level', p.low_stock_level)
+  from public.products p where p.id = p_product $$;  -- the five fields as last read (update_product p_expected)
+grant execute on function tests.cur(uuid) to authenticated;
 create table tests.results (k text primary key, r jsonb);
 grant select, insert on tests.results to authenticated;
 create function tests.r(p_k text) returns jsonb language sql stable as $$ select r from tests.results where k = p_k $$;
@@ -324,7 +329,7 @@ select tests.as_user('00000000-0000-0000-0000-0000000000a1');
 set local role authenticated;
 select throws_ok($q$select public.set_cost('77777777-7777-7777-7777-777777777701', tests.id('biz_a2'), tests.id('a2_prod'), 650, 'Reason')$q$,
   '22023', 'request_id_reused', 'TC-INV-55d: the same request ID for the owner''s other shop is refused');
-select throws_ok($q$select public.update_product('77777777-7777-7777-7777-777777777701', tests.id('biz_a'), tests.id('milo'), 'X', 150, null, null, 5)$q$,
+select throws_ok($q$select public.update_product('77777777-7777-7777-7777-777777777701', tests.id('biz_a'), tests.id('milo'), 'X', 150, null, null, 5, tests.cur(tests.id('milo')))$q$,
   '22023', 'request_id_reused', 'TC-INV-55e: the same request ID for a different function is refused');
 reset role;
 select ok((select stock_value = 2100 from public.products where id = tests.id('a2_prod')),

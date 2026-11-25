@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import {
   BackHandler,
   Platform,
@@ -16,7 +16,10 @@ import { colours, space, touch, type } from '../ui/theme';
 import { AlertIcon, BarsIcon, BoxIcon, ChevronLeftIcon, GridIcon, MenuIcon, PeopleIcon, PlusIcon, ReceiptIcon } from '../ui/icons';
 import { FadeIn, PressableScale, Skeleton } from '../ui/animated';
 import { HOME_TAB, TABS, onBackPress, type TabKey } from '../navigation/tabs';
-import { ConnectivityMonitor, type Connectivity } from '../lib/connectivity';
+import { appConnectivity, type Connectivity } from '../lib/connectivity';
+import { PRODUCTS_HOME, pop as popProducts, type ProductsStack } from '../navigation/productsStack';
+import type { ProductsService } from '../services/products';
+import { ProductsArea } from './products/ProductsArea';
 import { classifyRpcError, looksLikeNetworkFailure } from '../services/rpcErrors';
 import type { Business, Device } from '../services/account';
 import {
@@ -50,7 +53,7 @@ import {
  */
 
 type Tab = TabKey;
-type LaterTab = Exclude<TabKey, 'today' | 'more'>;
+type LaterTab = Exclude<TabKey, 'today' | 'more' | 'products'>;
 
 const TOP_INSET = Platform.OS === 'android' ? (SystemStatusBar.currentHeight ?? 24) : 48;
 /**
@@ -62,14 +65,19 @@ const TOP_INSET = Platform.OS === 'android' ? (SystemStatusBar.currentHeight ?? 
 const NAV_BAR_ALLOWANCE = Platform.OS === 'android' ? 48 : 24;
 const TINT = colours.tint;
 
-export function HomeScreen({ business, device, onSignOut, dashboard }: {
+export function HomeScreen({ business, device, onSignOut, dashboard, products }: {
   business: Business;
   device: Device;
   onSignOut: () => void;
   dashboard: DashboardService;
+  products: ProductsService;
 }) {
-  const [tab, setTab] = useState<Tab>(HOME_TAB);
-  const connectivity = useMemo(() => new ConnectivityMonitor(), []);
+  const [tab, setTabState] = useState<Tab>(HOME_TAB);
+  const [productsStack, setProductsStack] = useState<ProductsStack>(PRODUCTS_HOME);
+  const [productsOpened, setProductsOpened] = useState(false);
+  useEffect(() => { if (tab === 'products') setProductsOpened(true); }, [tab]);
+  // One app-wide online/offline state, shared with the Products screens (increment 2)
+  const connectivity = appConnectivity;
   const [online, setOnline] = useState<Connectivity>(connectivity.state);
   useEffect(() => connectivity.subscribe(setOnline), [connectivity]);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -96,9 +104,25 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
-  // Android back: close the account panel, then return to the dashboard, then leave the app.
+  // Returning to Today after the Products tab: refresh the figures (product count, low stock)
+  const previousTab = useRef<Tab>(HOME_TAB);
+  const setTab = useCallback((next: Tab) => {
+    if (next === 'today' && previousTab.current === 'products') fetchOverview(load.kind === 'ready');
+    // Tapping Products while already on it returns to the product list
+    if (next === 'products' && previousTab.current === 'products') setProductsStack(PRODUCTS_HOME);
+    previousTab.current = next;
+    setTabState(next);
+  }, [fetchOverview, load.kind]);
+  const openProducts = useCallback((stack: ProductsStack) => { setProductsStack(stack); previousTab.current = 'products'; setTabState('products'); }, []);
+
+  // Android back: close the account panel, then go back one screen inside Products, then return
+  // to the dashboard, then leave the app.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!accountOpen && tab === 'products') {
+        const previous = popProducts(productsStack);
+        if (previous) { setProductsStack(previous); return true; }
+      }
       const next = onBackPress({ tab, overlayOpen: accountOpen });
       if (!next) return false;
       setAccountOpen(next.overlayOpen);
@@ -106,7 +130,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
       return true;
     });
     return () => sub.remove();
-  }, [accountOpen, tab]);
+  }, [accountOpen, tab, productsStack, setTab]);
 
   const ownerName = load.kind === 'ready' ? load.data.ownerName : null;
 
@@ -119,10 +143,18 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
     );
   }
 
+  // The Products area stays mounted once opened, so a half-typed form survives a visit to another tab
+  const productsArea = productsOpened || tab === 'products' ? (
+    <View style={[styles.root, tab !== 'products' && styles.hidden]} importantForAccessibility={tab === 'products' ? 'auto' : 'no-hide-descendants'}>
+      <ProductsArea businessId={business.id} products={products} stack={productsStack} onStackChange={setProductsStack} />
+    </View>
+  ) : null;
+
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <ScrollView
+      {productsArea}
+      {tab === 'products' ? null : <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={tab === 'today'
           ? <RefreshControl refreshing={refreshing} onRefresh={() => fetchOverview(true)} colors={[colours.shopGreen]} progressViewOffset={TOP_INSET} />
@@ -138,6 +170,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
               onRetry={() => fetchOverview(load.kind === 'ready')}
               onOpenAccount={() => setAccountOpen(true)}
               onNavigate={setTab}
+              onAddProduct={() => openProducts([...PRODUCTS_HOME, { name: 'add' }])}
             />
           ) : tab === 'more' ? (
             <AccountPanel business={business} device={device} ownerName={ownerName} onSignOut={onSignOut} />
@@ -145,7 +178,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
             <ComingSoon tab={tab} onBack={() => setTab(HOME_TAB)} />
           )}
         </FadeIn>
-      </ScrollView>
+      </ScrollView>}
       <BottomNav tab={tab} onChange={setTab} />
     </View>
   );
@@ -153,7 +186,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard }: {
 
 /* ───────────────────────── Dashboard ───────────────────────── */
 
-function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount, onNavigate }: {
+function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount, onNavigate, onAddProduct }: {
   business: Business;
   ownerName: string | null;
   load: DashboardLoad;
@@ -161,6 +194,7 @@ function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount,
   onRetry: () => void;
   onOpenAccount: () => void;
   onNavigate: (tab: Tab) => void;
+  onAddProduct: () => void;
 }) {
   const now = new Date();
   const name = firstName(ownerName);
@@ -237,8 +271,8 @@ function Dashboard({ business, ownerName, load, offline, onRetry, onOpenAccount,
         <SectionTitle title="Quick actions" />
         <View style={styles.actions}>
           <Action label="Record a sale" caption="Coming in Stage 1D" icon={ReceiptIcon} primary onPress={() => onNavigate('sell')} />
-          <Action label="View products" caption="Being built now" icon={BoxIcon} onPress={() => onNavigate('products')} />
-          <Action label="Add a product" caption="Being built now" icon={PlusIcon} onPress={() => onNavigate('products')} />
+          <Action label="View products" caption="Search, prices, stock" icon={BoxIcon} onPress={() => onNavigate('products')} />
+          <Action label="Add a product" caption="Price, cost, stock" icon={PlusIcon} onPress={onAddProduct} />
           <Action label="View reports" caption="Coming later" icon={BarsIcon} onPress={() => onNavigate('more')} />
         </View>
 
@@ -378,18 +412,6 @@ const PREVIEWS: Record<LaterTab, { title: string; subtitle: string; stage: strin
       'Cash, MoMo and credit payments',
       'Keeps working without internet and uploads later',
       'Receipts you can share on WhatsApp',
-    ],
-  },
-  products: {
-    title: 'Products',
-    subtitle: 'Products, restocks and low-stock alerts',
-    stage: 'Being built now (Stage 1C)',
-    icon: BoxIcon,
-    points: [
-      'Add products with selling price and cost',
-      'Record restocks, including goods bought on credit',
-      'A low-stock list you can share with your supplier',
-      'Record damaged, expired or missing stock',
     ],
   },
   customers: {
@@ -545,6 +567,7 @@ const shadow = Platform.select({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colours.warmWhite },
+  hidden: { display: 'none' },
   scroll: { paddingBottom: space.lg },
   pressed: { opacity: 0.75 },
 

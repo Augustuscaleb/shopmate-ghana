@@ -117,6 +117,28 @@ export function MenuIcon({ colour, size = 24 }: IconProps) {
   );
 }
 
+/** Search: a lens with a handle. */
+export function SearchIcon({ colour, size = 24 }: IconProps) {
+  const lens = size * 0.58;
+  return (
+    <View style={[styles.box, { width: size, height: size }]} accessible={false}>
+      <View style={{ width: lens, height: lens, borderRadius: lens / 2, borderWidth: 2, borderColor: colour, marginRight: size * 0.14, marginBottom: size * 0.14 }} />
+      <View style={{ position: 'absolute', right: size * 0.12, bottom: size * 0.16, width: size * 0.3, height: 2, borderRadius: 1, backgroundColor: colour, transform: [{ rotate: '45deg' }] }} />
+    </View>
+  );
+}
+
+/** Tag: a label with a hole (categories). */
+export function TagIcon({ colour, size = 24 }: IconProps) {
+  return (
+    <View style={[styles.box, { width: size, height: size }]} accessible={false}>
+      <View style={{ width: size * 0.74, height: size * 0.5, borderWidth: 2, borderColor: colour, borderRadius: size * 0.12, justifyContent: 'center', paddingLeft: size * 0.1 }}>
+        <View style={{ width: size * 0.14, height: size * 0.14, borderRadius: size * 0.07, borderWidth: 2, borderColor: colour }} />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   box: { alignItems: 'center', justifyContent: 'center' },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },

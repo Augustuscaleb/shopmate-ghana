@@ -14,6 +14,11 @@ grant select, insert on tests.ids to authenticated;
 grant select on tests.ids to anon;
 create function tests.id(p_k text) returns uuid language sql stable as $$ select v from tests.ids where k = p_k $$;
 grant execute on function tests.id(text) to authenticated, anon;
+create function tests.cur(p_product uuid) returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('name', p.name, 'selling_price', p.selling_price, 'category_id', p.category_id,
+                            'unit', p.unit, 'low_stock_level', p.low_stock_level)
+  from public.products p where p.id = p_product $$;  -- the five fields as last read (update_product p_expected)
+grant execute on function tests.cur(uuid) to authenticated;
 create table tests.results (k text primary key, r jsonb);
 grant select, insert on tests.results to authenticated;
 create function tests.r(p_k text) returns jsonb language sql stable as $$ select r from tests.results where k = p_k $$;
@@ -82,7 +87,7 @@ insert into tests.ids select 'dev_a', (public.register_device(gen_random_uuid(),
 -- Shop A: every T3 – T9 operation kind
 insert into tests.ids select 'milo',  tests.mkp(tests.id('biz_a'), 'Milo tin', 1500, 10);
 insert into tests.ids select 'p_milo', tests.buy(tests.id('biz_a'), tests.id('milo'), 10, 15000, 0);
-select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo tin', 1600, null, 'tin', 4);
+select public.update_product(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'Milo tin', 1600, null, 'tin', 4, tests.cur(tests.id('milo')));
 select public.set_cost(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 1550, 'Supplier price list');
 select public.adjust_stock(gen_random_uuid(), tests.id('biz_a'), tests.id('milo'), 'damaged', null, -2);
 select public.pay_supplier(gen_random_uuid(), tests.id('biz_a'), tests.id('p_milo'), 5000, 'momo');

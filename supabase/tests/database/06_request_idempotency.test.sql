@@ -15,6 +15,11 @@ create table tests.ids (k text primary key, v uuid);
 grant select, insert on tests.ids to authenticated;
 create function tests.id(p_k text) returns uuid language sql stable as $$ select v from tests.ids where k = p_k $$;
 grant execute on function tests.id(text) to authenticated;
+create function tests.cur(p_product uuid) returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('name', p.name, 'selling_price', p.selling_price, 'category_id', p.category_id,
+                            'unit', p.unit, 'low_stock_level', p.low_stock_level)
+  from public.products p where p.id = p_product $$;  -- the five fields as last read (update_product p_expected)
+grant execute on function tests.cur(uuid) to authenticated;
 create table tests.results (k text primary key, r jsonb);
 grant select, insert on tests.results to authenticated;
 create function tests.r(p_k text) returns jsonb language sql stable as $$ select r from tests.results where k = p_k $$;
@@ -93,8 +98,8 @@ select is(public.register_device(tests.id('rq_dev'), tests.id('biz_a1'), 'Phone'
 select is((select count(*) from public.devices where business_id = tests.id('biz_a1'))::int, 1,
   'TC-IDEM-09: the retry registered no second device');
 
-insert into tests.results select 'upd', public.update_product(tests.id('rq_upd'), tests.id('biz_a1'), tests.id('prod_a1'), 'Milo sachet 20g', 175, null, null, 5);
-select is(public.update_product(tests.id('rq_upd'), tests.id('biz_a1'), tests.id('prod_a1'), 'Milo sachet 20g', 175, null, null, 5), tests.r('upd'),
+insert into tests.results select 'upd', public.update_product(tests.id('rq_upd'), tests.id('biz_a1'), tests.id('prod_a1'), 'Milo sachet 20g', 175, null, null, 5, tests.cur(tests.id('prod_a1')));
+select is(public.update_product(tests.id('rq_upd'), tests.id('biz_a1'), tests.id('prod_a1'), 'Milo sachet 20g', 175, null, null, 5, tests.cur(tests.id('prod_a1'))), tests.r('upd'),
   'TC-IDEM-10: update_product retried with the same ID and shop returns the original result');
 select is((select count(*) from public.audit_log where action = 'update_product' and entity_id = tests.id('prod_a1'))::int, 1,
   'TC-IDEM-11: the retry wrote no second audit entry');
@@ -112,7 +117,7 @@ select is((select count(*) from public.devices where business_id = tests.id('biz
   'TC-IDEM-15: no device was registered in the second shop');
 
 insert into tests.ids select 'prod_a2', (public.create_product(gen_random_uuid(), tests.id('biz_a2'), 'Second shop soap', 500) ->> 'product_id')::uuid;
-select throws_ok($q$select public.update_product(tests.id('rq_upd'), tests.id('biz_a2'), tests.id('prod_a2'), 'Renamed', 999, null, null, 5)$q$,
+select throws_ok($q$select public.update_product(tests.id('rq_upd'), tests.id('biz_a2'), tests.id('prod_a2'), 'Renamed', 999, null, null, 5, tests.cur(tests.id('prod_a2')))$q$,
   '22023', 'request_id_reused', 'TC-IDEM-16: update_product with a request ID already used for another shop is refused');
 select ok((select name = 'Second shop soap' and selling_price = 500 from public.products where id = tests.id('prod_a2')),
   'TC-IDEM-17: the second shop''s product is unchanged');
@@ -141,7 +146,7 @@ select throws_ok($q$select public.create_business(tests.id('rq_biz_a1'), 'Copy',
 reset role;
 select tests.as_user('00000000-0000-0000-0000-0000000000a1');
 set local role authenticated;
-select throws_ok($q$select public.update_product(tests.id('rq_prod'), tests.id('biz_a1'), tests.id('prod_a1'), 'X', 100, null, null, 5)$q$,
+select throws_ok($q$select public.update_product(tests.id('rq_prod'), tests.id('biz_a1'), tests.id('prod_a1'), 'X', 100, null, null, 5, tests.cur(tests.id('prod_a1')))$q$,
   '22023', 'request_id_reused', 'TC-IDEM-26: the same user cannot reuse a request ID for a different function (same shop)');
 select throws_ok($q$select public.register_device(tests.id('rq_biz_a1'), tests.id('biz_a1'), 'Phone')$q$,
   '22023', 'request_id_reused', 'TC-IDEM-27: a create_business request ID cannot be reused for another function');

@@ -50,3 +50,6 @@ export class ConnectivityMonitor {
     for (const l of this.listeners) l(next);
   }
 }
+
+/** One app-wide online state, shared by every screen (Stage 1C-2 increment 2). */
+export const appConnectivity = new ConnectivityMonitor();
