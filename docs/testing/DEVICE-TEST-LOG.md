@@ -103,9 +103,15 @@ Statuses: **PASS** (the owner confirmed it), **PARTIAL**, **NOT TESTED**, **BLOC
 
 **Totals (14 checklist entries):** 14 PASS, 0 PARTIAL, 0 NOT TESTED, 0 BLOCKED. **Defects reported:** none. **Not covered by this check:** partial animation scales and manufacturer-specific motion settings stay unverified (STAGE-1C-2-VISUAL-DESIGN §5); the cloud project (D11) wasn't used. KI-1 stays an accepted Expo Go-only limitation: these three cold starts in an installed development build add to its monitoring evidence and don't change its status.
 
-## Stage 1C-2 increment 2 — Products and categories (checklist; NOT YET TESTED)
+## Stage 1C-2 increment 2 — Products and categories (owner-reported, reported 2026-11-25)
 
-**Status: pending manual device verification. No entry below has been run on a phone.** The code is uncommitted and awaiting owner review. The automated evidence is separate: local tests on 25 Nov 2026 (database 1051/1051, API 160/160, app 97/97), see [STAGE-1C-2-EXECUTION-BRIEF.md](../stages/STAGE-1C-2-EXECUTION-BRIEF.md). Planned setup, as for increment 1:
+**Status: 9 PASS, 4 PARTIAL, 11 NOT TESTED, 0 BLOCKED** (corrected twice on 25 Nov 2026 at the owner's request; first recorded as 23 PASS, 1 NOT TESTED, then 13 PASS, 11 NOT TESTED). **Device:** Samsung Galaxy A06, Android 16 (owner-reported). **Reported:** 25 November 2026; the test date was not stated separately. **Evidence:** owner-reported manual results only. No screenshots, timings, device logs or per-check observations were recorded, so the rows below give the status only. **The 9 PASS rows rest on the owner's report** that these checks were exercised on the phone. The 4 PARTIAL rows give what was and wasn't verified. The 11 NOT TESTED rows are checks that were not separately verified. The owner did not separately record the build, the commit loaded, the backend, or the migration step in this report.
+
+This is separate from:
+- the automated evidence for the code (commit `f6a405e`, [CI #55](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45571055034) passed; local runs: database 1051/1051, API 160/160, app 97/97; see [STAGE-1C-2-EXECUTION-BRIEF.md](../stages/STAGE-1C-2-EXECUTION-BRIEF.md));
+- cloud verification: **none**. The Stage 1C migrations, including `20261125000300`, are not applied to any cloud project (D11).
+
+Planned setup, as for increment 1:
 - the installed EAS development build, loading the JavaScript of the commit under test from the local Expo dev server;
 - the local Supabase stack (D-9);
 - a fictitious account and shop;
@@ -115,37 +121,47 @@ For the two-phone checks (D2-17, D2-18), a second signed-in session of the same 
 
 | ID | Check | Expected | Status |
 |---|---|---|---|
-| D2-01 | Products tab opens | Products list with header, search, category chips, sort and Archived chips; "+ Add product"; the old "coming later" preview is gone | NOT TESTED |
-| D2-02 | Empty state | New shop: "No products yet" and "Add your first product" | NOT TESTED |
-| D2-03 | Add product (minimum) | Name and selling price only: saved; green "… added" message; listed with "0 · Out of stock" | NOT TESTED |
-| D2-04 | Add product (full) | Category, unit, cost, opening stock and low-stock level saved; stock chip shows the right word (In stock / Low) | NOT TESTED |
-| D2-05 | Field checks | Empty name, price 0, three decimals, cost without stock: clear messages under the fields; nothing typed is cleared | NOT TESTED |
-| D2-06 | Duplicate product name | "You already have a product with this name. Use a different name." (not the general duplicate text) | NOT TESTED |
-| D2-07 | Search | Results narrow about a third of a second after typing stops; the keyboard stays open; "No products match" when nothing matches | NOT TESTED |
-| D2-08 | Category filter | Each chip shows only its products; "No category" shows uncategorised ones | NOT TESTED |
-| D2-09 | Sort | "A–Z" sorts by name. **"Lowest stock" sorts by quantity, fewest first. It is a sort, not a low-stock filter:** products above their low-stock level still appear | NOT TESTED |
-| D2-10 | Scrolling and paging | With more than 30 products, more load when scrolling; "All N shown" at the end | NOT TESTED |
-| D2-11 | Edit product | Changes saved; "No changes to save" when nothing changed; stock shown read-only | NOT TESTED |
-| D2-12 | Quick price change | "Change price" on a row: new price saved and shown; the row's other details unchanged | NOT TESTED |
-| D2-13 | Archive and restore | Confirmation dialog; archived product leaves the list and appears under "Archived"; Restore brings it back | NOT TESTED |
-| D2-14 | Correct cost price | Reason required; the estimate updates while typing; the result shows the server's new stock value; with no stock, an explanation and Save disabled | NOT TESTED |
-| D2-15 | Categories | Add, rename, archive and restore; duplicate name refused; archiving a category in use refused with "This category still has products…" | NOT TESTED |
-| D2-16 | Offline | Airplane mode: grey offline bar; save buttons disabled; typed text kept; "Check again" after reconnecting | NOT TESTED |
-| D2-17 | Change on another phone (no clash) | Phone 2 changes the name; phone 1 (opened before) changes only the price: both changes survive | NOT TESTED |
-| D2-18 | Change on another phone (clash) | Both change the price: phone 1 sees "Someone else changed the price to …" (or, if the change landed at the moment of saving, "Someone else changed this product just now…"); nothing saved; the new price is shown; saving again works | NOT TESTED |
-| D2-19 | Android Back | Cost → product → list → Today → leaves the app; Back closes the price pop-up and dialogs first | NOT TESTED |
-| D2-20 | Typing survives navigation | Half-typed add form, open Manage categories and come back, or switch to Today and back: the typing is still there | NOT TESTED |
-| D2-21 | 130 % font size | List rows, chips, forms, the price pop-up and Categories readable; nothing clipped; buttons usable | NOT TESTED |
-| D2-22 | Keyboard | Lower fields (low-stock level, reason) stay visible above the keyboard (Android 16 draws edge to edge) | NOT TESTED |
-| D2-23 | Remove animations on | No fades, press shrinking or pulsing on the new screens | NOT TESTED |
-| D2-24 | Today after changes | Back on Today, product count and low-stock figures reflect the changes | NOT TESTED |
+| D2-01 | Products tab opens | Products list with header, search, category chips, sort and Archived chips; "+ Add product"; the old "coming later" preview is gone | **PASS** (owner-reported) |
+| D2-02 | Empty state | New shop: "No products yet" and "Add your first product" | **PASS** (owner-reported) |
+| D2-03 | Add product (minimum) | Name and selling price only: saved; green "… added" message; listed with "0 · Out of stock" | **PARTIAL**: a fully populated product was created and saved; the minimum-only path (name and selling price only) was not tested |
+| D2-04 | Add product (full) | Category, unit, cost, opening stock and low-stock level saved; stock chip shows the right word (In stock / Low) | **PASS** (owner-reported) |
+| D2-05 | Field checks | Empty name, price 0, three decimals, cost without stock: clear messages under the fields; nothing typed is cleared | **PARTIAL**: several validations were tested (invalid name and price, negative stock, negative low-stock level, a zero quick-change price); three decimal places and cost without stock were not tested |
+| D2-06 | Duplicate product name | "You already have a product with this name. Use a different name." (not the general duplicate text) | **NOT TESTED**: duplicate product name handling was not separately verified |
+| D2-07 | Search | Results narrow about a third of a second after typing stops; the keyboard stays open; "No products match" when nothing matches | **PASS** (owner-reported) |
+| D2-08 | Category filter | Each chip shows only its products; "No category" shows uncategorised ones | **PASS** (owner-reported) |
+| D2-09 | Sort | "A–Z" sorts by name. **"Lowest stock" sorts by quantity, fewest first. It is a sort, not a low-stock filter:** products above their low-stock level still appear | **PASS** (owner-reported) |
+| D2-10 | Scrolling and paging | With more than 30 products, more load when scrolling; "All N shown" at the end | **NOT TESTED**: only one product exists in the test shop, so a list of more than 30 products, scrolling to load more and the "All N shown" end could not be exercised. Paging past 1,000 rows has automated evidence only (PS-11) |
+| D2-11 | Edit product | Changes saved; "No changes to save" when nothing changed; stock shown read-only | **PASS** (owner-reported) |
+| D2-12 | Quick price change | "Change price" on a row: new price saved and shown; the row's other details unchanged | **PASS** (owner-reported) |
+| D2-13 | Archive and restore | Confirmation dialog; archived product leaves the list and appears under "Archived"; Restore brings it back | **PASS** (owner-reported) |
+| D2-14 | Correct cost price | Reason required; the estimate updates while typing; the result shows the server's new stock value; with no stock, an explanation and Save disabled | **NOT TESTED**: Correct cost price (reason required, estimate, stock behaviour) was not separately verified |
+| D2-15 | Categories | Add, rename, archive and restore; duplicate name refused; archiving a category in use refused with "This category still has products…" | **PARTIAL**: add, rename, archive protection (category in use), archive and restore were exercised; duplicate category-name validation was not separately tested |
+| D2-16 | Offline | Airplane mode: grey offline bar; save buttons disabled; typed text kept; "Check again" after reconnecting | **PARTIAL**: the offline banner, the offline refresh message, reconnection and refresh were observed; disabled save buttons and keeping typed form input were not independently verified |
+| D2-17 | Change on another phone (no clash) | Phone 2 changes the name; phone 1 (opened before) changes only the price: both changes survive | **NOT TESTED**: two-phone editing without a clash was not performed |
+| D2-18 | Change on another phone (clash) | Both change the price: phone 1 sees "Someone else changed the price to …" (or, if the change landed at the moment of saving, "Someone else changed this product just now…"); nothing saved; the new price is shown; saving again works | **NOT TESTED**: simultaneous or conflicting edits from two phones were not performed |
+| D2-19 | Android Back | Cost → product → list → Today → leaves the app; Back closes the price pop-up and dialogs first | **NOT TESTED**: the exact Back sequence (cost → product → list → Today → out of the app; pop-up and dialogs first) was not separately verified |
+| D2-20 | Typing survives navigation | Half-typed add form, open Manage categories and come back, or switch to Today and back: the typing is still there | **NOT TESTED**: keeping half-typed form input through navigation was not separately verified |
+| D2-21 | 130 % font size | List rows, chips, forms, the price pop-up and Categories readable; nothing clipped; buttons usable | **NOT TESTED**: 130 % font scaling was not separately verified for these screens |
+| D2-22 | Keyboard | Lower fields (low-stock level, reason) stay visible above the keyboard (Android 16 draws edge to edge) | **NOT TESTED**: keyboard visibility for the lower form fields was not separately verified |
+| D2-23 | Remove animations on | No fades, press shrinking or pulsing on the new screens | **NOT TESTED**: behaviour with Remove animations on was not separately verified |
+| D2-24 | Today after changes | Back on Today, product count and low-stock figures reflect the changes | **NOT TESTED**: the Today figures after product changes were not separately verified |
 
 **Not testable by hand on demand:**
 - a reply lost *after* the server saved (covered by automated tests PS-08, PS-09, PS-09b, PS-12, PS-13);
 - a change landing in the moment between the app's re-read and its save, and two simultaneous saves (covered by PS-18, PS-19 and database tests UPX-30 – UPX-37);
 - a lost category add followed by an app restart: known limitation, reported as "already used" (see the brief).
 
-**Totals (24 entries):** 0 PASS, 0 PARTIAL, 24 NOT TESTED, 0 BLOCKED.
+**Totals (24 checklist entries):** 9 PASS, 4 PARTIAL, 11 NOT TESTED, 0 BLOCKED. PASS rows are 📱 device-verified (owner-reported). PARTIAL: D2-03, D2-05, D2-15, D2-16. NOT TESTED: D2-06, D2-10, D2-14, D2-17 – D2-24. **Defects reported:** none.
+
+**Still to do (manual):**
+- D2-10, once the test shop has more than 30 products;
+- the missing parts of D2-03, D2-05, D2-15 and D2-16 (see their rows);
+- D2-06, D2-14, D2-19 – D2-24 on one phone;
+- D2-17 and D2-18 with a second signed-in session of the same shop.
+
+Automated evidence exists for some of the same behaviour (for example PS-02 duplicate names, PS-07 and PS-17 cost correction, PS-14 – PS-19 concurrent edits), but it doesn't replace the manual checks.
+
+**UX suggestion from the owner (future improvement; NOT implemented, no change made):** tapping a product in the list should open a **read-only product details view with an Edit button**, rather than opening the edit form directly. Recorded for a later increment. Increment 3 (S-37 product detail and movement history) is the natural place to consider it, subject to the owner's approval.
 
 ## Issues found
 

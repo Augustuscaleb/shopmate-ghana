@@ -58,9 +58,9 @@ Reasons for the order: the service layer and error handling are shared by every 
 
 **Increment 1 status: committed in `0f13132` ([CI #53](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45506392419) passed); owner-reported device checks complete on the local stack (25 Nov 2026; Samsung Galaxy A06, Android 16): all 14 checklist entries PASS.** Five-tab shell (D-7, D-8) with the More tab keeping Log out; pure navigation model; online-state monitor fed by request outcomes (`expo-network` **not installed**: needs separate approval, and a new development build to verify, D-2); server-error classifier; request-ID store (reuse on retry, release on a definite answer, hold back changed inputs after an unknown outcome); strict result readers; the message table ([STAGE-1C-2-ERROR-MESSAGES.md](STAGE-1C-2-ERROR-MESSAGES.md)); the visual foundation ([STAGE-1C-2-VISUAL-DESIGN.md](STAGE-1C-2-VISUAL-DESIGN.md)): tokens, reduced-motion-aware touch feedback, entrances and skeleton loading, using only React Native's built-in Animated API. A shared reduce-motion state (reduced until the phone's setting is known; one native check and subscription). Tests: app 66/66 (41 new), API 139/139 (6 new, `tests/app-error-handling.test.ts`), database 1017/1017; typecheck, scans and bundle export passed. No backend change. **Device check:** complete (owner-reported manual evidence, 25 Nov 2026): 14 PASS, 0 PARTIAL, 0 NOT TESTED, 0 BLOCKED, recorded in [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md); automated evidence is CI #53. Not covered: partial animation scales and manufacturer motion settings, and the cloud project (D11 outstanding).
 
-**Increment 2 status (25 Nov 2026): implemented and verified locally; NOT committed, NOT device-tested; awaiting owner review.** Scope S-30, S-31, S-32, category management from the S-30 filter (owner decision) and "Correct cost price" (`set_cost`, D-5). One backend change was prepared locally (the `update_product` concurrency protection below): it has been applied to the local stack only, **not to any cloud project** (D11). No new dependency.
+**Increment 2 status (25 Nov 2026): committed in `f6a405e` ([CI #55](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45571055034) passed); owner-reported device checks on the Samsung Galaxy A06 (Android 16): 9 PASS, 4 PARTIAL, 11 NOT TESTED, 0 BLOCKED.** Scope S-30, S-31, S-32, category management from the S-30 filter (owner decision) and "Correct cost price" (`set_cost`, D-5). One backend change was prepared locally (the `update_product` concurrency protection below): it has been applied to the local stack only, **not to any cloud project** (D11). No new dependency.
 
-*Implemented (code, uncommitted):*
+*Implemented (code, committed in f6a405e):*
 - **S-30 Products list:** server-paginated (`range` + exact count, 30 per page; never limited by `max_rows`); search; category chips (All, each category, No category, Manage categories); archived products; pull-to-refresh; loading, empty, error and offline states. **Sort: "A–Z" or "Lowest stock".** "Lowest stock" is a *sort* by stock quantity, lowest first. It is **not** a low-stock filter and does not compare stock with each product's low-stock level (PostgREST can't compare two columns). The owner accepted it as a temporary, accurately labelled option (25 Nov 2026). The true low-stock list is S-35 (increment 5, `low_stock_products`).
 - **S-31 Add / Edit product:** add (`create_product`, with optional cost and opening stock); edit (`update_product`); archive and restore (`set_product_archived`); a read-only stock summary; "Correct cost price" (`set_cost`, reason required).
 - **S-32 Quick price change** from the list.
@@ -102,7 +102,29 @@ The database tests cover the comparison under the lock, a change by a second mem
 - two phones saving at the same moment, where exactly one wins, in five rounds;
 - lost replies, duplicate names and isolation between shops.
 
-*Manual device verification:* **pending.** Nothing in increment 2 has been seen on a phone yet. Checklist: [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2".
+*Manual device verification (owner-reported, reported 25 Nov 2026; corrected the same day):* on the Samsung Galaxy A06, Android 16, of the 24 checklist entries:
+- **9 PASS** (owner-reported): tab, empty state, full add, search, filter, sort, edit, quick price, archive and restore;
+- **4 PARTIAL**:
+  - D2-03: the minimum-only add was not tested;
+  - D2-05: three decimal places and cost without stock were not tested;
+  - D2-15: duplicate category name was not tested;
+  - D2-16: disabled save buttons and keeping typed input while offline were not verified.
+
+**11 are NOT TESTED:**
+- D2-10 paging: only one product exists;
+- D2-06 duplicate product name;
+- D2-14 Correct cost price;
+- D2-17 and D2-18 two-phone edits;
+- D2-19 the exact Back sequence;
+- D2-20 typing kept through navigation;
+- D2-21 130 % font size;
+- D2-22 keyboard and the lower fields;
+- D2-23 Remove animations;
+- D2-24 Today figures after changes.
+
+Some of this has automated evidence (for example PS-11 paging past 1,000 products, PS-17 – PS-19 concurrency), which doesn't count as a device check. These are owner-reported manual results, separate from the automated evidence above. There is no cloud verification: the migrations, including `20261125000300`, are not in any cloud project (D11). Results: [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2".
+
+*Future UX improvement (owner suggestion, 25 Nov 2026; NOT implemented):* tapping a product should open a read-only product details view with an Edit button, instead of opening the edit form directly. To be considered with S-37 (increment 3), subject to the owner's approval.
 
 ## 4. Acceptance criteria and tests for every increment
 

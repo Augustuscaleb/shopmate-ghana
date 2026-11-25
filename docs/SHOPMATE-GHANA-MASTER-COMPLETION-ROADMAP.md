@@ -35,7 +35,7 @@ Rules kept from the project: a plan mentioning an item is **not** evidence; CI o
 | P1A | Stage 1A — foundation | **COMPLETED AND VERIFIED** (☁️ 91/91) | — |
 | P1B | Stage 1B — login, onboarding, cloud tooling | **IMPLEMENTED, NOT FULLY VERIFIED**: approved, ☁️ 4 safeguard tests, 📱 TC-DEV-01–03; open sub-items in §3.2 | — |
 | P1C-1 | Stage 1C checkpoint 1 — inventory database | **IMPLEMENTED, NOT FULLY VERIFIED**: CI-passed and locally verified; **checkpoint closed** by the owner (24 Nov 2026); not ☁️ (D11 outstanding) | — |
-| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 implemented locally, awaiting review | P1C-1 closure ✅ |
+| P1C-2 | Stage 1C checkpoint 2 — inventory screens | **IN PROGRESS** (authorised 24 Nov 2026; decisions in [STAGE-1C-DECISIONS.md](stages/STAGE-1C-DECISIONS.md) §3a); increment 1 committed (`0f13132`), device checks 14/14 PASS; increment 2 committed (`f6a405e`, CI #55): main flows manually exercised on the phone (owner-reported): 9 PASS, 4 PARTIAL, 11 detailed device checks NOT TESTED | P1C-1 closure ✅ |
 | Ops-1 | Backup and restore, first restore drill (R-3, mandatory) | **REQUIRES OWNER DECISION** (start approval); designed only | Cloud project (exists) |
 | P1D+ | Stage 1 remaining: sales and offline sync, voids, cancellations, credit, expenses, closing, reports, export, settings, subscription, help (PLAN §11 "1D onwards") | **NOT STARTED**; sub-stage split **not yet planned** | P1C (stock functions); 1D plan |
 | Cloud | Apply migrations to the cloud and re-verify after each (decision 42, R-1, D11) | **REQUIRES OWNER DECISION** per batch | Owner approval |
@@ -193,8 +193,8 @@ Future items (01 §3: staff accounts, automated payments and reports, OTP, barco
 | S-10 Today | IMPLEMENTED, NOT FULLY VERIFIED | `inventory_summary`; sales by row reads (to replace in 1D) | TC-DASH-01 – 11 |
 | S-20 New Sale; S-21 Payment; S-22 Sale complete | NOT STARTED | `record_sale`; local outbox | TC-FIN, TC-SYNC, TC-TIME, TC-COST-11 – 18 |
 | S-23 Sales history; S-24 Sale detail; S-25 Cancel unsent sale | NOT STARTED | `void_sale`, `cancel_unsent_sale`, `get_sale_status` | TC-CANCEL, TC-SEC-09 |
-| S-30 Products | NOT STARTED (1C-2) | `products`, `categories` reads; category direct writes; `set_product_archived` | TC-INV-20 – 32, 40 – 43 (backend); UI tests to add |
-| S-31 Product form; S-32 Quick price change | NOT STARTED (1C-2) | `create_product`, `update_product`, `set_product_archived`, `set_cost` | TC-INV-20 – 32, 40 – 43, 50 – 57; TC-COST-05, 08 |
+| S-30 Products | IMPLEMENTED (`f6a405e`), NOT FULLY VERIFIED: list, search, filter, sort and archived manually exercised (owner-reported); categories and offline PARTIAL; paging and the 130 %, keyboard, reduced-motion and Today-figure checks NOT TESTED | `products`, `categories` reads; category direct writes; `set_product_archived` | TC-INV-20 – 32, 40 – 43 (backend); UI tests to add |
+| S-31 Product form; S-32 Quick price change | IMPLEMENTED (`f6a405e`), NOT FULLY VERIFIED: full add, edit, quick price, archive and restore manually exercised (owner-reported); minimum-only add and some field checks PARTIAL; duplicate name, Correct cost price, two-phone edits, Back sequence and typing-through-navigation checks NOT TESTED | `create_product`, `update_product`, `set_product_archived`, `set_cost` | TC-INV-20 – 32, 40 – 43, 50 – 57; TC-COST-05, 08 |
 | S-33 Restock | NOT STARTED (1C-2) | `restock` | TC-INV-60 – 68; TC-COST-01, 02, 09; TC-PUR-01, 02 |
 | S-34 Stock adjustment | NOT STARTED (1C-2) | `adjust_stock` | TC-INV-70 – 80; TC-COST-06; TC-LOSS-01, 02; TC-PUR-09 |
 | S-35 Low stock | NOT STARTED (1C-2) | `low_stock_products` | TC-INV-122, 132 |
