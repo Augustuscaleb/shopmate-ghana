@@ -2,8 +2,10 @@ import { StyleSheet, Text, View } from 'react-native';
 
 /**
  * Small line icons drawn with plain views, so no icon font or new dependency is needed.
- * They are always shown next to a text label (D-04: never icon-only). If Material Symbols
- * are adopted later (spec 08 §6), these can be swapped one for one.
+ * They are shown next to a text label (D-04), with one owner-approved exception (25 Nov 2026):
+ * the compact Edit pencil in the Product Details header, which carries the screen-reader label
+ * "Edit product". If Material Symbols are adopted later (spec 08 §6), these can be swapped one
+ * for one.
  */
 type IconProps = { colour: string; size?: number };
 
@@ -134,6 +136,21 @@ export function TagIcon({ colour, size = 24 }: IconProps) {
     <View style={[styles.box, { width: size, height: size }]} accessible={false}>
       <View style={{ width: size * 0.74, height: size * 0.5, borderWidth: 2, borderColor: colour, borderRadius: size * 0.12, justifyContent: 'center', paddingLeft: size * 0.1 }}>
         <View style={{ width: size * 0.14, height: size * 0.14, borderRadius: size * 0.07, borderWidth: 2, borderColor: colour }} />
+      </View>
+    </View>
+  );
+}
+
+/** Edit: a pencil, tip down-left (Product Details header). */
+export function PencilIcon({ colour, size = 24 }: IconProps) {
+  const w = size * 0.26;
+  return (
+    <View style={[styles.box, { width: size, height: size }]} accessible={false}>
+      <View style={{ alignItems: 'center', transform: [{ rotate: '45deg' }] }}>
+        {/* Eraser cap, body, then the tip */}
+        <View style={{ width: w, height: size * 0.16, borderWidth: 2, borderColor: colour, borderTopLeftRadius: 2, borderTopRightRadius: 2, marginBottom: 1 }} />
+        <View style={{ width: w, height: size * 0.44, borderWidth: 2, borderColor: colour }} />
+        <View style={{ width: 0, height: 0, borderLeftWidth: w / 2, borderRightWidth: w / 2, borderTopWidth: size * 0.18, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: colour }} />
       </View>
     </View>
   );

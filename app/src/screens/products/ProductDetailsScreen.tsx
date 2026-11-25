@@ -1,7 +1,8 @@
 /**
  * S-37 Product detail, the read-only part (Stage 1C-3.1; plan §5.1 – §5.2; spec 08 rev 2 §9.2 – §9.4).
- * Nothing on this page can be changed by typing. "Edit product" (the main action, in the bottom
- * bar) opens the existing form; "Change price" opens the existing quick price sheet; "Correct cost
+ * Nothing on this page can be changed by typing. A compact pencil top-right in the header
+ * (spoken as "Edit product"; owner decision 25 Nov 2026, replacing the bottom-bar button) opens
+ * the existing form; "Change price" opens the existing quick price sheet; "Correct cost
  * price" opens the existing audited screen; Archive / Restore asks for confirmation first.
  *
  * Built with the current components and colours: the new design system and restyling come in
@@ -25,9 +26,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Notice } from '../../ui/components';
-import { Card, EmptyState, OfflineBar, ScreenHeader, StockChip, SuccessFlash, UpdatedLine } from '../../ui/surfaces';
+import { Card, EmptyState, HeaderIconButton, OfflineBar, ScreenHeader, StockChip, SuccessFlash, UpdatedLine } from '../../ui/surfaces';
 import { FadeIn, Skeleton } from '../../ui/animated';
-import { BoxIcon } from '../../ui/icons';
+import { BoxIcon, PencilIcon } from '../../ui/icons';
 import { STOCK_STATE_STYLE, stockState } from '../../ui/stockStatus';
 import { colours, radius, space, touch, type } from '../../ui/theme';
 import { useConnectivity } from '../../ui/useConnectivity';
@@ -195,7 +196,11 @@ export function ProductDetailsScreen({ productId, businessId, products, visible,
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader title={product?.name ?? 'Product'} subtitle={data && product ? categoryLabel(product.categoryId, data.categories) : undefined} onBack={onBack}>
+        <ScreenHeader title={product?.name ?? 'Product'} subtitle={data && product ? categoryLabel(product.categoryId, data.categories) : undefined} onBack={onBack}
+          action={product ? (
+            <HeaderIconButton icon={PencilIcon} label="Edit product" onPress={() => onEdit(product.id)}
+              disabled={archived} disabledReason="Archived. Restore it to make changes." />
+          ) : undefined}>
           {product ? (
             <View style={styles.headerMeta}>
               <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
@@ -233,13 +238,6 @@ export function ProductDetailsScreen({ productId, businessId, products, visible,
           )}
         </View>
       </ScrollView>
-
-      {product ? (
-        <View style={styles.bottomBar}>
-          {archived ? <Text style={styles.barReason}>Restore it to make changes.</Text> : null}
-          <Button label="Edit product" onPress={() => onEdit(product.id)} disabled={archived} />
-        </View>
-      ) : null}
 
       <QuickPriceSheet product={priceFor} businessId={businessId} products={products} onClose={() => setPriceFor(null)}
         onSaved={(p, price) => {
@@ -462,6 +460,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   inactive: { opacity: 0.5 },
   emptyAction: { alignSelf: 'stretch', marginTop: space.sm },
-  bottomBar: { backgroundColor: colours.surface, borderTopWidth: 1, borderTopColor: colours.sand, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.sm, gap: space.xs },
-  barReason: { fontSize: type.caption, color: colours.warnText, fontWeight: '700', textAlign: 'center' },
 });

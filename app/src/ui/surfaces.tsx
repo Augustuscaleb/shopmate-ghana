@@ -18,19 +18,29 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-/** Green header for screens inside a tab, with Back top-left (08 §8 "Back is always top-left"). */
-export function ScreenHeader({ title, subtitle, onBack, children }: {
-  title: string; subtitle?: string; onBack?: () => void; children?: ReactNode;
+/**
+ * Green header for screens inside a tab, with Back top-left (08 §8 "Back is always top-left").
+ * `action`: an optional compact control top-right, on the same line as Back (used only by
+ * Product Details for its Edit pencil). Without it the header is unchanged.
+ */
+export function ScreenHeader({ title, subtitle, onBack, action, children }: {
+  title: string; subtitle?: string; onBack?: () => void; action?: ReactNode; children?: ReactNode;
 }) {
+  const back = onBack ? (
+    <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={8}
+      style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
+      <ChevronLeftIcon colour={colours.surface} size={20} />
+      <Text style={styles.backText}>Back</Text>
+    </Pressable>
+  ) : null;
   return (
     <View style={styles.header}>
-      {onBack ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={8}
-          style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
-          <ChevronLeftIcon colour={colours.surface} size={20} />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
-      ) : null}
+      {action ? (
+        <View style={styles.headerTopRow}>
+          {back ?? <View />}
+          {action}
+        </View>
+      ) : back}
       <Text style={styles.headerTitle} accessibilityRole="header" numberOfLines={2}>{title}</Text>
       {subtitle ? <Text style={styles.headerSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
       {children}
@@ -136,6 +146,25 @@ export function UpdatedLine({ label, failed, onRetry, onGreen = false }: {
   );
 }
 
+/**
+ * A compact icon-only control for the green header: the visible circle is 40 dp, the touch
+ * target 48 × 48 dp. Only for actions whose icon is universally clear; it always has a spoken
+ * label. Disabled: dimmed, announced as disabled, with the reason as its hint.
+ */
+export function HeaderIconButton({ icon: Icon, label, onPress, disabled = false, disabledReason }: {
+  icon: IconType; label: string; onPress: () => void; disabled?: boolean; disabledReason?: string;
+}) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
+      accessibilityHint={disabled ? disabledReason : undefined} onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [styles.iconButton, disabled && styles.iconButtonDisabled, pressed && !disabled && styles.pressed]}>
+      <View style={styles.iconButtonCircle}>
+        <Icon colour={colours.surface} size={20} />
+      </View>
+    </Pressable>
+  );
+}
+
 /** Placeholder rows while a list loads. */
 export function ListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
@@ -192,6 +221,10 @@ const styles = StyleSheet.create({
   header: { backgroundColor: colours.shopGreen, paddingTop: TOP_INSET + space.md, paddingHorizontal: space.md, paddingBottom: space.lg, gap: space.xs, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   back: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: touch.min, alignSelf: 'flex-start', paddingRight: space.md, marginLeft: -space.xs },
   backText: { color: colours.surface, fontSize: type.body, fontWeight: '700' },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  iconButton: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', marginRight: -space.xs },
+  iconButtonCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' },
+  iconButtonDisabled: { opacity: 0.45 },
   headerTitle: { color: colours.surface, fontSize: type.title + 4, fontWeight: '800' },
   headerSubtitle: { color: colours.onGreenMuted, fontSize: type.body },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: space.sm + 2, paddingVertical: 4, alignSelf: 'flex-start', maxWidth: '100%' },

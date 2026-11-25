@@ -270,15 +270,27 @@ XD-01 doesn't pass any individual MD check on its own; see MD-01 and MD-04 below
 
 **Totals (18 checklist entries):** 0 PASS, 2 PARTIAL (MD-01, MD-04), 16 NOT TESTED, 0 BLOCKED. Separately recorded: XD-01 PASS, and QPS-D1 – QPS-D6 6/6 PASS. The Increment 2 totals above are unchanged: 9 PASS, 4 PARTIAL, 11 NOT TESTED.
 
-## Stage 1C-3.1 — Product Details (checklist written; NOT TESTED)
+## Stage 1C-3.1 — Product Details (owner-reported results recorded 2026-11-25; checklist mostly NOT TESTED)
 
-**Status: no owner-reported device evidence yet. Every check below is NOT TESTED.** The 1C-3.1 code is in the working tree only (not committed or pushed when this was written), so it can't yet be run on the phones. Automated results are recorded separately in [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md) and are not device evidence. Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md) (DET-06 corrected in plan revision 9 to follow spec 08 rev 2 §9.3).
+**Status: first owner-reported device evidence recorded (2026-11-25). DET-01 PASS on both phones; DET-11 PARTIAL on both; every other check NOT TESTED.** Not every DET check has passed or been run. Automated results are recorded separately in [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md) and are not device evidence. Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md) (DET-06 corrected in plan revision 9 to follow spec 08 rev 2 §9.3).
 
-Devices: Samsung Galaxy A06 (Android 16, development build) and iPhone 13 Pro Max (Expo Go), local development stack with migration `20261125000300`, fictitious data only. DET-13 needs both phones.
+Devices: Samsung Galaxy A06 (Android 16) and iPhone 13 Pro Max. DET-13 needs both phones.
+
+**Test run reported 2026-11-25 (owner-reported manual evidence; no screenshots or logs):**
+- **Code:** commit `7064d4d` (Stage 1C-3.1), run as a preview through **Expo Go** on **both** phones.
+- **Backend:** not recorded in the report (the instructions given were for the local development stack with migration `20261125000300`); fictitious data only.
+- **What the owner confirmed, on both phones:** opening a product from the Products list; viewing the Product Details screen; using the Edit action and its navigation; returning with Back navigation.
+- **Not reported:** which figures and states were shown (cost states, margin, stock value, categories, archived); whether Back from the form landed on Details or on the list, and which Back (screen Back or Android system Back) was used; Save, Add, price change, archive, offline, larger text, two-phone use.
+
+**How the confirmation maps to the checklist:**
+- "Opening a product from the Products list" and "viewing the Product Details screen" → **DET-01 PASS** (a row tap opens Details).
+- "Using the Edit action" and "returning through Back navigation" → **DET-11 PARTIAL**: Edit opened and Back was used, but the report doesn't say the return was to Details with nothing changed, and on the A06 the Android system Back variant isn't reported separately.
+- Viewing the screen is not counted as DET-02 – DET-09: those check specific figures and states that weren't reported individually.
+- **Owner design feedback from this run:** the large green "Edit product" button was oversized and not the intended design. It is replaced by a compact header pencil (owner decision B-3; [plan](../stages/STAGE-1C-3-PLAN.md) §1). DET-01 and DET-11 above were run on `7064d4d`, with the old button; DET-11 and the new DET-15 are to be run again on the corrected code.
 
 | ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
 |---|---|---|---|
-| DET-01 | Row tap opens Details, not the form | NOT TESTED | NOT TESTED |
+| DET-01 | Row tap opens Details, not the form | **PASS** (owner-reported, Expo Go, `7064d4d`) | **PASS** (owner-reported, Expo Go, `7064d4d`) |
 | DET-02 | All fields for a product with stock and a cost | NOT TESTED | NOT TESTED |
 | DET-03 | Margin GH₵ 2.00 and 20 % for GH₵ 10.00 / GH₵ 8.00; "(about)" only on estimates | NOT TESTED | NOT TESTED |
 | DET-04 | No stock with a last known cost (needs stock adjusted to 0; no Adjust stock screen yet) | NOT TESTED | NOT TESTED |
@@ -288,10 +300,13 @@ Devices: Samsung Galaxy A06 (Android 16, development build) and iPhone 13 Pro Ma
 | DET-08 | Archive from Details; actions disabled with the reason; Restore | NOT TESTED | NOT TESTED |
 | DET-09 | Archived category "(archived)"; "No category" | NOT TESTED | NOT TESTED |
 | DET-10 | Edit → Save returns to Details, refreshed, "… saved" | NOT TESTED | NOT TESTED |
-| DET-11 | Edit → Back (and Android Back) returns to Details unchanged | NOT TESTED | NOT TESTED |
+| DET-11 | Edit → Back (and Android Back) returns to Details unchanged | **PARTIAL** (Edit and Back used; return to Details, "nothing changed" and the Android system Back variant not reported) | **PARTIAL** (Edit and Back used; return to Details and "nothing changed" not reported) |
 | DET-12 | Back from Details keeps list search, filters, sort, scroll | NOT TESTED | NOT TESTED |
 | DET-13 | Two phones: change on A appears on B; note only for the other phone's change | NOT TESTED (two phones) | |
 | DET-14 | Add a product: its Details opens | NOT TESTED | NOT TESTED |
+| DET-15 | Header pencil opens the edit form; spoken "Edit product"; easy target; disabled when archived (owner decision B-3; added after the run reported below, which used the old button) | NOT TESTED | NOT TESTED |
+
+**Totals:** single-phone checks (DET-01 – DET-12, DET-14, DET-15; 14 per phone): Galaxy A06 1 PASS (DET-01), 1 PARTIAL (DET-11), 12 NOT TESTED; iPhone 13 Pro Max 1 PASS (DET-01), 1 PARTIAL (DET-11), 12 NOT TESTED. Two-phone check DET-13: NOT TESTED.
 
 Also to repeat after 1C-3.1 (plan §7): D2-11, D2-12, D2-13, MD-09, MD-10 — NOT TESTED for 1C-3.1. Earlier results for those checks were recorded before 1C-3.1 and do not count for it.
 

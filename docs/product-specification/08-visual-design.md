@@ -141,7 +141,7 @@ The two failing pairs exist in the app today. They are corrected when the new co
 
 ### 5.2 Main action placement
 - One main (green) action per screen.
-- **At the bottom of the screen,** in a bar that stays above the keyboard, on forms and on Product Details.
+- **At the bottom of the screen,** in a bar that stays above the keyboard, on forms. *(Owner decision B-3, 25 Nov 2026: **not on Product Details**, which has no main button; its Edit action is a compact pencil in the header, §9.2.)*
 - Back is always top-left, as in revision 1.
 
 ### 5.3 Reusable components
@@ -203,7 +203,7 @@ Measured in density-independent pixels (dp, called points on iOS). **The values 
 
 - **Lightweight custom icons, drawn from plain views:** one consistent set on a 24 dp grid, with one stroke weight and rounded ends. **No SVG or icon-font package** in Stage 1C-3.
 - **Icons and logo marks are drawn as shapes, not as text characters.** For example, the "!" in the alert icon and the "S" logo mark are drawn shapes, so no text-scaling exception is needed.
-- **Always paired with a word** in navigation and on buttons. There are no icon-only buttons (rule unchanged).
+- **Always paired with a word** in navigation and on buttons. There are no icon-only buttons, **except** where the owner has approved one (owner decision B-3, 25 Nov 2026): the compact Edit pencil in the Product Details header, which always has the spoken label "Edit product" and a 48 dp touch target. Further icon-only actions are decided with the control hierarchy in the 1C-3.2 gallery (B-4).
 - Emoji only in friendly messages, never as the only meaning.
 
 ## 8. Motion
@@ -235,7 +235,7 @@ Measured in density-independent pixels (dp, called points on iOS). **The values 
    - "**Stock value (about)**" (decision V-1): **current stock quantity × current calculated average cost.** It is calculated from the unrounded average, so it equals the stock value the shop has recorded; the rounded average shown on screen isn't used, which avoids rounding differences. **Shown only in cost state 1, and hidden whenever the current calculated cost isn't available** (states 2, 3 and 4).
 5. **Information card:** unit; category; low-stock level.
 6. **Actions:**
-   - **"Edit product"** is the main (green) button, in the bottom bar;
+   - **Edit:** a **compact pencil icon top-right in the header** (owner decision B-3, 25 Nov 2026, replacing the large green bottom-bar button), spoken as "Edit product", with a 48 dp touch target; disabled when archived, with the reason;
    - "Change price" and "Correct cost price" are secondary buttons;
    - "Archive product" is a destructive action at the end, with a confirmation.
 

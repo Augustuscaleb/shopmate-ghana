@@ -32,6 +32,8 @@ An unreliable figure is never shown as the current cost |
 | M-1 | **Margin hidden when only the last-known cost is available** | Margin is shown only for state 1, the current calculated cost (§5.1) |
 | R-1 | **Browser milestone added to the master roadmap** | Done in this revision, as milestone **PW-1** in the roadmap's §2 and §3.6a |
 | W-1 | **Scheduling decision: milestone PW-1 comes AFTER Stage 1C-3** | D11 (Stage 1C migrations in the cloud) must be addressed before any cross-network testing, including browser testing (§11) |
+| B-3 | **Product Details Edit: a compact header pencil, not a large button** (owner design feedback, 25 Nov 2026, after the first device run of 1C-3.1). The oversized green "Edit product" bottom-bar button is removed | A pencil icon top-right in the Details header opens the same edit flow; spoken label "Edit product"; 48 dp touch target; disabled when archived, with the reason. Done in 1C-3.1 as a correction after its first device run. Amends spec 08 §5.2, §7 and §9.2 for this action only |
+| B-4 | **A restrained control hierarchy; no oversized buttons** (owner, 25 Nov 2026) | A requirement for the **1C-3.2** component gallery (below). It does not change other screens before C-1b |
 
 ## 2. Device-testing status and pre-work
 
@@ -386,10 +388,18 @@ Each increment is implemented only after approval, and reported for review. It i
 - the redrawn icon set;
 - `useLayout()` width and height classes (§6.1), with provisional dp breakpoints in one constant, and a development-only overlay showing the current dp size and class;
 - a **component gallery** screen reachable only in development builds (`__DEV__`), for review on the A06 and the iPhone;
-- the approved [spec 08 revision 2](../product-specification/08-visual-design.md) (C-1a, 25 Nov 2026) applied in the colour roles, tokens and kit.
+- the approved [spec 08 revision 2](../product-specification/08-visual-design.md) (C-1a, 25 Nov 2026) applied in the colour roles, tokens and kit;
+- **the control hierarchy (owner decision B-4, 25 Nov 2026).** Oversized buttons throughout the app are undesirable; the gallery defines and shows four levels, from lightest to heaviest:
+  1. **compact icon-only actions**, only where the meaning is universally clear (for example edit, close, back), always with a spoken label and a 48 dp touch target;
+  2. **small text actions** where an icon alone would be ambiguous;
+  3. **medium buttons** for ordinary actions;
+  4. **large primary buttons** only for genuinely important actions (for example "Save product", "Save price").
+
+  It avoids oversized buttons, excessive padding and unnecessary visual weight, so the interface feels contemporary, refined and commercially polished. Not every button becomes an icon: clarity, usability and accessibility come first. The gallery shows each level in all its states and at 100 %, 130 % and the largest text size. Which existing buttons move to which level is decided screen by screen in 1C-3.3 and 1C-3.4, after C-1b.
 
 **Acceptance:**
 - No existing screen changes appearance; all tests green.
+- The four control levels (B-4) are in the gallery, each with its intended use, and no gallery control is larger or heavier than its level needs.
 - Every primitive is shown in the gallery in all its states (normal, pressed, disabled, loading, error), at 100 %, 130 % and the largest text size, with reduced motion on and off.
 - Contrast pairs meet WCAG AA (an automated test on the token pairs).
 - System font only: an automated check finds no `fontFamily` and no font assets.
@@ -513,6 +523,7 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | DET-12 | From a scrolled, filtered and searched list, open Details, then Back | List with the same search text, filters, sort and scroll position |
 | DET-13 | Two devices: Details open on B; A changes the price; B returns to the app or the screen | B shows the new price without a restart; "This product was changed on another device" appears only for the other device's change |
 | DET-14 | Add a product and save (A-1) | The new product's read-only Details opens |
+| DET-15 | On Details, look top-right in the header; tap the pencil. With TalkBack or VoiceOver on, move to it. Then archive the product and look again (owner decision B-3) | A compact pencil, no large green Edit button anywhere on the page; one tap (an easy target) opens the edit form, and Back returns to Details; the screen reader says "Edit product, button"; when archived it is dimmed, does nothing, and is announced as disabled with "Archived. Restore it to make changes." |
 
 **ORI: phones in portrait and landscape (1C-3.5).** Devices: Galaxy A06 (new development build) and iPhone 13 Pro Max (Expo Go, early; final on an iOS build, §6.5 item 4).
 

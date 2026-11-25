@@ -17,9 +17,19 @@ describe('Product Details wiring (Stage 1C-3.1)', () => {
     expect(area).not.toMatch(/onOpen=\{\(id\) => go\(\{ name: 'edit'/);
   });
 
-  it('PDS-02: "Edit product" is the main button in the bottom bar and opens the existing form', () => {
-    expect(details).toMatch(/<View style=\{styles\.bottomBar\}>[\s\S]*?<Button label="Edit product" onPress=\{\(\) => onEdit\(product\.id\)\} disabled=\{archived\} \/>/);
+  it('PDS-02: Edit is a compact pencil top-right in the header, spoken as "Edit product", opening the existing form (owner decision, 25 Nov 2026)', () => {
+    expect(details).toMatch(/action=\{product \? \(\s*<HeaderIconButton icon=\{PencilIcon\} label="Edit product" onPress=\{\(\) => onEdit\(product\.id\)\}\s*disabled=\{archived\}/);
     expect(area).toContain("onEdit={(id) => go({ name: 'edit', productId: id })}");
+    // The oversized bottom-bar button is gone
+    expect(details).not.toContain('<Button label="Edit product"');
+    expect(details).not.toContain('styles.bottomBar');
+  });
+
+  it('PDS-02b: the header icon control keeps a 48 dp touch target, has a spoken label and announces when disabled', () => {
+    const surfaces = readFileSync(join(__dirname, '../app/src/ui/surfaces.tsx'), 'utf8');
+    expect(surfaces).toMatch(/iconButton: \{ width: touch\.min, height: touch\.min,/);
+    expect(surfaces).toContain('accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}');
+    expect(surfaces).toContain('accessibilityHint={disabled ? disabledReason : undefined}');
   });
 
   it('PDS-03: the form returns to Details after a save, and a new product opens its Details (A-1)', () => {
