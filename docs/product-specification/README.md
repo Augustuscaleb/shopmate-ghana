@@ -1,6 +1,6 @@
 # ShopMate Ghana — MVP Product Specification
 
-**Status:** Revision 5.1 — for final approval as the implementation baseline
+**Status:** Revision 5.2 (25 Nov 2026): revision 5.1 with **spec 08 revision 2** approved by the owner (Checkpoint C-1a). Revision 5.1 was approved as the implementation baseline on 11 Nov 2026.
 **Date:** 11 November 2026
 **Depends on:** [docs/PLAN.md](../PLAN.md) (approved) and [Stage 0 research](../market-research/STAGE-0-REPORT.md) (approved direction)
 
@@ -17,7 +17,7 @@
 | 05 | [Financial calculations](05-financial-calculations.md) | Money rules, formulas, rounding, worked examples |
 | 06 | [Offline synchronisation](06-offline-sync.md) | Outbox, statuses, local stock, edge cases |
 | 07 | [Errors and security](07-errors-and-security.md) | Error handling, messages, security requirements |
-| 08 | [Visual design direction](08-visual-design.md) | Colours, type, components, tone, accessibility, simplicity rules |
+| 08 | [Visual design direction](08-visual-design.md) (revision 2, approved 25 Nov 2026) | Colours and roles, system-font type with no text-scaling cap, components, icons, responsive and landscape layouts, Product Details presentation, motion, tone, accessibility, A06 performance, simplicity rules |
 | 09 | [Data model](09-data-model.md) | **Single source of truth** for tables, fields and server functions |
 | 10 | [Test plan and release gates](10-test-plan.md) | All test cases (calculation, cost, credit, sync, security, backup, UX) and gates G1–G3 |
 | — | [design-preview.html](design-preview.html) | Static mock-up of key screens (open in a browser) |
@@ -50,6 +50,17 @@ Most design choices are **[A]**: reasoned decisions to be validated with real us
 6. The verified / reported / assumption distinction is preserved throughout.
 
 ## Revision log
+
+### Revision 5.2 (25 November 2026)
+
+Owner approval at Checkpoint C-1a (Stage 1C-3). Only spec 08 and the related screen entries change; business rules (04, 05) are unchanged.
+
+| # | Change | Where |
+|---|---|---|
+| 1 | **Spec 08 revision 2** adopted as the governing visual specification. It covers: Android and iOS phones and tablets in portrait and landscape; the native system font with **no text-scaling cap anywhere**; meaning-based colour roles with three contrast corrections (V-3); light headers (V-2); a reusable component set; lightweight custom icons with no SVG package (I-1); the layout classes compact, medium, expanded and short; safe areas from 1C-3.5 (S-1); motion and Reduce Motion; TalkBack and VoiceOver; the Galaxy A06 as the performance reference | 08 |
+| 2 | Product Details presentation: read-only page with "Edit product"; four cost states; margin shown only for the current cost (M-1); "Stock value (about)" only for the current cost (V-1); after Add, the new product's Details opens (A-1); category counts only if efficient (C-0) | 08 §9; 03 S-30, S-31, S-37 |
+| 3 | Checkpoint **C-1b** (the physical gallery review on the Galaxy A06 and the iPhone after 1C-3.2) is still required before any screen redesign | 08 status; [Stage 1C-3 plan](../stages/STAGE-1C-3-PLAN.md) §7 |
+| 4 | `design-preview.html` marked as showing revision 1 (reference only) | design-preview.html |
 
 ### Revision 5.1 (11 November 2026)
 

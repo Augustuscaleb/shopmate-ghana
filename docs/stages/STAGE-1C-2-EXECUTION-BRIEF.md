@@ -127,7 +127,7 @@ Some of this has automated evidence (for example PS-11 paging past 1,000 product
 
 *Future UX improvement (owner suggestion, 25 Nov 2026; NOT implemented):* tapping a product should open a read-only product details view with an Edit button, instead of opening the edit form directly. To be considered with S-37 (increment 3), subject to the owner's approval.
 
-**Increment 2b status (25 Nov 2026): implemented and verified locally; NOT committed; NOT device-tested; awaiting owner review.** Owner decisions (25 Nov 2026):
+**Increment 2b status (25 Nov 2026): committed in `75f8aa6` ([CI #57](https://github.com/Augustuscaleb/shopmate-ghana/actions/runs/45674601006) passed), including the iOS quick price sheet fix. Owner-reported device checks are partly done (see "Manual device verification" below); multi-device readiness is NOT claimed.** Owner decisions (25 Nov 2026):
 - several devices on the same shop account are a core requirement, and the plan limit of 1, 2 or 3 devices stays in effect;
 - iOS, iPad, a browser for Windows and Mac, and staff accounts are staged product requirements, kept on the roadmap but not built in this increment;
 - offline changes beyond offline sales stay out of scope.
@@ -188,7 +188,13 @@ The list rules (`screens/products/productListState.ts`) and the postponed-refres
 
 The React Native lifecycle wiring itself (AppState events, timers) can't be exercised by these tests: typecheck and the bundle check only.
 
-*Manual device verification:* **pending.** Checklist MD-01 – MD-18 in [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2b".
+*Manual device verification (owner-reported physical-device evidence, recorded 25 Nov 2026; separate from the automated results above):*
+- **iPhone quick price sheet** (iPhone 13 Pro Max, Expo Go): QPS-D1 – QPS-D6, **6/6 PASS**.
+- **Cross-device freshness:** **XD-01 PASS**. A product change made on one phone (iPhone or Galaxy A06) appeared on the other without a manual refresh or restart. The trigger was not recorded.
+- **Two-phone checklist:** MD-01 and MD-04 **PARTIAL**; the remaining 16 (MD-02, MD-03, MD-05 – MD-18) **NOT TESTED**.
+- **Increment 2 checks unchanged:** 9 PASS, 4 PARTIAL, 11 NOT TESTED.
+
+Not every device check has passed. Details: [DEVICE-TEST-LOG.md](../testing/DEVICE-TEST-LOG.md), "Stage 1C-2 increment 2b".
 
 ## 4. Acceptance criteria and tests for every increment
 

@@ -1,5 +1,7 @@
 # Stage 1C-2 visual design system and motion
 
+> **SUPERSEDED (25 Nov 2026).** The visual design is now governed by **[spec 08 revision 2](../product-specification/08-visual-design.md)** (approved at Checkpoint C-1a), delivered in Stage 1C-3 ([plan](STAGE-1C-3-PLAN.md)). This page is kept as the historical record of the Stage 1C-2 increment 1 visual foundation. Where it differs from spec 08 revision 2, spec 08 revision 2 applies; for example, the tab-bar text-scaling cap described here is no longer allowed.
+
 **Status (24 Nov 2026): proposal for owner review; foundation partly implemented in increment 1 (uncommitted).** The direction is approved in principle (decision 58). **Spec 08 ([08-visual-design.md](../product-specification/08-visual-design.md)) is the governing design specification**: this page applies and refines it, and where they differ, spec 08 wins until the owner approves a change. No business rule, calculation, API, security behaviour or screen scope changes for a visual effect, and no figures or sample business data are invented.
 
 **Not visually tested.** No screenshots exist: this environment has no Android emulator or web renderer, and the owner hasn't seen increment 1 on a phone yet (§8).
