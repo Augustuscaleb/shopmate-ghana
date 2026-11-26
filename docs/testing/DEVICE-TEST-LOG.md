@@ -270,9 +270,9 @@ XD-01 doesn't pass any individual MD check on its own; see MD-01 and MD-04 below
 
 **Totals (18 checklist entries):** 0 PASS, 2 PARTIAL (MD-01, MD-04), 16 NOT TESTED, 0 BLOCKED. Separately recorded: XD-01 PASS, and QPS-D1 – QPS-D6 6/6 PASS. The Increment 2 totals above are unchanged: 9 PASS, 4 PARTIAL, 11 NOT TESTED.
 
-## Stage 1C-3.1 — Product Details (owner-reported results recorded 2026-11-25; checklist mostly NOT TESTED)
+## Stage 1C-3.1 — Product Details (owner-reported results recorded 2026-11-25 and 2026-11-26; checklist partly done)
 
-**Status: first owner-reported device evidence recorded (2026-11-25). DET-01 PASS on both phones; DET-11 PARTIAL on both; every other check NOT TESTED.** Not every DET check has passed or been run. Automated results are recorded separately in [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md) and are not device evidence. Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md) (DET-06 corrected in plan revision 9 to follow spec 08 rev 2 §9.3).
+**Status: owner-reported device evidence recorded in two runs (2026-11-25 and 2026-11-26). DET-01, DET-11 and DET-15 PASS on both phones; every other check NOT TESTED.** Not every DET check has passed or been run. Automated results are recorded separately in [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md) and are not device evidence. Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md) (DET-06 corrected in plan revision 9 to follow spec 08 rev 2 §9.3).
 
 Devices: Samsung Galaxy A06 (Android 16) and iPhone 13 Pro Max. DET-13 needs both phones.
 
@@ -286,7 +286,18 @@ Devices: Samsung Galaxy A06 (Android 16) and iPhone 13 Pro Max. DET-13 needs bot
 - "Opening a product from the Products list" and "viewing the Product Details screen" → **DET-01 PASS** (a row tap opens Details).
 - "Using the Edit action" and "returning through Back navigation" → **DET-11 PARTIAL**: Edit opened and Back was used, but the report doesn't say the return was to Details with nothing changed, and on the A06 the Android system Back variant isn't reported separately.
 - Viewing the screen is not counted as DET-02 – DET-09: those check specific figures and states that weren't reported individually.
-- **Owner design feedback from this run:** the large green "Edit product" button was oversized and not the intended design. It is replaced by a compact header pencil (owner decision B-3; [plan](../stages/STAGE-1C-3-PLAN.md) §1). DET-01 and DET-11 above were run on `7064d4d`, with the old button; DET-11 and the new DET-15 are to be run again on the corrected code.
+- **Owner design feedback from this run:** the large green "Edit product" button was oversized and not the intended design. It is replaced by a compact header pencil (owner decision B-3; [plan](../stages/STAGE-1C-3-PLAN.md) §1). DET-01 and DET-11 above were run on `7064d4d`, with the old button; DET-11 and the new DET-15 were run on the corrected code in the second run below.
+
+**Second run, reported 2026-11-26 (owner-reported manual evidence; no screenshots or logs): the header Edit pencil (owner decision B-3).**
+- **Code:** the Edit-pencil correction, commit `225044d` (the commit pushed for this check). The report doesn't restate the commit or how the app was run; the first run used Expo Go on both phones.
+- **What the owner confirmed: all six verification checks passed on both the Galaxy A06 and the iPhone 13 Pro Max:**
+  1. no large green Edit button; a compact pencil top-right in the header, level with Back;
+  2. one tap on the pencil opens the edit form;
+  3. the screen reader (TalkBack on the A06, VoiceOver on the iPhone) reads it as "Edit product, button";
+  4. with the product archived, the pencil is dimmed, does nothing and is announced as disabled with the reason;
+  5. restoring the product re-enables it;
+  6. Back from the edit form returns to Product Details, unchanged. **On the Galaxy A06 the Android system Back button was tested as well.**
+- **Mapping:** checks 1 – 5 → **DET-15 PASS**; check 6 (with check 2) → **DET-11 PASS** on both phones, replacing the PARTIAL from the first run.
 
 | ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
 |---|---|---|---|
@@ -300,13 +311,13 @@ Devices: Samsung Galaxy A06 (Android 16) and iPhone 13 Pro Max. DET-13 needs bot
 | DET-08 | Archive from Details; actions disabled with the reason; Restore | NOT TESTED | NOT TESTED |
 | DET-09 | Archived category "(archived)"; "No category" | NOT TESTED | NOT TESTED |
 | DET-10 | Edit → Save returns to Details, refreshed, "… saved" | NOT TESTED | NOT TESTED |
-| DET-11 | Edit → Back (and Android Back) returns to Details unchanged | **PARTIAL** (Edit and Back used; return to Details, "nothing changed" and the Android system Back variant not reported) | **PARTIAL** (Edit and Back used; return to Details and "nothing changed" not reported) |
+| DET-11 | Edit → Back (and Android Back) returns to Details unchanged | **PASS** (owner-reported 2026-11-26, `225044d`; screen Back and the Android system Back both return to Details unchanged; first run PARTIAL) | **PASS** (owner-reported 2026-11-26, `225044d`; Back returns to Details unchanged; first run PARTIAL) |
 | DET-12 | Back from Details keeps list search, filters, sort, scroll | NOT TESTED | NOT TESTED |
 | DET-13 | Two phones: change on A appears on B; note only for the other phone's change | NOT TESTED (two phones) | |
 | DET-14 | Add a product: its Details opens | NOT TESTED | NOT TESTED |
-| DET-15 | Header pencil opens the edit form; spoken "Edit product"; easy target; disabled when archived (owner decision B-3; added after the run reported below, which used the old button) | NOT TESTED | NOT TESTED |
+| DET-15 | Header pencil opens the edit form; spoken "Edit product"; easy target; disabled when archived (owner decision B-3) | **PASS** (owner-reported 2026-11-26, `225044d`) | **PASS** (owner-reported 2026-11-26, `225044d`) |
 
-**Totals:** single-phone checks (DET-01 – DET-12, DET-14, DET-15; 14 per phone): Galaxy A06 1 PASS (DET-01), 1 PARTIAL (DET-11), 12 NOT TESTED; iPhone 13 Pro Max 1 PASS (DET-01), 1 PARTIAL (DET-11), 12 NOT TESTED. Two-phone check DET-13: NOT TESTED.
+**Totals:** single-phone checks (DET-01 – DET-12, DET-14, DET-15; 14 per phone): Galaxy A06 3 PASS (DET-01, DET-11, DET-15), 11 NOT TESTED; iPhone 13 Pro Max 3 PASS (DET-01, DET-11, DET-15), 11 NOT TESTED. Two-phone check DET-13: NOT TESTED.
 
 Also to repeat after 1C-3.1 (plan §7): D2-11, D2-12, D2-13, MD-09, MD-10 — NOT TESTED for 1C-3.1. Earlier results for those checks were recorded before 1C-3.1 and do not count for it.
 
