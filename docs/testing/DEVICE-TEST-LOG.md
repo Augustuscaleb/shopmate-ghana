@@ -345,7 +345,7 @@ Also to repeat after 1C-3.1 (plan §7): D2-11, D2-12, D2-13, MD-09, MD-10 — NO
 
 ## Stage 1C-3.3 — Redesigned Today, navigation and Products (checklist written; NOT TESTED)
 
-**Status: no owner-reported device evidence yet. Every check below is NOT TESTED.** Code: the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit". Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md), "RD". The earlier D2, MD, DET and QPS results were recorded on the previous design and are to be repeated on the redesign.
+**Status: no owner-reported device evidence yet. Every check below is NOT TESTED.** Code: commit `8cef172` (CI #70 passed). Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md), "RD". The earlier D2, MD, DET and QPS results were recorded on the previous design and are to be repeated on the redesign.
 
 | ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
 |---|---|---|---|

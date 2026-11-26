@@ -1,6 +1,8 @@
 # Stage 1C-3 plan: Product Experience & Visual Redesign
 
-**Status (26 Nov 2026, revision 11): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; CI #69 passed (after a re-run; the first attempt failed on a CI runner port clash). **C-1b APPROVED by the owner (26 Nov 2026)** after a physical review of the gallery on both phones. **1C-3.3 APPROVED to start (26 Nov 2026), with Today, the tab bar and More brought forward from 1C-3.4 (decision B-5); committed in the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit"; device checks RD-01 – RD-14 NOT TESTED.** Sign-in and onboarding remain in 1C-3.4. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md). 1C-3.4 (sign-in, onboarding), 1C-3.5 and 1C-3.6 NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+**Status (26 Nov 2026, revision 12): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; CI #69 passed (after a re-run; the first attempt failed on a CI runner port clash). **C-1b APPROVED by the owner (26 Nov 2026)** after a physical review of the gallery on both phones. **1C-3.3 APPROVED to start (26 Nov 2026), with Today, the tab bar and More brought forward from 1C-3.4 (decision B-5); committed in `8cef172` (CI #70 passed); device checks RD-01 – RD-14 NOT TESTED.** Sign-in and onboarding remain in 1C-3.4. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md). 1C-3.4 (sign-in, onboarding), 1C-3.5, 1C-3.6 (launch screen, new), 1C-3.7 (motion) and 1C-3.8 (final verification, new) NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+
+**Revision 12 (26 Nov 2026, planning only; nothing implemented):** adds an explicit **native launch (splash) screen** increment and a strengthened **motion and micro-interactions** increment, followed by a **final accessibility, performance and cross-device** increment. Sequence: 1C-3.6 launch screen, 1C-3.7 motion (was 1C-3.6), 1C-3.8 final verification. New: §5.4 launch experience, §5.5 motion system, §7.0 status vocabulary and tracker, §8.2 cross-platform matrix, checklists SPL, MOT and FIN (§8.1), and decisions LG-1, LG-2, SP-1 – SP-4, MO-1 – MO-3 (§10). **Finding:** the app's launcher icon (`app/assets/icon.png`, the Android adaptive-icon foreground) and `splash-icon.png` are still **Expo's default template placeholders** from Stage 1A; there is no ShopMate logo file yet (LG-1).
 
 **Revision 9 correction (failure handling, to match spec 08 revision 2, which governs):** after a failed refresh, the confirmed values read earlier stay on screen, marked as stale, but the average cost becomes state 4 ("no figure, not even an old one", spec 08 §9.3), so margin and Stock value (about) are hidden too. Revision 8 said only "the data is kept", which conflicted with spec 08; §5.1 and DET-06 are corrected below.
 
@@ -95,6 +97,9 @@ Totals: 0 PASS, 2 PARTIAL, 16 NOT TESTED, 0 BLOCKED, plus XD-01 PASS recorded se
 
 ## 3. The current application and its UI architecture
 
+*This section describes the app **before** Stage 1C-3 began. Since then: the v2 kit and tokens (1C-3.2), and Today, navigation and Products on the kit (1C-3.3); see the status line.*
+
+
 - **Navigation:** hand-built, with no navigation library. Five tabs in `HomeScreen.tsx`; a small stack for the Products tab (`navigation/productsStack.ts`); Android Back handled by hand.
 - **Three styling generations side by side:**
   - auth and onboarding (6 screens) use `ui/components.tsx`;
@@ -102,6 +107,7 @@ Totals: 0 PASS, 2 PARTIAL, 16 NOT TESTED, 0 BLOCKED, plus XD-01 PASS recorded se
   - Products (5 screens and the price sheet) use `ui/surfaces.tsx`.
 - **Tokens:** `ui/theme.ts` has a flat set of spec 08 colours, 5 type sizes, 5 spacing steps and 4 radii. There are no colour scales, no elevation or meaning-based tokens, and no shared text component.
 - **Motion:** `PressableScale`, `FadeIn` and `Skeleton` on React Native's Animated API, with a shared reduced-motion state. No animation library.
+- **Launch (finding, revision 12):** `app.json` has **no splash configuration** and `expo-splash-screen` isn't installed, so each platform shows its default launch screen. The JavaScript then shows a plain "Opening ShopMate…" spinner while the session is restored, and "Getting your shop ready…" while the shop loads: two unbranded steps. The launcher icon and the splash image in `app/assets/` are Expo's template placeholders.
 - **Icons:** drawn from plain views; inconsistent stroke and size. No SVG.
 - **Layout:** no width awareness (no `useWindowDimensions`, no maximum content width). Orientation is locked to portrait in `app.json`; `ios.supportsTablet` is `true`.
 - **Strong foundations to keep:**
@@ -116,19 +122,21 @@ Totals: 0 PASS, 2 PARTIAL, 16 NOT TESTED, 0 BLOCKED, plus XD-01 PASS recorded se
 2. **Design system v2:** tokens, a system-font typography component, primitives, and a component gallery, following the approved **spec 08 revision 2** (C-1a), with the physical gallery checkpoint **C-1b** before any screen redesign.
 3. The redesign applied to all existing screens: Products (all), Today, the tab bar, More/account, auth and onboarding.
 4. **Responsive layouts for portrait and landscape on all devices** (phones and tablets, Android and iOS), including the planned global orientation unlock (§6).
-5. Motion, micro-interactions and an accessibility pass.
-6. The two Review-2 fixes (§2.2) in 1C-3.1.
+5. **A polished native launch screen** (splash) for Android and iOS, with a seamless hand-over into the app (§5.4).
+6. **Motion and micro-interactions** across the app (§5.5).
+7. **A final accessibility, performance and cross-device verification** (1C-3.8).
+8. The two Review-2 fixes (§2.2) in 1C-3.1.
 
 **Objectives:**
 - a polished, distinctive retail-management product, without behaviour regressions;
 - no change to the database structure;
-- no new package except `react-native-safe-area-context` (decision S-1, in 1C-3.5);
+- no new package except `react-native-safe-area-context` (decision S-1, in 1C-3.5) and, if approved, `expo-splash-screen` (decision SP-1, in 1C-3.6);
 - smooth on the Galaxy A06.
 
 **Out of scope (unless separately approved):**
 - web/browser (a required direction, planned as milestone PW-1, §11); staff accounts; Realtime; offline editing beyond sales; enforcing the device limit; dark mode;
 - the S-37 movement history and the remaining 1C-2 screens;
-- custom fonts (P-4); native packages other than `react-native-safe-area-context` (S-1); cloud migrations (D11).
+- custom fonts (P-4); native packages other than `react-native-safe-area-context` (S-1) and, if approved, `expo-splash-screen` (SP-1); animation libraries (Reanimated, Lottie); haptics unless decision MO-1 approves it; cloud migrations (D11).
 
 ## 5. Design and behaviour
 
@@ -245,6 +253,74 @@ The goal is a calm, confident, local-feeling product, not a template and not a n
   - **Auth and onboarding:** same flows and validation, on the new kit.
   - **Empty, loading and error states:** an icon in a tinted circle, a title, one sentence and one action; skeletons shaped like the content; errors saying what happened, what to do, and Try again; success as a toast.
 
+### 5.4 Launch experience: native launch screen and hand-over (PLANNED, 1C-3.6)
+
+**Goal:** from tapping the ShopMate icon to the first usable screen there is never a blank, white, unstyled or unbranded screen, and never a wait that the app could avoid. The native launch screen stays **simple and static**, because that is what Android and iOS can show reliably and quickly.
+
+**Platform reality** (to be **confirmed against the Expo SDK 58 `expo-splash-screen` documentation at implementation**: docs.expo.dev could not be reached from the planning environment on 26 Nov 2026, so nothing below is assumed verified):
+- **Android 12 and later (the A06 runs Android 16):** the system draws the launch screen itself: a background colour and a centred icon, which Android masks to a circle and limits in size. A full-screen picture or custom layout is not supported. An animated icon is possible only in a limited, platform-specific way, and **is not used** here.
+- **iOS:** a static launch screen (image and background colour) generated into the native project. iOS caches it, so a change can need the app to be deleted and reinstalled, or the phone restarted, before it shows.
+- **Expo Go:** shows **its own** launch screen, not the app's. The app's launch screen can only be seen and verified in a **development build** or a production build, never in Expo Go.
+- **Tablets and iPads:** the same centred mark on the background colour; checked in both orientations once the app rotates (1C-3.5).
+- **Web/desktop (milestone PW-1):** there is no native launch screen in a browser; the equivalent is the page's first paint and loading state, planned in PW-1, not here.
+
+**Design (proposed; decisions LG-1, LG-2, SP-2):**
+- **Mark:** the ShopMate brand mark (the gold tile with the green bag drawn in the app header since 1C-3.3, or owner-supplied artwork, LG-1), as a clean, high-resolution image in the platform's safe area for masked icons. No text in the launch image (text there can't follow the phone's text size and is cut by Android's mask).
+- **Background:** one solid brand colour. **Recommended: Warm White `#FAF8F3`**, the app's own background, so the hand-over to the first screen has no colour jump. Alternative: Shop Green `#0B6B4F` (stronger brand, but a hard colour change into the light app) (SP-2).
+- **App icon:** the placeholder launcher icon is replaced with the same artwork (LG-2), so the icon, launch screen and in-app header match.
+- **Appearance:** the app is light-only (`userInterfaceStyle: "light"`; dark mode out of scope), so the launch screen uses the **same light appearance** when the phone is in dark mode, rather than a dark variant that would flash into a light app. Checked with the phone in dark mode (SPL-07).
+
+**Hand-over from the launch screen into the app:**
+1. The native launch screen is **held** (`expo-splash-screen`, prevent auto-hide; decision SP-1) while the app restores the saved session from secure storage and, when signed in, loads the shop. This removes the "Opening ShopMate…" spinner flash.
+2. It is hidden as soon as the first real screen can render: Welcome or Log in (no session), Shop setup (no shop yet), or Today (signed in). Today then shows its own skeletons while the figures load; the launch screen is **never** held for network data.
+3. **Never held indefinitely:** a hard limit (decision SP-3; recommended 3 s from start-up). If the session or shop hasn't resolved by then, the launch screen hides and an **in-app loading screen identical in look to the launch screen** (same background, same mark, plus one short line such as "Getting your shop ready…" and a spinner) takes over, so the user sees no change of style. A failure (offline, server error) shows the normal error state with Try again; the app never hangs on the brand mark.
+4. **In-app opening transition (optional; decision MO-2):** at most a short fade of the first screen's content (the existing 200 ms `FadeIn`) as the launch screen hides. No animated logo that could be mistaken for the launch screen, and none under Reduce Motion. Recommended: the fade only.
+5. **Session restoration** keeps today's rules: the session is read only from secure storage (SEC-05), and KI-1 (intermittent session restoration in Expo Go only) stays monitored; the KI-1 cold-start check is repeated with the launch screen in place (SPL-05).
+
+**Implementation boundaries:** the launch screen needs native configuration (the `expo-splash-screen` config plugin in `app/app.json`) and therefore a **new development build**; it cannot be verified in Expo Go. No animation library, no custom native code, and no hand-editing of `android/` or `ios/` (they are generated).
+
+### 5.5 Motion system and micro-interactions (PLANNED, 1C-3.7; extends spec 08 §8)
+
+**Principles:** motion confirms, guides or shows progress; it is never decoration, never blocks input and never delays an important action. Only opacity and transform are animated, on the **native driver** (React Native's built-in Animated API); no animation library is added. Nothing animates while the screen is idle, except a skeleton while it is actually loading, and a spinner while work is running.
+
+**Timing and easing tokens** (one set, in `ui/motion.ts`, unit-tested; spec 08 §8 values kept):
+
+| Token | Duration | Easing | Used for |
+|---|---|---|---|
+| `quick` | 120 ms | ease-out | press feedback, tab indicator, small state changes |
+| `standard` | 200 ms | ease-out | content appearing, screen push, skeleton to content, toast in |
+| `emphasis` | 280 ms | ease-out | success confirmation, a value that just changed |
+| `sheet` (new) | 240 ms in / 180 ms out | ease-out in, ease-in out | bottom sheet rising and leaving, backdrop fade |
+| `exit` (new) | 160 ms | ease-in | content and toasts leaving, screen pop |
+
+Exits are shorter than entrances. No bounce or spring overshoot. Stagger: 30 ms per row, at most 8 rows.
+
+**Catalogue (what moves, and how):**
+
+| Area | Behaviour | Under Reduce Motion |
+|---|---|---|
+| **Screen push / pop** (hand-built Products stack, account panel) | New screen fades in and rises 8 dp (`standard`); going back fades (`exit`). The new screen is interactive immediately; Back always works mid-animation | Appears at once |
+| **Tab switch** | Content fades (`standard`, as now); the active-tab pill and colour cross-fade (`quick`) | Changes at once |
+| **Press feedback** | A 97 % scale plus a pressed colour on every tappable element (buttons, rows, cards, chips, tiles, icon actions) | Pressed colour only, no scale |
+| **List and card entrances** | Only on a screen's **first** load: rows fade and rise, staggered, at most 8; never on refresh, paging, filtering or while scrolling | Appear at once |
+| **Bottom sheet** | Sheet rises from the bottom, backdrop fades (`sheet`); closes faster; the keyboard rule and bounded height (iPhone fix) are unchanged | Appears and disappears at once |
+| **System dialogs** (confirmations, B-6) | The platform's own dialog animation; not customised | Platform behaviour |
+| **Toast** | Fades and rises in (`standard`), stays about 2 s, fades out (`exit`); announced to screen readers | Appears and disappears at once; still announced |
+| **Loading → content** | Skeleton cross-fades to content (`standard`); the skeleton pulse stops as soon as data arrives | No pulse; content replaces skeleton |
+| **Error / empty states** | Fade in (`standard`) | At once |
+| **Success after add, edit, price change, archive, restore, cost correction** | Toast, plus a short tint flash on the changed item or figure (`emphasis`, at most about 600 ms in total; MO-3) | Toast only, no flash |
+| **Busy action** | The button shows a spinner and stays its size (no layout jump) | Same (the spinner is a progress indicator) |
+| **Pull to refresh** | The platform's own control | Platform behaviour |
+
+**Not used:** parallax, page-curl or 3D effects, looping decoration, animated backgrounds, layout animations (unreliable on low-end Android), and gesture-driven transitions such as the iOS swipe-back (not supported by the hand-built stack; recorded, not added, §5.2).
+
+**Haptics:** not in the current scope; would need a new package (`expo-haptics`; decision MO-1).
+
+**Accessibility rules for motion:**
+- Android "Remove animations" and iOS "Reduce Motion" are respected everywhere through the shared reduced-motion state. Until the setting is known, motion is reduced. **Known limitation:** React Native reports Android's setting only when the animation scale is 0 ("Remove animations"); partial scales and some manufacturer settings aren't detected (recorded since increment 1).
+- Animations never move screen-reader focus. Toasts are announced (live region). On a screen push the screen title is the first element read.
+- Touch targets, labels and reading order are unchanged by any animation.
+
 ## 6. Portrait and landscape on all devices (P-2)
 
 ### 6.1 Width classes (density-independent pixels, provisional)
@@ -341,6 +417,32 @@ The orientation unlock itself is one configuration line, applied at the start of
 
 Each increment is implemented only after approval, and reported for review. It is committed and pushed only with approval, and must pass CI. There is no database change and no new package, unless a §10 decision approves one.
 
+### 7.0 Status vocabulary and tracker (revision 12)
+
+Every increment, and every check, uses exactly these words, so planned, built, tested and approved work are never confused:
+
+| Status | Means | Evidence required |
+|---|---|---|
+| **PLANNED** | Written in this plan; nothing built | — |
+| **APPROVED TO START** | The owner approved implementation | The owner's message |
+| **IMPLEMENTED** | Built; automated checks pass locally | Test counts in IMPLEMENTATION-STATUS |
+| **COMMITTED (CI)** | Committed and pushed; CI passed | Commit hash and CI run |
+| **DEVICE-TESTED** | Owner-reported PASS / PARTIAL / NOT TESTED / BLOCKED per check, on named devices | The device-test log; never inferred from CI |
+| **OWNER-APPROVED** | The owner accepted the increment or checkpoint | The owner's message |
+
+| Increment | Status (26 Nov 2026) | Device evidence |
+|---|---|---|
+| 1C-3.1 Product Details | COMMITTED (CI) `7064d4d`, B-3 `225044d` | DET-01, DET-11, DET-15 PASS on both phones; the rest NOT TESTED |
+| 1C-3.2 Design system and gallery | COMMITTED (CI) `cdae923`; **C-1b OWNER-APPROVED** | GAL checks not reported individually |
+| 1C-3.3 Today, navigation, Products | COMMITTED (CI) `8cef172` (CI #70) | RD-01 – RD-14 NOT TESTED |
+| 1C-3.4 Sign-in and onboarding | PLANNED | — |
+| 1C-3.5 Responsive layouts and orientation | PLANNED (needs B-1) | — |
+| 1C-3.6 Launch screen (splash) | PLANNED (needs LG-1, SP-1 – SP-3; a new build) | — |
+| 1C-3.7 Motion and micro-interactions | PLANNED | — |
+| 1C-3.8 Final accessibility, performance and cross-device verification | PLANNED | — |
+
+**Sequence (owner, 26 Nov 2026):** complete the Products redesign (1C-3.3 device checks) → sign-in and onboarding (1C-3.4) → responsive layouts and orientation (1C-3.5) → launch screen (1C-3.6) → motion (1C-3.7) → final checks (1C-3.8). **One architectural adjustment is proposed, not assumed (SP-4):** the launch screen's native configuration could be added to the **same** new Android development build as 1C-3.5 (orientation unlock and safe areas), if its artwork and package are approved by then. That saves one build and one reinstall on the A06; the launch screen's JavaScript hand-over and its verification still happen in 1C-3.6.
+
 ### 1C-3.1 Product Details (functional) and the Review-2 fixes
 **Status (revision 10): committed in `7064d4d` (CI #58 passed); Edit-pencil correction (B-3) in `225044d` (CI #59 passed). Device checks: DET-01, DET-11 and DET-15 PASS on both phones; the rest NOT TESTED ([device log](../testing/DEVICE-TEST-LOG.md)).**
 
@@ -423,7 +525,7 @@ Each increment is implemented only after approval, and reported for review. It i
 **No screen is redesigned until C-1a and C-1b are both approved.** Changes requested at C-1b go back into 1C-3.2. **C-1b: APPROVED by the owner (26 Nov 2026)** after a physical review on the Galaxy A06 and the iPhone 13 Pro Max.
 
 ### 1C-3.3 Redesign: Products area
-**Status (26 Nov 2026): committed in the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit". Scope per decision B-5: the Products area (list, rows, search and chips, quick price sheet, Details, Add and Edit forms, Categories, Cost correction) plus Today, the tab bar, the More tab, the account panel and the Sell and Customers previews. Confirmations per B-6. Business logic, data loading, freshness and services unchanged. Device checks RD-01 – RD-14 (§8.1) NOT TESTED.**
+**Status (26 Nov 2026): committed in `8cef172` (CI #70 passed). Scope per decision B-5: the Products area (list, rows, search and chips, quick price sheet, Details, Add and Edit forms, Categories, Cost correction) plus Today, the tab bar, the More tab, the account panel and the Sell and Customers previews. Confirmations per B-6. Business logic, data loading, freshness and services unchanged. Device checks RD-01 – RD-14 (§8.1) NOT TESTED.**
 
 **Delivers:** the list, rows, Details, Add and Edit forms, quick price sheet, Categories and Cost correction on the v2 kit and approved tokens, with the empty, loading and error states (§5.3). Behaviour and wording unchanged, apart from approved changes.
 
@@ -433,13 +535,10 @@ Each increment is implemented only after approval, and reported for review. It i
 - Readable at 130 % and at the largest size, with nothing clipped.
 - **A06 performance:** with 35 or more seeded products, scrolling, opening Details and opening the sheet are smooth, with no visible stutter (owner observation), and there is no slower first load than at `75f8aa6`.
 
-### 1C-3.4 Redesign: Today, tab bar, More and account, auth and onboarding
+### 1C-3.4 Redesign: sign-in and onboarding (Today, tab bar, More and account delivered in 1C-3.3)
 **Scope note (decision B-5, 26 Nov 2026):** Today, the tab bar, More and the account panel, and the text-scaling cap removals (tab bar, brand text, avatar, the logo and alert-icon exceptions) were delivered early in 1C-3.3. 1C-3.4 is now **sign-in and onboarding** (Welcome, Log in, Sign up, Check email, Set new password, Shop setup, Config error), plus its re-checks.
 
-**Delivers:** those screens on the v2 kit. Today moves to the shared card (which resolves the spec 08 difference); the new tab bar. Auth validation, messages and flows unchanged.
-- **Removes every existing text-scaling cap:** the tab-bar labels (`maxFontSizeMultiplier` 1.3), the "ShopMate Ghana" brand text and the avatar initials (1.2 each), all in `HomeScreen.tsx`.
-- The tab-bar labels wrap to two lines and the bar grows at large sizes; the avatar circle grows with its initials.
-- The logo "S" and the alert icon's "!", which currently switch scaling off, are redrawn as shapes (I-1 icon set), so no text-scaling exception remains.
+**Delivers:** sign-in and onboarding on the v2 kit. Auth validation, messages and flows unchanged. *(Today on the shared card, the new tab bar and the removal of every text-scaling cap, originally listed here, were delivered in 1C-3.3; the automated "no cap anywhere" check is already in CI.)*
 
 **Acceptance:**
 - As for 1C-3.3.
@@ -474,26 +573,61 @@ Each increment is implemented only after approval, and reported for review. It i
 - **Final iOS verification:** iPhone and iPad orientation, safe areas and the relevant release-readiness checks on an approved iOS development or TestFlight build. Recorded as **NOT TESTED** until completed (§6.5, item 4). It's required before the iOS release gate and before release for real-shop use, not for accepting 1C-3.5.
 - **A06 performance:** rotating does not stutter or reload data beyond the normal throttled refresh (owner observation).
 
-### 1C-3.6 Motion, micro-interactions and accessibility
-**Delivers:**
-- press feedback on every tappable element;
-- list entrances (staggered, at most 8 rows);
-- sheet and toast transitions; the tab pill animation;
-- all on the native driver, with nothing running while idle, and nothing animating under reduced motion;
-- an accessibility pass: screen-reader labels and reading order, focus order on forms, touch targets, contrast, 130 % and the largest text size.
+### 1C-3.6 Native launch screen and start-up hand-over (new in revision 12)
+**Status: PLANNED.** Needs decisions LG-1, LG-2, SP-1, SP-2 and SP-3 (§10), and a new development build (B-1, or SP-4 to share the 1C-3.5 build).
+
+**Delivers (§5.4):**
+- ShopMate launch-screen artwork and app icon, replacing the Expo placeholders (LG-1, LG-2): image assets at the platform resolutions, the mark inside the masked-icon safe area;
+- `expo-splash-screen` (SDK 58-compatible version via `npx expo install`, with approval SP-1) and its config plugin in `app/app.json`: background colour and image, the same in light and dark system appearance;
+- the hand-over: hold the launch screen until session restoration and the first screen are ready, hide it then, with a hard time limit (SP-3) and an in-app loading screen identical in look as the fallback; the two current spinner screens become that branded fallback;
+- the decision logic as a pure, unit-tested module (when to hide; which first screen; the time limit; errors), so it is tested without a device.
 
 **Acceptance:**
-- Animations never block input.
-- With Remove animations on (Android) or Reduce Motion (iOS), nothing fades, scales or pulses.
-- TalkBack on the A06 and VoiceOver on the iPhone can complete: open Products, open Details, Edit, Save, Change price.
-- **A06 performance:** no stutter when opening screens and scrolling with 35 or more products (owner observation; no profiling tool is available).
+- **Automated:** the start-up decision module covers: session restored (signed in, with and without a shop), no session, secure-storage error, slow start past the limit, and offline; a configuration check confirms the splash plugin is present, its background equals the approved token, and the launcher and splash images are **not** the Expo template files (compared by hash).
+- **Devices:** SPL-01 – SPL-12 (§8.1) on the Galaxy A06 (development build) and, for iOS, on an approved iOS build only (B-2); in Expo Go the app's launch screen can't be seen, so iOS launch-screen checks stay **NOT TESTED** until an iOS build exists. Tablets: SPL-10 when available.
+- No white or blank frame between the launch screen and the first screen on the A06 (owner observation, cold start ×5); start-up is not slower than before (the launch screen is never held for network data).
+- Dependency audit, secret scan and the Android bundle check pass with the new package.
+
+### 1C-3.7 Motion, micro-interactions and accessibility (was 1C-3.6)
+**Status: PLANNED.**
+
+**Delivers (§5.5):**
+- the motion tokens (`quick`, `standard`, `emphasis`, `sheet`, `exit`) and easings in `ui/motion.ts`, unit-tested, used everywhere;
+- screen push and pop transitions on the hand-built stacks; tab content fade and the active-tab indicator transition;
+- press feedback (scale and pressed colour) on every tappable element in the kit;
+- list and card entrances on first load only (staggered, at most 8);
+- bottom-sheet rise and fall with the backdrop; toast in and out; skeleton-to-content cross-fade; error and empty-state fades;
+- success feedback after add, edit, price change, archive, restore and cost correction: toast plus a short tint flash on the changed item (MO-3);
+- all on the native driver, nothing running while idle, nothing animating under Reduce Motion / Remove animations; no new package (haptics only with MO-1);
+- an accessibility pass: screen-reader labels and reading order, focus order on forms, announcements for toasts and errors, touch targets, contrast, 130 % and the largest text size.
+
+**Acceptance:**
+- **Automated:** the motion tokens and the reduced-motion rules (every duration 0, no loop, no entrance offset) are unit-tested; a static check finds no animation library import, no `useNativeDriver: false`, and no `LayoutAnimation`.
+- **Devices:** MOT-01 – MOT-14 (§8.1) on the A06 and the iPhone.
+- Animations never block input: a tap during any transition is handled; Back works mid-transition.
+- With Remove animations (Android) or Reduce Motion (iOS) on, nothing fades, slides, scales or pulses; toasts still appear and are announced.
+- TalkBack on the A06 and VoiceOver on the iPhone can complete: open Products, open Details, Edit, Save, Change price; focus is never moved by an animation.
+- **A06 performance:** no visible stutter when opening screens, switching tabs, opening the sheet and scrolling 35 or more products (owner observation; optionally with the development menu's performance monitor, recorded as indicative only because development mode is slower than a release build).
+
+### 1C-3.8 Final accessibility, performance and cross-device verification (new in revision 12)
+**Status: PLANNED.** No new features; fixes found here go back into the increment they belong to.
+
+**Delivers:** the full checklist pass FIN-01 – FIN-12 (§8.1) across the device matrix (§8.2), a consolidated results table in the device-test log, and the list of anything still NOT TESTED or BLOCKED with the reason.
+
+**Acceptance:**
+- Every journey (sign in, open Today, Products, Details, Edit, Save, Change price, archive and restore, correct cost, categories, log out) completed with TalkBack (A06) and VoiceOver (iPhone).
+- 100 %, 130 % and the largest text size; Remove animations / Reduce Motion; portrait and landscape; cold start with the launch screen; all on the A06 and the iPhone.
+- Android tablet and iPad rows completed when the devices are available, otherwise recorded as NOT TESTED (never assumed).
+- **Browser:** not applicable in Stage 1C-3 (milestone PW-1); recorded as such.
+- **Stage 1C-3 completion** is an owner approval (OWNER-APPROVED) given on this evidence. The final iOS verification on an iOS build (§6.5 item 4) can still be NOT TESTED at that point; it blocks only the iOS release gate.
 
 ## 8. Testing requirements
 
 - **Automated (CI, every increment):**
   - pure-rule unit tests: cost information, the navigation stack, width classes and panes, the latest-request guard, status badges, money formatting;
   - API tests for every new read (isolation included);
-  - checks for "no fontFamily or font assets", "no hard-coded colours or sizes in redesigned screens", and "no text-scaling cap or disabled scaling" (from 1C-3.4, the whole app);
+  - checks for "no fontFamily or font assets", "no hard-coded colours or sizes in redesigned screens", and "no text-scaling cap or disabled scaling" (the whole app, since 1C-3.3);
+  - from 1C-3.6: the start-up decision module and the launch-screen configuration check (no Expo placeholder assets); from 1C-3.7: motion tokens, reduced-motion rules, and "no animation library, no JS-driven or layout animation";
   - every existing suite green.
 
   There's no React Native renderer, so screen behaviour is checked on devices.
@@ -506,7 +640,7 @@ Each increment is implemented only after approval, and reported for review. It i
   - the iOS swipe-back gesture (record what happens).
 - **Cross-device (iPhone and A06, or two Android phones):** MD checks on Details, for example MD-04 with Details open on the second phone, and MD-09 with the form open.
 - **Orientation (all devices):** the §6.5 plan, ORI-01 – ORI-10 on phones and TAB-01 – TAB-12 on tablets.
-- **Device checklists:** DET, GAL, ORI and TAB are written out in full in §8.1 and copied into the device-test log for each increment. The gallery checks for C-1b (GAL-01 – GAL-13) were defined with 1C-3.2.
+- **Device checklists:** DET, GAL, RD, ORI, TAB, SPL, MOT and FIN are written out in full in §8.1 and copied into the device-test log when each increment starts. The gallery checks for C-1b (GAL-01 – GAL-13) were defined with 1C-3.2; SPL, MOT and FIN were added in revision 12 (all PLANNED, NOT TESTED).
 - **Evidence:** owner-reported PASS, PARTIAL, NOT TESTED or BLOCKED per check, always separate from CI. No cloud verification until D11.
 
 ### 8.1 Device checklists (written out; all NOT TESTED)
@@ -570,6 +704,59 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | RD-13 | Turn on Remove animations (A06) / Reduce Motion (iPhone) | Nothing fades, scales or pulses; toasts simply appear and disappear |
 | RD-14 | Galaxy A06 with 35 or more seeded products: scroll the list, open Details, open the sheet | Smooth, with no visible stutter; the first list load is not slower than before |
 
+**SPL: launch screen and start-up (1C-3.6; PLANNED).** Devices: Galaxy A06 with the new development build; iPhone only on an approved iOS build (B-2); a tablet when available. Expo Go can't show the app's launch screen.
+
+| ID | Steps | Expected result |
+|---|---|---|
+| SPL-01 | Cold start on the A06 (development build), signed in: tap the icon | The ShopMate launch screen (approved background and mark) appears at once; then Today. No white, black or blank frame, no plain spinner screen |
+| SPL-02 | Cold start, signed out | Launch screen, then Welcome / Log in directly |
+| SPL-03 | Cold start, signed in but no shop yet | Launch screen, then Shop setup |
+| SPL-04 | Cold start with the phone offline, signed in | The launch screen hides within the time limit; Today shows its offline state (or the branded loading screen, then the error with Try again); never stuck on the mark |
+| SPL-05 | KI-1 re-check: close the app completely and reopen it 5 times | Each time: launch screen, then Today, still signed in (installed build) |
+| SPL-06 | Warm start: switch away and back | No launch screen; the app returns where it was |
+| SPL-07 | Phone in dark mode, cold start | The same light launch screen and light app; no dark flash |
+| SPL-08 | Look at the home screen icon and the launch screen together | Same ShopMate mark; no Expo placeholder anywhere |
+| SPL-09 | Hand-over: watch the transition into the first screen (Remove animations off, then on) | Smooth: at most a short fade of the content; with Remove animations on, an instant change; no logo animation |
+| SPL-10 | Tablet (when available), both orientations | Centred mark, correct background, nothing stretched or cut |
+| SPL-11 | iPhone on an approved iOS build (B-2): cold start, signed in and signed out | As SPL-01 / SPL-02. In Expo Go this can't be verified (Expo Go shows its own launch screen): NOT TESTED until an iOS build exists |
+| SPL-12 | Time from tap to a usable first screen, 5 cold starts on the A06 | Not slower than before 1C-3.6 (owner observation, timed with a stopwatch) |
+
+**MOT: motion and micro-interactions (1C-3.7; PLANNED).** Devices: Galaxy A06 and iPhone 13 Pro Max.
+
+| ID | Steps | Expected result |
+|---|---|---|
+| MOT-01 | Open a product, then go Back; open Edit, then Back | New screens fade and rise in quickly; Back fades; taps work during the transition |
+| MOT-02 | Switch between all tabs quickly | The active-tab pill and colour change smoothly; content fades; no lag or double tap needed |
+| MOT-03 | Press and hold buttons, rows, cards, chips, tiles and icon actions | Each shows a pressed state (slight shrink and colour); releasing outside cancels |
+| MOT-04 | Open Products for the first time; then pull to refresh, change a filter and scroll | Rows appear with a short stagger only the first time; refresh, filtering and scrolling don't re-animate |
+| MOT-05 | Open and close the price sheet (Close, Cancel, backdrop), with and without the keyboard | The sheet rises and the backdrop fades; it closes faster; the iPhone keyboard fix still holds |
+| MOT-06 | Save a price, edit a product, archive and restore it, correct a cost | A toast each time, plus a short highlight of the changed item or figure |
+| MOT-07 | Load a screen (Today, Details) on a slow connection | Skeletons pulse while loading and cross-fade into content; the pulse stops when loaded |
+| MOT-08 | Trigger an error (offline) and an empty list | The error and empty states fade in; Try again works at once |
+| MOT-09 | Tap a button repeatedly and tap during a transition | No double action; nothing blocks the tap; the busy spinner keeps the button's size |
+| MOT-10 | Turn on Remove animations (A06) / Reduce Motion (iPhone) and repeat MOT-01 – MOT-08 | Nothing fades, slides, scales or pulses; everything appears at once; toasts still appear and are announced |
+| MOT-11 | TalkBack / VoiceOver on: open Details, save a price, show a toast | Focus is not moved by animations; the screen title is read first; the toast is announced |
+| MOT-12 | Leave Today and the Products list idle for a minute | Nothing moves on screen (no idle animation) |
+| MOT-13 | A06 with 35 or more products: scroll quickly, open Details, open the sheet, switch tabs | No visible stutter (owner observation) |
+| MOT-14 | 130 % and the largest text size: repeat MOT-01 and MOT-05 | Transitions still smooth; nothing clipped mid-animation |
+
+**FIN: final accessibility, performance and cross-device verification (1C-3.8; PLANNED).** Devices: per the §8.2 matrix.
+
+| ID | Steps | Expected result |
+|---|---|---|
+| FIN-01 | TalkBack journey on the A06: sign in → Today → Products → Details → Edit → Save → Change price → archive/restore → log out | Every step completable; every control announced with a clear label and role |
+| FIN-02 | VoiceOver journey on the iPhone, the same steps | As FIN-01 |
+| FIN-03 | Largest text size on both phones across every redesigned screen | Nothing clipped or overlapping; tab labels wrap |
+| FIN-04 | Reduce Motion / Remove animations on both phones across every screen | No animation anywhere |
+| FIN-05 | Contrast in bright daylight (outdoors or near a window) on the A06 | Text and status words readable |
+| FIN-06 | A06 performance pass: cold start, Today, list with 35+ products, Details, sheet, rotation | Smooth; start-up not slower than before Stage 1C-3 |
+| FIN-07 | Portrait and landscape on both phones (after 1C-3.5) | As ORI; no regressions from 1C-3.6 or 1C-3.7 |
+| FIN-08 | Android tablet (when available) | TAB checks repeated; NOT TESTED if no device |
+| FIN-09 | iPad (when available), Expo Go early check | Recorded as early evidence only |
+| FIN-10 | iPhone and iPad on an approved iOS build (B-2) | Final iOS evidence (§6.5 item 4); NOT TESTED until the build exists |
+| FIN-11 | Browser / desktop | Not applicable in Stage 1C-3 (milestone PW-1); recorded as N/A |
+| FIN-12 | Two phones, same account (MD-04, MD-09 on the redesigned screens) | Freshness and conflict behaviour unchanged |
+
 **ORI: phones in portrait and landscape (1C-3.5).** Devices: Galaxy A06 (new development build) and iPhone 13 Pro Max (Expo Go, early; final on an iOS build, §6.5 item 4).
 
 | ID | Steps | Expected result |
@@ -602,13 +789,35 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | TAB-11 | About 130 % and the largest text size | Readable; nothing clipped |
 | TAB-12 | Remove animations / Reduce Motion, then rotate and open screens | No animation; the layouts are correct |
 
+### 8.2 Cross-platform verification matrix (revision 12)
+
+Nothing is assumed to behave the same on every platform. Where each item can actually be verified:
+
+| Item | Android phone (A06) | iPhone 13 Pro Max | Android tablet | iPad | Browser / desktop |
+|---|---|---|---|---|---|
+| Redesigned screens, text size, Reduce Motion | Expo Go or dev build | Expo Go (early); iOS build (final) | Dev build (when available) | Expo Go (early); iOS build (final) | N/A until PW-1 |
+| Orientation and safe areas (1C-3.5) | **New dev build** (orientation is native config) | Expo Go may follow the config (to confirm); iOS build final | New dev build; Android 16 may already rotate large screens (§6.3) | iOS build final | N/A |
+| **Launch screen (1C-3.6)** | **Dev build only** | **iOS build only** (Expo Go shows its own) | Dev build | iOS build | No native launch screen; PW-1 plans the page's first paint |
+| Start-up hand-over and session restore | Dev build (KI-1 re-check on the installed build) | Expo Go for the in-app part; iOS build for the launch screen | Dev build | iOS build | PW-1 (different session storage) |
+| Motion and micro-interactions (1C-3.7) | Expo Go or dev build; **A06 is the performance reference** | Expo Go or iOS build | Dev build | Expo Go or iOS build | PW-1 (web animation support to be assessed) |
+| TalkBack / VoiceOver | TalkBack | VoiceOver | TalkBack | VoiceOver | NVDA / VoiceOver in PW-1 |
+
+**Known platform-specific limitations to document during implementation:**
+- **Expo Go** can't show the app's launch screen or apply new native configuration; results from it are early checks only.
+- **iOS** caches the launch screen; a change may need a reinstall or a phone restart before it shows.
+- **Android 12+** masks the launch icon to a circle and limits its size; no full-screen launch image.
+- **Android Remove animations** is detected only at scale 0 (partial animation scales aren't detected).
+- **Modal** sheets use the platform modal; their animation and the keyboard behave differently on Android and iOS (the iPhone fix is kept).
+- **The iOS swipe-back gesture** isn't supported by the hand-built stack (§5.2).
+- **Development builds are slower than release builds;** performance observations in development mode are indicative, and the final A06 check uses the installed build where possible.
+
 ## 9. Risks and dependencies
 
 | Risk | Mitigation |
 |---|---|
 | Redesign scope grows | Written spec approval (C-1a), kit first, then the physical gallery review (C-1b); one area per increment; a list of what's out of scope |
 | Regressions in tested flows | Behaviour stays in tested services and pure modules; affected checklists re-run per increment |
-| Galaxy A06 performance | No list shadows, no blur, native-driver animations only, capped staggering, checks with 35 or more products. A06 smoothness is an acceptance criterion in 1C-3.3, 1C-3.5 and 1C-3.6 |
+| Galaxy A06 performance | No list shadows, no blur, native-driver animations only, capped staggering, checks with 35 or more products. A06 smoothness is an acceptance criterion in 1C-3.3, 1C-3.5, 1C-3.6, 1C-3.7 and 1C-3.8 |
 | iOS-only layout and keyboard issues | The shared Sheet carries the proven iPhone fix; keyboard checks on every form |
 | Expo Go differs from development builds (orientation especially) | Expo Go results recorded as early checks; final orientation evidence needs the new build |
 | Spec 08 conflict | Written revision approved at C-1a and the gallery confirmed at C-1b, before any screen redesign |
@@ -620,20 +829,27 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | Android 16 already rotating tablets despite the portrait lock | Likely if the built app targets SDK 36 (the React Native default; the actual target confirmed from the 1C-3.5 build); checked on a tablet; the global unlock makes the behaviour the same everywhere; the temporary opt-out isn't used |
 | iPhone and iPad behaviour only checked in Expo Go | Final iOS verification (orientation, safe areas, release-readiness checks) on an approved iOS development or TestFlight build before the iOS release gate and real-shop use; NOT TESTED until done (§6.5 item 4) |
 | Tablets not available | Layouts unit-tested; tablet checks recorded as NOT TESTED until devices are available |
+| **Placeholder app icon or launch image shipped** (finding, revision 12) | LG-1 / LG-2 in 1C-3.6; the configuration check fails CI if an Expo template asset is still referenced |
+| **White or blank flash at start-up** | Launch-screen background equals the app background (SP-2 recommendation); the launch screen held until the first screen can render; SPL-01 checks on the A06 |
+| **Launch screen held too long** (slow storage, offline) | Never held for network data; a hard time limit (SP-3) and a branded in-app fallback; SPL-04 |
+| **Launch screen can't be checked in Expo Go** | Verified only on the dev build (Android) and an iOS build (B-2); recorded as NOT TESTED otherwise |
+| **Motion makes the A06 feel slower** | Native driver only, short durations, no idle or layout animation, first-load-only list entrances; MOT-13 and FIN-06 on the A06 |
+| **Animations interfere with screen readers or input** | Never move focus; never block taps; Reduce Motion respected; MOT-09 – MOT-11 |
 | Mobile layouts mistaken for a PC experience | PC and browser support is a separate milestone (PW-1, §11) with its own design, security and testing; Stage 1C-3 claims nothing for PCs |
 
 **Dependencies:**
 - devices: the A06, the iPhone, a second phone, and a tablet for 1C-3.5;
 - the owner's local stack with migration `20261125000300`;
 - 35 seeded fictitious products;
-- an EAS development build for 1C-3.5 (approval needed; orientation is part of the native project);
+- an EAS development build for 1C-3.5 (approval needed; orientation is part of the native project), and one for the launch screen in 1C-3.6, or the same build if SP-4 is approved;
+- the ShopMate logo artwork for the launch screen and app icon (LG-1);
 - an Apple Developer account and an approved iOS development or TestFlight build, for the final iOS verification before the iOS release gate and real-shop use (decision B-2; separate approvals).
 
 **Unchanged, outside Stage 1C-3:**
 - D11 cloud migrations: outstanding; no cloud change in this milestone; a prerequisite for testing across different networks;
 - web/browser (milestone PW-1, §11), staff accounts, Realtime, offline editing beyond sales, device-limit enforcement, dark mode;
 - the S-37 movement history and the remaining 1C-2 screens;
-- custom fonts; native packages other than `react-native-safe-area-context` unless separately approved.
+- custom fonts; native packages other than `react-native-safe-area-context` and, if approved, `expo-splash-screen`, unless separately approved; animation libraries; haptics (MO-1).
 
 ## 10. Decisions and approvals still needed
 
@@ -650,11 +866,20 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | ~~L-1~~ | ~~Device-test log update~~ | **Done (25 Nov 2026):** QPS-D1 – QPS-D6, XD-01, and MD-01 and MD-04 PARTIAL recorded in the log's increment 2b section |
 | ~~R-1~~ | ~~Browser milestone in the master roadmap~~ | **Done:** milestone PW-1 in the roadmap (§2 phase table and order, §3.4, §3.6a) |
 | ~~W-1~~ | ~~When milestone PW-1 starts~~ | **Decided:** PW-1 after Stage 1C-3; D11 addressed before any cross-network testing |
+| LG-1 | **ShopMate logo artwork** for the launch screen and app icon. No logo file exists; the launcher icon and splash image are Expo placeholders | **Recommended:** a clean, high-resolution version of the in-app mark (gold tile, green bag; 1C-3.3), produced as image assets; or owner-supplied artwork. Needed before 1C-3.6 |
+| LG-2 | **Replace the placeholder app icon** (iOS icon, Android adaptive icon foreground, background and monochrome) with the same artwork, in 1C-3.6 | **Recommended: yes**, so the icon, launch screen and header match. Needs the new build |
+| SP-1 | **Install `expo-splash-screen`** (Expo-maintained; the SDK 58-compatible version chosen by `npx expo install`) for the launch-screen configuration and to hold the launch screen during start-up | **Recommended: yes**, when 1C-3.6 starts. A new package and native configuration: needs a new development build |
+| SP-2 | **Launch-screen background colour** | **Recommended: Warm White `#FAF8F3`** (no colour jump into the light app). Alternative: Shop Green `#0B6B4F` |
+| SP-3 | **Maximum time the launch screen is held** before the branded in-app loading screen takes over | **Recommended: 3 s** from start-up; never held for network data |
+| SP-4 | **Share the 1C-3.5 Android development build** for the launch-screen configuration (one build instead of two) | **Recommended: yes, if LG-1 and SP-1 are approved before that build**; otherwise a separate build in 1C-3.6 |
+| MO-1 | **Haptic feedback** (`expo-haptics`, a new package) | **Recommended: not in Stage 1C-3**; reconsider with the Sell screens (Stage 1D), where a confirmation vibration is most useful |
+| MO-2 | **Screen push / pop style** on the hand-built stacks, and the in-app opening transition after the launch screen | **Recommended:** fade and an 8 dp rise (§5.5); no horizontal slide (it implies the swipe-back gesture, which isn't supported); after the launch screen, only the existing short content fade |
+| MO-3 | **Success highlight** on the changed item (a short tint flash) in addition to the toast | **Recommended: yes** (spec 08 §10 already lists it); off under Reduce Motion |
 | IG-1 | **Which gate is the iOS release gate:** G2, or the pilot gate if iPhones take part in the pilot. Not decided; there's no evidence yet on pilot iPhone participation (also in the roadmap's §9) | Owner decides once pilot device plans are known |
 | ~~V-1 – V-6~~ | ~~Spec 08 revision decisions~~ | **Approved with C-1a (25 Nov 2026):** Stock value (about) only in cost state 1; light headers; the three colour corrections in 1C-3.2; C-1 split into C-1a and C-1b; spec 08 revision 2 and specification set 5.2; follow-up documentation after C-1a approval |
 | ~~C-1a~~ | ~~Written spec 08 revision 2 approval~~ | **APPROVED (25 Nov 2026):** adopted as [08-visual-design.md](../product-specification/08-visual-design.md); specification set 5.2 |
 | ~~C-1b~~ | ~~Physical gallery review on the A06 and the iPhone after 1C-3.2~~ | **APPROVED (26 Nov 2026)** by the owner after reviewing the gallery on both phones |
-| ~~G-1~~ | ~~Approval to start 1C-3.1~~ | **APPROVED (25 Nov 2026)** for 1C-3.1 only; implemented in the working tree (not committed) |
+| ~~G-1~~ | ~~Approval to start 1C-3.1~~ | **APPROVED (25 Nov 2026)** for 1C-3.1 only; committed in `7064d4d` |
 
 ## 11. Future milestone PW-1: PC and browser support (Windows and macOS)
 

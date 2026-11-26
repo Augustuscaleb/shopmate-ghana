@@ -362,7 +362,7 @@ The Samsung Galaxy A06 (Android 16, low-end) is the reference: if it's smooth th
 ## 16. Delivery and acceptance (by reference)
 
 Where the work is delivered and how it is accepted is defined in [STAGE-1C-3-PLAN.md](../stages/STAGE-1C-3-PLAN.md):
-- §7: increments 1C-3.1 – 1C-3.6 and their acceptance criteria;
+- §7: increments 1C-3.1 – 1C-3.8 and their acceptance criteria (1C-3.6 launch screen and 1C-3.7 motion added in plan revision 12; the launch-screen design is a proposal there, pending decisions LG-1 and SP-1 – SP-3);
 - §8.1: device checklists DET, ORI and TAB;
 - §6.5 item 4: final iPhone and iPad checks on an approved iOS build before the iOS release gate.
 
