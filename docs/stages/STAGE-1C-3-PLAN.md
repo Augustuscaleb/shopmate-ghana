@@ -1,6 +1,8 @@
 # Stage 1C-3 plan: Product Experience & Visual Redesign
 
-**Status (26 Nov 2026, revision 12): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; CI #69 passed (after a re-run; the first attempt failed on a CI runner port clash). **C-1b APPROVED by the owner (26 Nov 2026)** after a physical review of the gallery on both phones. **1C-3.3 APPROVED to start (26 Nov 2026), with Today, the tab bar and More brought forward from 1C-3.4 (decision B-5); committed in `8cef172` (CI #70 passed); device checks RD-01 – RD-14 NOT TESTED.** Sign-in and onboarding remain in 1C-3.4. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md). 1C-3.4 (sign-in, onboarding), 1C-3.5, 1C-3.6 (launch screen, new), 1C-3.7 (motion) and 1C-3.8 (final verification, new) NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+**Status (26 Nov 2026, revision 13): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; CI #69 passed (after a re-run; the first attempt failed on a CI runner port clash). **C-1b APPROVED by the owner (26 Nov 2026)** after a physical review of the gallery on both phones. **1C-3.3 APPROVED to start (26 Nov 2026), with Today, the tab bar and More brought forward from 1C-3.4 (decision B-5); committed in `8cef172` (CI #70 passed); device checks RD-01 – RD-14 NOT TESTED.** Sign-in and onboarding remain in 1C-3.4. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md). 1C-3.4 (sign-in, onboarding), 1C-3.5, 1C-3.6 (launch screen, new), 1C-3.7 (motion) and 1C-3.8 (final verification, new) NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+
+**Revision 13 (26 Nov 2026, decisions only; nothing implemented, no asset created):** the owner decided LG-1, LG-1a, VI-1, LG-2, SP-1 – SP-4 and MO-1 – MO-3 (§1). The ShopMate bag mark is approved, with a slightly heavier handle, as the **initial product identity, which can be revisited before public launch** (BI-1). The exact refined geometry (§5.4.1) was then **approved by the owner (LG-1a, 26 Nov 2026)**: a 9 % handle line with the proposed proportions. No icon or launch-screen asset has been created yet; that happens in 1C-3.6.
 
 **Revision 12 (26 Nov 2026, planning only; nothing implemented):** adds an explicit **native launch (splash) screen** increment and a strengthened **motion and micro-interactions** increment, followed by a **final accessibility, performance and cross-device** increment. Sequence: 1C-3.6 launch screen, 1C-3.7 motion (was 1C-3.6), 1C-3.8 final verification. New: §5.4 launch experience, §5.5 motion system, §7.0 status vocabulary and tracker, §8.2 cross-platform matrix, checklists SPL, MOT and FIN (§8.1), and decisions LG-1, LG-2, SP-1 – SP-4, MO-1 – MO-3 (§10). **Finding:** the app's launcher icon (`app/assets/icon.png`, the Android adaptive-icon foreground) and `splash-icon.png` are still **Expo's default template placeholders** from Stage 1A; there is no ShopMate logo file yet (LG-1).
 
@@ -37,6 +39,18 @@ An unreliable figure is never shown as the current cost |
 | B-3 | **Product Details Edit: a compact header pencil, not a large button** (owner design feedback, 25 Nov 2026, after the first device run of 1C-3.1). The oversized green "Edit product" bottom-bar button is removed | A pencil icon top-right in the Details header opens the same edit flow; spoken label "Edit product"; 48 dp touch target; disabled when archived, with the reason. Done in 1C-3.1 as a correction after its first device run. Amends spec 08 §5.2, §7 and §9.2 for this action only |
 | B-4 | **A restrained control hierarchy; no oversized buttons** (owner, 25 Nov 2026) | A requirement for the **1C-3.2** component gallery (below). It does not change other screens before C-1b |
 | B-5 | **1C-3.3 scope: Today, main navigation and Products together** (owner, 26 Nov 2026, with the C-1b approval) | 1C-3.3 redesigns the Products area AND Today, the tab bar (with every text-scaling cap removed), the More tab and the preview tabs, brought forward from 1C-3.4. Sign-in and onboarding stay in 1C-3.4 |
+| LG-1 | **Brand mark: the existing ShopMate bag mark, with a slightly refined, heavier handle** for better recognition at small sizes (owner, 26 Nov 2026) | Brand colours and concept unchanged. Refined geometry approved as LG-1a (§5.4.1) |
+| BI-1 | **Initial product identity** (owner, 26 Nov 2026) | The bag mark is ShopMate's **initial** product identity for the pilot and early releases. It **can be revisited before public launch** (for example a custom logo or wordmark); a later change would replace the master artwork and regenerate every derived asset |
+| LG-1a | **Refined mark geometry approved** (owner, 26 Nov 2026): handle line 9 % of the mark, handle 32 % × 21 %, everything else unchanged | The approved ShopMate mark and initial product identity, subject to possible brand refinement before public launch (BI-1). The master SVG and every derived asset are made from it in 1C-3.6 |
+| VI-1 | **App icon: full-bleed Market Gold with the Deep Green bag** (option 1; owner, 26 Nov 2026) | iOS icon and the Android adaptive icon use gold as the whole background and the bag as the foreground; the platforms apply their own masks |
+| LG-2 | **Replace every Expo placeholder icon** with the approved artwork (owner, 26 Nov 2026) | iOS icon, Android adaptive foreground, background and monochrome, and the splash image, in 1C-3.6. The web favicon is a placeholder too; replaced with the same artwork (PW-1 uses it) |
+| SP-1 | **Use Expo's official splash-screen package** (`expo-splash-screen`; owner, 26 Nov 2026) | Installed in 1C-3.6 with `npx expo install` (the SDK 58-compatible version), with the dependency checks |
+| SP-2 | **Launch-screen background: Warm White `#FAF8F3`** (owner, 26 Nov 2026) | No colour jump into the light app; the gold disc with the bag sits centred |
+| SP-3 | **At most 3 seconds** on the native launch screen, **dismissed immediately when the app is ready** (owner, 26 Nov 2026) | The launch screen hides as soon as the first screen can render; 3 s is only the upper limit, after which the look-alike in-app loading screen takes over |
+| SP-4 | **Share the 1C-3.5 Android development build** where practical (owner, 26 Nov 2026) | The launch-screen configuration and icons go into the same build as the orientation unlock and safe areas, if they are ready in time |
+| MO-1 | **No haptics for now** (owner, 26 Nov 2026) | No `expo-haptics`; reconsider later (for example with the Sell screens) |
+| MO-2 | **Screen transitions: a subtle fade with a small upward movement** (owner, 26 Nov 2026) | Push: fade and an 8 dp rise; Back: fade. No sideways slide. After the launch screen, only the short content fade |
+| MO-3 | **A brief highlight after a successful save**, disabled under Reduce Motion (owner, 26 Nov 2026) | Toast plus a short tint flash on the changed item; toast only under Reduce Motion / Remove animations |
 | B-6 | **Confirm only consequential actions** (owner, 26 Nov 2026) | Confirmation dialogs for destructive, irreversible or financially consequential actions (archive; a cost correction, which changes the recorded stock value; later voids and deletions). No prompt for navigation, viewing, opening forms or harmless reversible actions: **Restore** (product or category) now runs at once with a short message |
 
 ## 2. Device-testing status and pre-work
@@ -264,20 +278,43 @@ The goal is a calm, confident, local-feeling product, not a template and not a n
 - **Tablets and iPads:** the same centred mark on the background colour; checked in both orientations once the app rotates (1C-3.5).
 - **Web/desktop (milestone PW-1):** there is no native launch screen in a browser; the equivalent is the page's first paint and loading state, planned in PW-1, not here.
 
-**Design (proposed; decisions LG-1, LG-2, SP-2):**
-- **Mark:** the ShopMate brand mark (the gold tile with the green bag drawn in the app header since 1C-3.3, or owner-supplied artwork, LG-1), as a clean, high-resolution image in the platform's safe area for masked icons. No text in the launch image (text there can't follow the phone's text size and is cut by Android's mask).
-- **Background:** one solid brand colour. **Recommended: Warm White `#FAF8F3`**, the app's own background, so the hand-over to the first screen has no colour jump. Alternative: Shop Green `#0B6B4F` (stronger brand, but a hard colour change into the light app) (SP-2).
-- **App icon:** the placeholder launcher icon is replaced with the same artwork (LG-2), so the icon, launch screen and in-app header match.
+**Design (decided 26 Nov 2026: LG-1, LG-1a, VI-1, LG-2, SP-2):**
+- **Mark:** the ShopMate bag mark (LG-1, approved as the initial product identity, BI-1) with the refined, heavier handle (§5.4.1), as a gold disc with the bag, centred and inside the platform's safe area for masked icons. No text in the launch image (text there can't follow the phone's text size and is cut by Android's mask).
+- **Background: Warm White `#FAF8F3`** (SP-2, decided), the app's own background, so the hand-over to the first screen has no colour jump. The gold disc's edge is soft against it (1.74:1); logos are exempt from WCAG contrast rules, and the green bag on gold is 5.41:1.
+- **App icon (VI-1, LG-2, decided):** full-bleed Market Gold with the Deep Green bag on iOS and Android (adaptive: gold background, bag foreground, bag silhouette as the monochrome layer). Every Expo placeholder is replaced, so the icon, launch screen and in-app header match.
 - **Appearance:** the app is light-only (`userInterfaceStyle: "light"`; dark mode out of scope), so the launch screen uses the **same light appearance** when the phone is in dark mode, rather than a dark variant that would flash into a light app. Checked with the phone in dark mode (SPL-07).
 
 **Hand-over from the launch screen into the app:**
 1. The native launch screen is **held** (`expo-splash-screen`, prevent auto-hide; decision SP-1) while the app restores the saved session from secure storage and, when signed in, loads the shop. This removes the "Opening ShopMate…" spinner flash.
 2. It is hidden as soon as the first real screen can render: Welcome or Log in (no session), Shop setup (no shop yet), or Today (signed in). Today then shows its own skeletons while the figures load; the launch screen is **never** held for network data.
-3. **Never held indefinitely:** a hard limit (decision SP-3; recommended 3 s from start-up). If the session or shop hasn't resolved by then, the launch screen hides and an **in-app loading screen identical in look to the launch screen** (same background, same mark, plus one short line such as "Getting your shop ready…" and a spinner) takes over, so the user sees no change of style. A failure (offline, server error) shows the normal error state with Try again; the app never hangs on the brand mark.
-4. **In-app opening transition (optional; decision MO-2):** at most a short fade of the first screen's content (the existing 200 ms `FadeIn`) as the launch screen hides. No animated logo that could be mistaken for the launch screen, and none under Reduce Motion. Recommended: the fade only.
+3. **Never held indefinitely:** at most **3 s** from start-up (SP-3, decided), and dismissed **immediately** when the app is ready; 3 s is only the upper limit. If the session or shop hasn't resolved by then, the launch screen hides and an **in-app loading screen identical in look to the launch screen** (same background, same mark, plus one short line such as "Getting your shop ready…" and a spinner) takes over, so the user sees no change of style. A failure (offline, server error) shows the normal error state with Try again; the app never hangs on the brand mark.
+4. **In-app opening transition (MO-2, decided):** only a short fade of the first screen's content (the existing 200 ms `FadeIn`) as the launch screen hides. No animated logo that could be mistaken for the launch screen, and none under Reduce Motion.
 5. **Session restoration** keeps today's rules: the session is read only from secure storage (SEC-05), and KI-1 (intermittent session restoration in Expo Go only) stays monitored; the KI-1 cold-start check is repeated with the launch screen in place (SPL-05).
 
 **Implementation boundaries:** the launch screen needs native configuration (the `expo-splash-screen` config plugin in `app/app.json`) and therefore a **new development build**; it cannot be verified in Expo Go. No animation library, no custom native code, and no hand-editing of `android/` or `ios/` (they are generated).
+
+#### 5.4.1 Brand mark specification (LG-1, LG-1a: APPROVED 26 Nov 2026)
+
+**Status: APPROVED by the owner (26 Nov 2026):** the concept and colours (LG-1, VI-1) and the refined geometry below (LG-1a). It is ShopMate's **initial product identity**, subject to possible brand refinement before public launch (BI-1). **No asset exists yet**: the master SVG and derived assets are created in 1C-3.6, and until then the in-app header still draws the 1C-3.3 version (`BrandMark`, `app/src/ui/kit/app.tsx`).
+
+**Colours (unchanged):** tile Market Gold `#F4B400`; bag Deep Green `#084C38`. Monochrome: the bag silhouette in one colour.
+
+**Geometry**, on a 1024 × 1024 canvas (scales linearly; *s* = handle line width):
+
+| Part | 1C-3.3 (current in the app) | **Approved (LG-1a)** |
+|---|---|---|
+| Tile (in-app mark only) | 1024 square, corner radius 286.72 (28 %) | Unchanged |
+| Handle line width *s* | 64 (6.25 %) | **92.16 (9.0 %)**, about 44 % heavier |
+| Handle outer width × height | 307.2 × 204.8 (30 % × 20 %) | **327.68 × 215.04 (32 % × 21 %)** |
+| Handle top | Semicircle (outer radius = half its width) | Unchanged |
+| Handle opening (inner width) | 179.2 (17.5 %) | 143.36 (14.0 %), still clearly open at 24 px |
+| Bag body | 573.44 × 409.6 (56 % × 40 %), corner radius 96 | Unchanged |
+| Overlap of handle into body | *s* / 2 | Unchanged |
+| Vertical placement | Handle and body centred together | Unchanged |
+
+Refined SVG paths (1024 canvas): handle `M394.24 437.76 V386.56 A117.76 117.76 0 0 1 629.76 386.56 V437.76` (stroke 92.16, Deep Green, no fill); body `rect x=225.28 y=391.68 w=573.44 h=409.6 rx=96` (Deep Green).
+
+**Derived assets (to be made in 1C-3.6, from the approved geometry):** a master SVG in `app/assets/brand/` (mark with tile, and bag only); from it, the iOS icon (1024 × 1024, opaque, full square, gold full-bleed with the bag at about 60 % width); the Android adaptive foreground (bag only, transparent, inside the central safe zone), background (solid `#F4B400`) and monochrome (bag silhouette); the splash image (gold disc with the bag, transparent, padded for Android's circular mask); the web favicon; and the in-app `BrandMark` updated to the same refined geometry. Exact Expo SDK 58 options and pixel sizes are confirmed against the documentation at implementation. PNGs are rendered from the master SVG with the pre-installed Chromium; no new package.
 
 ### 5.5 Motion system and micro-interactions (PLANNED, 1C-3.7; extends spec 08 §8)
 
@@ -299,7 +336,7 @@ Exits are shorter than entrances. No bounce or spring overshoot. Stagger: 30 ms 
 
 | Area | Behaviour | Under Reduce Motion |
 |---|---|---|
-| **Screen push / pop** (hand-built Products stack, account panel) | New screen fades in and rises 8 dp (`standard`); going back fades (`exit`). The new screen is interactive immediately; Back always works mid-animation | Appears at once |
+| **Screen push / pop** (hand-built Products stack, account panel; MO-2, decided) | New screen fades in and rises 8 dp (`standard`); going back fades (`exit`). The new screen is interactive immediately; Back always works mid-animation | Appears at once |
 | **Tab switch** | Content fades (`standard`, as now); the active-tab pill and colour cross-fade (`quick`) | Changes at once |
 | **Press feedback** | A 97 % scale plus a pressed colour on every tappable element (buttons, rows, cards, chips, tiles, icon actions) | Pressed colour only, no scale |
 | **List and card entrances** | Only on a screen's **first** load: rows fade and rise, staggered, at most 8; never on refresh, paging, filtering or while scrolling | Appear at once |
@@ -308,13 +345,13 @@ Exits are shorter than entrances. No bounce or spring overshoot. Stagger: 30 ms 
 | **Toast** | Fades and rises in (`standard`), stays about 2 s, fades out (`exit`); announced to screen readers | Appears and disappears at once; still announced |
 | **Loading → content** | Skeleton cross-fades to content (`standard`); the skeleton pulse stops as soon as data arrives | No pulse; content replaces skeleton |
 | **Error / empty states** | Fade in (`standard`) | At once |
-| **Success after add, edit, price change, archive, restore, cost correction** | Toast, plus a short tint flash on the changed item or figure (`emphasis`, at most about 600 ms in total; MO-3) | Toast only, no flash |
+| **Success after add, edit, price change, archive, restore, cost correction** | Toast, plus a short tint flash on the changed item or figure (`emphasis`, at most about 600 ms in total; MO-3, decided) | Toast only, no flash |
 | **Busy action** | The button shows a spinner and stays its size (no layout jump) | Same (the spinner is a progress indicator) |
 | **Pull to refresh** | The platform's own control | Platform behaviour |
 
 **Not used:** parallax, page-curl or 3D effects, looping decoration, animated backgrounds, layout animations (unreliable on low-end Android), and gesture-driven transitions such as the iOS swipe-back (not supported by the hand-built stack; recorded, not added, §5.2).
 
-**Haptics:** not in the current scope; would need a new package (`expo-haptics`; decision MO-1).
+**Haptics:** none for now (MO-1, decided 26 Nov 2026); `expo-haptics` is not added.
 
 **Accessibility rules for motion:**
 - Android "Remove animations" and iOS "Reduce Motion" are respected everywhere through the shared reduced-motion state. Until the setting is known, motion is reduced. **Known limitation:** React Native reports Android's setting only when the animation scale is 0 ("Remove animations"); partial scales and some manufacturer settings aren't detected (recorded since increment 1).
@@ -437,11 +474,11 @@ Every increment, and every check, uses exactly these words, so planned, built, t
 | 1C-3.3 Today, navigation, Products | COMMITTED (CI) `8cef172` (CI #70) | RD-01 – RD-14 NOT TESTED |
 | 1C-3.4 Sign-in and onboarding | PLANNED | — |
 | 1C-3.5 Responsive layouts and orientation | PLANNED (needs B-1) | — |
-| 1C-3.6 Launch screen (splash) | PLANNED (needs LG-1, SP-1 – SP-3; a new build) | — |
+| 1C-3.6 Launch screen (splash) and app icon | PLANNED. All its decisions made (LG-1, LG-1a, VI-1, LG-2, SP-1 – SP-4); needs a new build (B-1 / SP-4) | — |
 | 1C-3.7 Motion and micro-interactions | PLANNED | — |
 | 1C-3.8 Final accessibility, performance and cross-device verification | PLANNED | — |
 
-**Sequence (owner, 26 Nov 2026):** complete the Products redesign (1C-3.3 device checks) → sign-in and onboarding (1C-3.4) → responsive layouts and orientation (1C-3.5) → launch screen (1C-3.6) → motion (1C-3.7) → final checks (1C-3.8). **One architectural adjustment is proposed, not assumed (SP-4):** the launch screen's native configuration could be added to the **same** new Android development build as 1C-3.5 (orientation unlock and safe areas), if its artwork and package are approved by then. That saves one build and one reinstall on the A06; the launch screen's JavaScript hand-over and its verification still happen in 1C-3.6.
+**Sequence (owner, 26 Nov 2026):** complete the Products redesign (1C-3.3 device checks) → sign-in and onboarding (1C-3.4) → responsive layouts and orientation (1C-3.5) → launch screen (1C-3.6) → motion (1C-3.7) → final checks (1C-3.8). **One architectural adjustment, approved where practical (SP-4, 26 Nov 2026):** the launch screen's native configuration could be added to the **same** new Android development build as 1C-3.5 (orientation unlock and safe areas), if its artwork and package are approved by then. That saves one build and one reinstall on the A06; the launch screen's JavaScript hand-over and its verification still happen in 1C-3.6.
 
 ### 1C-3.1 Product Details (functional) and the Review-2 fixes
 **Status (revision 10): committed in `7064d4d` (CI #58 passed); Edit-pencil correction (B-3) in `225044d` (CI #59 passed). Device checks: DET-01, DET-11 and DET-15 PASS on both phones; the rest NOT TESTED ([device log](../testing/DEVICE-TEST-LOG.md)).**
@@ -574,12 +611,12 @@ Every increment, and every check, uses exactly these words, so planned, built, t
 - **A06 performance:** rotating does not stutter or reload data beyond the normal throttled refresh (owner observation).
 
 ### 1C-3.6 Native launch screen and start-up hand-over (new in revision 12)
-**Status: PLANNED.** Needs decisions LG-1, LG-2, SP-1, SP-2 and SP-3 (§10), and a new development build (B-1, or SP-4 to share the 1C-3.5 build).
+**Status: PLANNED.** Decisions LG-1, LG-1a, VI-1, LG-2, SP-1 – SP-4 made (26 Nov 2026); needs a new development build (shared with 1C-3.5 where practical, SP-4; B-1).
 
 **Delivers (§5.4):**
-- ShopMate launch-screen artwork and app icon, replacing the Expo placeholders (LG-1, LG-2): image assets at the platform resolutions, the mark inside the masked-icon safe area;
-- `expo-splash-screen` (SDK 58-compatible version via `npx expo install`, with approval SP-1) and its config plugin in `app/app.json`: background colour and image, the same in light and dark system appearance;
-- the hand-over: hold the launch screen until session restoration and the first screen are ready, hide it then, with a hard time limit (SP-3) and an in-app loading screen identical in look as the fallback; the two current spinner screens become that branded fallback;
+- ShopMate launch-screen artwork and app icon from the master SVG (§5.4.1), replacing every Expo placeholder (LG-1, VI-1, LG-2): image assets at the platform resolutions, the mark inside the masked-icon safe area; the in-app `BrandMark` updated to the same refined geometry;
+- `expo-splash-screen` (SP-1; SDK 58-compatible version via `npx expo install`) and its config plugin in `app/app.json`: Warm White background (SP-2) and the splash image, the same in light and dark system appearance;
+- the hand-over: hold the launch screen until session restoration and the first screen are ready and hide it immediately then, with a 3 s upper limit (SP-3) and an in-app loading screen identical in look as the fallback; the two current spinner screens become that branded fallback;
 - the decision logic as a pure, unit-tested module (when to hide; which first screen; the time limit; errors), so it is tested without a device.
 
 **Acceptance:**
@@ -866,15 +903,17 @@ Nothing is assumed to behave the same on every platform. Where each item can act
 | ~~L-1~~ | ~~Device-test log update~~ | **Done (25 Nov 2026):** QPS-D1 – QPS-D6, XD-01, and MD-01 and MD-04 PARTIAL recorded in the log's increment 2b section |
 | ~~R-1~~ | ~~Browser milestone in the master roadmap~~ | **Done:** milestone PW-1 in the roadmap (§2 phase table and order, §3.4, §3.6a) |
 | ~~W-1~~ | ~~When milestone PW-1 starts~~ | **Decided:** PW-1 after Stage 1C-3; D11 addressed before any cross-network testing |
-| LG-1 | **ShopMate logo artwork** for the launch screen and app icon. No logo file exists; the launcher icon and splash image are Expo placeholders | **Recommended:** a clean, high-resolution version of the in-app mark (gold tile, green bag; 1C-3.3), produced as image assets; or owner-supplied artwork. Needed before 1C-3.6 |
-| LG-2 | **Replace the placeholder app icon** (iOS icon, Android adaptive icon foreground, background and monochrome) with the same artwork, in 1C-3.6 | **Recommended: yes**, so the icon, launch screen and header match. Needs the new build |
-| SP-1 | **Install `expo-splash-screen`** (Expo-maintained; the SDK 58-compatible version chosen by `npx expo install`) for the launch-screen configuration and to hold the launch screen during start-up | **Recommended: yes**, when 1C-3.6 starts. A new package and native configuration: needs a new development build |
-| SP-2 | **Launch-screen background colour** | **Recommended: Warm White `#FAF8F3`** (no colour jump into the light app). Alternative: Shop Green `#0B6B4F` |
-| SP-3 | **Maximum time the launch screen is held** before the branded in-app loading screen takes over | **Recommended: 3 s** from start-up; never held for network data |
-| SP-4 | **Share the 1C-3.5 Android development build** for the launch-screen configuration (one build instead of two) | **Recommended: yes, if LG-1 and SP-1 are approved before that build**; otherwise a separate build in 1C-3.6 |
-| MO-1 | **Haptic feedback** (`expo-haptics`, a new package) | **Recommended: not in Stage 1C-3**; reconsider with the Sell screens (Stage 1D), where a confirmation vibration is most useful |
-| MO-2 | **Screen push / pop style** on the hand-built stacks, and the in-app opening transition after the launch screen | **Recommended:** fade and an 8 dp rise (§5.5); no horizontal slide (it implies the swipe-back gesture, which isn't supported); after the launch screen, only the existing short content fade |
-| MO-3 | **Success highlight** on the changed item (a short tint flash) in addition to the toast | **Recommended: yes** (spec 08 §10 already lists it); off under Reduce Motion |
+| ~~LG-1~~ | ~~ShopMate logo artwork for the launch screen and app icon. No logo file exists; the launcher icon and splash image are Expo placeholders~~ | **DECIDED (26 Nov 2026):** the existing bag mark, with a slightly heavier handle; initial product identity, revisitable before public launch (BI-1). Refined geometry: LG-1a |
+| ~~LG-2~~ | ~~Replace the placeholder app icon (iOS icon, Android adaptive icon foreground, background and monochrome) with the same artwork, in 1C-3.6~~ | **DECIDED:** yes, replace every Expo placeholder icon |
+| ~~SP-1~~ | ~~Install `expo-splash-screen` (Expo-maintained; the SDK 58-compatible version chosen by `npx expo install`) for the launch-screen configuration and to hold the launch screen during start-up~~ | **DECIDED:** yes, Expo's official `expo-splash-screen` |
+| ~~SP-2~~ | ~~Launch-screen background colour~~ | **DECIDED:** Warm White `#FAF8F3` |
+| ~~SP-3~~ | ~~Maximum time the launch screen is held before the branded in-app loading screen takes over~~ | **DECIDED:** at most 3 s, dismissed immediately when the app is ready |
+| ~~SP-4~~ | ~~Share the 1C-3.5 Android development build for the launch-screen configuration (one build instead of two)~~ | **DECIDED (26 Nov 2026):** yes, share the 1C-3.5 Android build where practical |
+| ~~VI-1~~ | ~~App-icon composition~~ | **DECIDED (26 Nov 2026):** option 1, full-bleed Market Gold with the Deep Green bag |
+| ~~LG-1a~~ | ~~Confirm the refined mark geometry (§5.4.1)~~ | **APPROVED (26 Nov 2026):** 9 % handle line, handle 32 % × 21 %, everything else unchanged; the initial product identity, subject to possible refinement before public launch |
+| ~~MO-1~~ | ~~Haptic feedback (`expo-haptics`, a new package)~~ | **DECIDED:** no haptics for now |
+| ~~MO-2~~ | ~~Screen push / pop style on the hand-built stacks, and the in-app opening transition after the launch screen~~ | **DECIDED:** a subtle fade with a small upward movement |
+| ~~MO-3~~ | ~~Success highlight on the changed item (a short tint flash) in addition to the toast~~ | **DECIDED:** yes, a brief highlight after a successful save; off under Reduce Motion |
 | IG-1 | **Which gate is the iOS release gate:** G2, or the pilot gate if iPhones take part in the pilot. Not decided; there's no evidence yet on pilot iPhone participation (also in the roadmap's §9) | Owner decides once pilot device plans are known |
 | ~~V-1 – V-6~~ | ~~Spec 08 revision decisions~~ | **Approved with C-1a (25 Nov 2026):** Stock value (about) only in cost state 1; light headers; the three colour corrections in 1C-3.2; C-1 split into C-1a and C-1b; spec 08 revision 2 and specification set 5.2; follow-up documentation after C-1a approval |
 | ~~C-1a~~ | ~~Written spec 08 revision 2 approval~~ | **APPROVED (25 Nov 2026):** adopted as [08-visual-design.md](../product-specification/08-visual-design.md); specification set 5.2 |
