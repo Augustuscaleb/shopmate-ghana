@@ -321,27 +321,48 @@ Devices: Samsung Galaxy A06 (Android 16) and iPhone 13 Pro Max. DET-13 needs bot
 
 Also to repeat after 1C-3.1 (plan §7): D2-11, D2-12, D2-13, MD-09, MD-10 — NOT TESTED for 1C-3.1. Earlier results for those checks were recorded before 1C-3.1 and do not count for it.
 
-## Stage 1C-3.2 — Component gallery, Checkpoint C-1b (checklist written; NOT TESTED)
+## Stage 1C-3.2 — Component gallery, Checkpoint C-1b (C-1b APPROVED by the owner, 2026-11-26)
 
-**Status: no owner-reported device evidence yet. Every check below is NOT TESTED, and C-1b is not approved.** Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md), "GAL". Run the app in development mode (Expo Go, or the development build connected to the development server); the gallery is not in release builds. Fictitious examples only; the gallery reads and writes no shop data.
+**Status: the owner physically reviewed the gallery on the iPhone 13 Pro Max and the Galaxy A06 and approved Checkpoint C-1b (owner-reported, 2026-11-26; code `cdae923`). Results for the individual GAL checks were not reported separately, so they are recorded as "not reported" rather than PASS.** Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md), "GAL". Run the app in development mode (Expo Go, or the development build connected to the development server); the gallery is not in release builds. Fictitious examples only; the gallery reads and writes no shop data.
 
 | ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
 |---|---|---|---|
-| GAL-01 | Opens from More; both Backs return | NOT TESTED | NOT TESTED (screen Back only) |
-| GAL-02 | Screen size, class, text size, Reduce Motion shown | NOT TESTED | NOT TESTED |
-| GAL-03 | Four control levels, nothing oversized (B-4) | NOT TESTED | NOT TESTED |
-| GAL-04 | Button states: pressed, busy, disabled reason, confirmation | NOT TESTED | NOT TESTED |
-| GAL-05 | Icon actions and light header; screen-reader labels | NOT TESTED | NOT TESTED |
-| GAL-06 | Text fields: no self-focus, GH₵, focus outline, error | NOT TESTED | NOT TESTED |
-| GAL-07 | Bottom sheet with the keyboard | NOT TESTED | NOT TESTED |
-| GAL-08 | Chips, badges, cards, rows, banners, toast, loading, empty | NOT TESTED | NOT TESTED |
-| GAL-09 | Typography, colours, contrast table, icons | NOT TESTED | NOT TESTED |
-| GAL-10 | 130 % and largest text: nothing clipped | NOT TESTED | NOT TESTED |
-| GAL-11 | Reduce Motion: nothing animates | NOT TESTED | NOT TESTED |
-| GAL-12 | Smooth scrolling (A06 reference) | NOT TESTED | n/a (A06 is the reference) |
-| GAL-13 | Screen size in dp recorded | NOT TESTED | NOT TESTED |
+| GAL-01 | Opens from More; both Backs return | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-02 | Screen size, class, text size, Reduce Motion shown | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-03 | Four control levels, nothing oversized (B-4) | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-04 | Button states: pressed, busy, disabled reason, confirmation | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-05 | Icon actions and light header; screen-reader labels | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-06 | Text fields: no self-focus, GH₵, focus outline, error | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-07 | Bottom sheet with the keyboard | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-08 | Chips, badges, cards, rows, banners, toast, loading, empty | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-09 | Typography, colours, contrast table, icons | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-10 | 130 % and largest text: nothing clipped | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-11 | Reduce Motion: nothing animates | Not reported (C-1b approved) | Not reported (C-1b approved) |
+| GAL-12 | Smooth scrolling (A06 reference) | Not reported (C-1b approved) | n/a (A06 is the reference) |
+| GAL-13 | Screen size in dp recorded | Not reported (C-1b approved) | Not reported (C-1b approved) |
 
-**C-1b decision:** NOT yet made (owner).
+**C-1b decision:** APPROVED by the owner (2026-11-26).
+
+## Stage 1C-3.3 — Redesigned Today, navigation and Products (checklist written; NOT TESTED)
+
+**Status: no owner-reported device evidence yet. Every check below is NOT TESTED.** Code: the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit". Steps and expected results: [Stage 1C-3 plan §8.1](../stages/STAGE-1C-3-PLAN.md), "RD". The earlier D2, MD, DET and QPS results were recorded on the previous design and are to be repeated on the redesign.
+
+| ID | Check (short) | Galaxy A06 | iPhone 13 Pro Max |
+|---|---|---|---|
+| RD-01 | Today: new layout | NOT TESTED | NOT TESTED |
+| RD-02 | Today: refresh, tiles, quick actions | NOT TESTED | NOT TESTED |
+| RD-03 | Tab bar and Back | NOT TESTED | NOT TESTED |
+| RD-04 | More and the account panel | NOT TESTED | NOT TESTED |
+| RD-05 | Products list: search, chips, sort, rows | NOT TESTED | NOT TESTED |
+| RD-06 | Quick price sheet (iPhone fix) | NOT TESTED | NOT TESTED |
+| RD-07 | Product Details and the Edit pencil | NOT TESTED | NOT TESTED |
+| RD-08 | Archive asks first; Restore at once (B-6) | NOT TESTED | NOT TESTED |
+| RD-09 | Add and Edit forms; Save bar above the keyboard | NOT TESTED | NOT TESTED |
+| RD-10 | Cost correction confirmation (B-6) | NOT TESTED | NOT TESTED |
+| RD-11 | Categories | NOT TESTED | NOT TESTED |
+| RD-12 | 130 % and largest text | NOT TESTED | NOT TESTED |
+| RD-13 | Reduce Motion | NOT TESTED | NOT TESTED |
+| RD-14 | A06 performance with 35+ products | NOT TESTED | n/a (A06 is the reference) |
 
 ## Issues found
 

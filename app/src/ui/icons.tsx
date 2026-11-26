@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 /**
  * Small line icons drawn with plain views, so no icon font or new dependency is needed.
@@ -71,16 +71,6 @@ export function PlusIcon({ colour, size = 24 }: IconProps) {
   );
 }
 
-/** Attention: an exclamation mark in a circle (always paired with words). */
-export function AlertIcon({ colour, size = 24 }: IconProps) {
-  return (
-    <View style={[styles.box, { width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: colour }]} accessible={false}>
-      <Text style={{ color: colour, fontWeight: '800', fontSize: size * 0.6, lineHeight: size * 0.75 }} allowFontScaling={false}>!</Text>
-    </View>
-  );
-}
-
-/** Back: a chevron. */
 export function ChevronLeftIcon({ colour, size = 24 }: IconProps) {
   const arm = size * 0.42;
   return (

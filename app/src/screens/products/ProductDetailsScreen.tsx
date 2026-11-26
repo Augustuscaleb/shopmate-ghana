@@ -5,8 +5,9 @@
  * the existing form; "Change price" opens the existing quick price sheet; "Correct cost
  * price" opens the existing audited screen; Archive / Restore asks for confirmation first.
  *
- * Built with the current components and colours: the new design system and restyling come in
- * 1C-3.2 and 1C-3.3 (owner decisions V-3, C-1b).
+ * Stage 1C-3.3: redesigned on the v2 kit after the owner's gallery review (C-1b approved, 26 Nov
+ * 2026). Confirmation only for the destructive action (Archive); Restore is harmless and
+ * reversible, so it runs at once with a short confirmation message.
  *
  * Figures: confirmed values (selling price, stock, low-stock level) have no "(about)"; estimates
  * always do. The average cost has four states and margin is shown only with the current one
@@ -24,13 +25,14 @@
  *   state 4 ("no figure, not even an old one"), and margin and Stock value (about) are hidden.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Notice } from '../../ui/components';
-import { Card, EmptyState, HeaderIconButton, OfflineBar, ScreenHeader, StockChip, SuccessFlash, UpdatedLine } from '../../ui/surfaces';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { FadeIn, Skeleton } from '../../ui/animated';
-import { BoxIcon, PencilIcon } from '../../ui/icons';
+import {
+  AppText, Banner, Button, Card, Divider, EmptyState, IconButton, Notice, ScreenHeader, StatusBadge, StockBadge, UpdatedLine,
+  color, confirmAction, control, radius, space, stockTone, useLayout, useToast, type ColorRole,
+} from '../../ui/kit';
+import { BoxIcon, EditIcon, InfoIcon } from '../../ui/kit/icons';
 import { STOCK_STATE_STYLE, stockState } from '../../ui/stockStatus';
-import { colours, radius, space, touch, type } from '../../ui/theme';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { useFreshness } from '../../ui/useFreshness';
 import { useLatestRequest } from '../../ui/useLatestRequest';
@@ -160,34 +162,31 @@ export function ProductDetailsScreen({ productId, businessId, products, visible,
   // Not while a change is being saved, nor while the price sheet is open (it runs when they end)
   useFreshness({ visible, lastLoadedAt: lastAttemptAt, busy: busy || priceFor !== null, refresh: () => { refreshSilently(); } });
   useEffect(() => { if (notice) { setFlash(notice); onNoticeShown(); } }, [notice]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const toggleArchive = (product: Product) => {
-    const archiving = product.active;
-    Alert.alert(
-      archiving ? `Archive ${product.name}?` : `Restore ${product.name}?`,
-      archiving
-        ? 'It will be hidden from your product list. Nothing is deleted, its history is kept, and you can restore it at any time.'
-        : 'It will appear in your product list again, and you can change it.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: archiving ? 'Archive' : 'Restore',
-          style: archiving ? 'destructive' : 'default',
-          onPress: async () => {
-            setMessage(null);
-            setBusy(true);
-            const res = await products.setArchived(businessId, product.id, archiving);
-            setBusy(false);
-            if (res.ok) {
-              ownChangeAt.current = Date.now();
-              setFlash(archiving ? `${product.name} archived` : `${product.name} restored`);
-              onChanged();
-            } else setMessage({ tone: outcomeTone(res.kind), text: res.message });
-          },
-        },
-      ],
-    );
+  /** Archive asks first (destructive); Restore is harmless and reversible, so it runs at once. */
+  const runArchive = async (product: Product, archiving: boolean) => {
+    setMessage(null);
+    setBusy(true);
+    const res = await products.setArchived(businessId, product.id, archiving);
+    setBusy(false);
+    if (res.ok) {
+      ownChangeAt.current = Date.now();
+      setFlash(archiving ? `${product.name} archived` : `${product.name} restored`);
+      onChanged();
+    } else setMessage({ tone: outcomeTone(res.kind), text: res.message });
   };
+  const toggleArchive = (product: Product) => {
+    if (!product.active) { runArchive(product, false); return; }
+    confirmAction({
+      title: `Archive ${product.name}?`,
+      message: 'It will be hidden from your product list. Nothing is deleted, its history is kept, and you can restore it at any time.',
+      confirmLabel: 'Archive', destructive: true, onConfirm: () => { runArchive(product, true); },
+    });
+  };
+
+  const { show, toast } = useToast();
+  useEffect(() => { if (flash) { show(flash); setFlash(null); } }, [flash]); // eslint-disable-line react-hooks/exhaustive-deps
+  const layout = useLayout();
+  const pad = layout.width === 'compact' ? space.md : space.lg;
 
   const data = state.kind === 'ready' ? state.data : null;
   const product = data?.product ?? null;
@@ -195,38 +194,40 @@ export function ProductDetailsScreen({ productId, businessId, products, visible,
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader title={product?.name ?? 'Product'} subtitle={data && product ? categoryLabel(product.categoryId, data.categories) : undefined} onBack={onBack}
-          action={product ? (
-            <HeaderIconButton icon={PencilIcon} label="Edit product" onPress={() => onEdit(product.id)}
-              disabled={archived} disabledReason="Archived. Restore it to make changes." />
-          ) : undefined}>
-          {product ? (
-            <View style={styles.headerMeta}>
-              <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
-              {archived ? <View style={styles.archivedTag}><Text style={styles.archivedTagText}>Archived</Text></View> : null}
-            </View>
-          ) : null}
-          {data ? (
-            <UpdatedLine label={updatedLabel(data.at, new Date(), refreshFailed)} failed={refreshFailed} onRetry={() => { refreshSilently({ retry: true }); }} onGreen />
-          ) : null}
-        </ScreenHeader>
+      <ScreenHeader title={product?.name ?? 'Product'} subtitle={data && product ? categoryLabel(product.categoryId, data.categories) : undefined} onBack={onBack}
+        action={product ? (
+          <IconButton icon={EditIcon} label="Edit product" tone="header" onPress={() => onEdit(product.id)}
+            disabled={archived} disabledReason="Archived. Restore it to make changes." />
+        ) : undefined}>
+        {product ? (
+          <View style={styles.headerMeta}>
+            <StockBadge qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
+            {archived ? <StatusBadge label="Archived" tone="neutral" /> : null}
+          </View>
+        ) : null}
+        {data ? (
+          <UpdatedLine label={updatedLabel(data.at, new Date(), refreshFailed) ?? ''} failed={refreshFailed} onRetry={() => { refreshSilently({ retry: true }); }} />
+        ) : null}
+      </ScreenHeader>
 
-        <View style={styles.body}>
-          {offline ? <OfflineBar onCheck={() => { products.checkConnection(businessId).then((ok) => { if (ok) refreshSilently({ retry: true }); }); }} /> : null}
-          <SuccessFlash message={flash} onDone={() => setFlash(null)} />
+      <ScrollView contentContainerStyle={[styles.scroll, { padding: pad }]}>
+        <View style={styles.column}>
+          {offline ? (
+            <Banner tone="offline" message="You're offline. Saving changes needs internet; your typing is kept."
+              action={{ label: 'Check again', onPress: () => { products.checkConnection(businessId).then((ok) => { if (ok) refreshSilently({ retry: true }); }); } }} />
+          ) : null}
 
           {state.kind === 'loading' ? <DetailsSkeleton /> : state.kind === 'error' ? (
             <FadeIn>
               <View style={styles.gap}>
-                <Notice tone="error" text={state.message} />
-                <Button label="Try again" onPress={() => { setState({ kind: 'loading' }); load(); }} />
+                <Banner tone="danger" message={state.message} />
+                <Button label="Try again" kind="secondary" onPress={() => { setState({ kind: 'loading' }); load(); }} />
               </View>
             </FadeIn>
           ) : state.kind === 'not_found' ? (
             <EmptyState icon={BoxIcon} title="This product can't be found"
               body="It may have been deleted on another device. Go back to your products; the list will be refreshed."
-              action={<View style={styles.emptyAction}><Button label="Back to products" onPress={onBackToList} /></View>} />
+              action={<Button label="Back to products" onPress={onBackToList} />} />
           ) : (
             <FadeIn>
               <DetailsBody data={state.data} costUnavailable={refreshFailed} offline={offline} busy={busy} message={message} changedElsewhere={changedElsewhere}
@@ -252,6 +253,7 @@ export function ProductDetailsScreen({ productId, businessId, products, visible,
           ownChangeAt.current = Date.now();
           setState((s) => (s.kind === 'ready' ? { ...s, data: { ...s.data, product: p } } : s));
         }} />
+      {toast}
     </View>
   );
 }
@@ -269,69 +271,65 @@ function DetailsBody({ data, costUnavailable, offline, busy, message, changedEls
   const stockValue = stockValueAbout(cost);
   const archived = !product.active;
   const status = STOCK_STATE_STYLE[stockState(product.stockQty, product.lowStockLevel)];
+  const statusTone = stockTone(product.stockQty, product.lowStockLevel);
   const unitWord = product.unit ?? 'unit';
 
   return (
     <View style={styles.gap}>
       {archived ? (
-        <View style={styles.archivedBanner} accessibilityLiveRegion="polite">
-          <Text style={styles.archivedBannerTitle}>This product is archived.</Text>
-          <Text style={styles.archivedBannerText}>Restore it to make changes. It is hidden from your product list, and its history is kept.</Text>
-        </View>
+        <Banner tone="warning" title="This product is archived." message="Restore it to make changes. It is hidden from your product list, and its history is kept." />
       ) : null}
       {costUnavailable ? (
-        <View style={styles.staleBanner} accessibilityLiveRegion="polite">
-          <Text style={styles.staleTitle}>Couldn't refresh</Text>
-          <Text style={styles.staleText}>
-            The price and stock below are from {formatTime(data.at)} and may have changed. Cost and margin are hidden until the figures can be loaded again.
-          </Text>
-        </View>
+        <Banner tone="warning" title="Couldn't refresh"
+          message={`The price and stock below are from ${formatTime(data.at)} and may have changed. Cost and margin are hidden until the figures can be loaded again.`} />
       ) : null}
-      {changedElsewhere ? <Notice text="This product was changed on another device. The latest details are shown." /> : null}
+      {changedElsewhere ? <Banner tone="info" message="This product was changed on another device. The latest details are shown." /> : null}
       {message ? <Notice tone={message.tone} text={message.text} /> : null}
 
       {/* Selling price: a confirmed value, so no "(about)" */}
       <Card style={styles.hero}>
-        <Text style={styles.heroLabel}>Selling price</Text>
-        <Text style={styles.heroValue} accessibilityLabel={`Selling price ${formatCedis(product.sellingPrice)} per ${unitWord}`}>
+        <AppText variant="caption" tone="textSecondary" style={styles.overline}>Selling price</AppText>
+        <AppText variant="display" number accessibilityLabel={`Selling price ${formatCedis(product.sellingPrice)} per ${unitWord}`}>
           {formatCedis(product.sellingPrice)}
-        </Text>
-        <Text style={styles.heroUnit}>per {unitWord}</Text>
+        </AppText>
+        <AppText variant="body" tone="textSecondary">per {unitWord}</AppText>
       </Card>
 
       <View style={styles.stats}>
-        <Stat label="In stock" value={`${product.stockQty.toLocaleString('en-GB')} ${product.unit ?? (Math.abs(product.stockQty) === 1 ? 'unit' : 'units')}`}
-          detail={`${status.label} · Low at ${product.lowStockLevel.toLocaleString('en-GB')}`} detailColour={status.text} />
-        <Stat label={costShown.label} value={costShown.value} detail={costShown.detail} note={costShown.note} figure={costShown.figure}
+        <Figure label="In stock" value={`${product.stockQty.toLocaleString('en-GB')} ${product.unit ?? (Math.abs(product.stockQty) === 1 ? 'unit' : 'units')}`}
+          detail={`${status.label} · Low at ${product.lowStockLevel.toLocaleString('en-GB')}`} detailTone={statusTone} />
+        <Figure label={costShown.label} value={costShown.value} detail={costShown.detail} note={costShown.note} figure={costShown.figure}
           help={AVERAGE_COST_HELP} helpName="average cost"
-          action={cost.state === 'unavailable' ? <Button label="Try again" kind="link" onPress={onRetry} /> : null} />
-        <Stat label={margin.label} value={margin.value} detail={margin.detail} figure={margin.figure}
-          valueColour={margin.loss ? colours.danger : undefined} detailColour={margin.loss ? colours.danger : undefined}
+          action={cost.state === 'unavailable' ? <Button label="Try again" kind="quiet" onPress={onRetry} /> : null} />
+        <Figure label={margin.label} value={margin.value} detail={margin.detail} figure={margin.figure}
+          valueTone={margin.loss ? 'danger' : undefined} detailTone={margin.loss ? 'danger' : undefined}
           help={MARGIN_HELP} helpName="margin" />
-        {stockValue !== null ? <Stat label="Stock value (about)" value={formatCedis(stockValue)} detail="Stock × average cost" /> : null}
+        {stockValue !== null ? <Figure label="Stock value (about)" value={formatCedis(stockValue)} detail="Stock × average cost" /> : null}
       </View>
-      <Text style={styles.caption}>Average cost is worked out from your stock value; it changes with restocks and corrections.</Text>
+      <AppText variant="caption" tone="textSecondary">Average cost is worked out from your stock value; it changes with restocks and corrections.</AppText>
 
-      <Card style={styles.section}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">Details</Text>
+      <Card padded={false}>
+        <View style={styles.cardHead}><AppText variant="heading" accessibilityRole="header">Details</AppText></View>
         <InfoRow label="Unit" value={product.unit ?? 'Not set'} />
         <InfoRow label="Category" value={categoryLabel(product.categoryId, categories)} />
         <InfoRow label="Low-stock level" value={`${product.lowStockLevel.toLocaleString('en-GB')}`} hint="Shown as Low at or below this" />
-        <InfoRow label="Stock status" value={status.label} valueColour={status.text} last />
+        <InfoRow label="Stock status" value={status.label} valueTone={statusTone} />
       </Card>
 
-      <Card style={styles.section}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">More actions</Text>
-        <Button label="Change price" kind="secondary" onPress={onChangePrice} disabled={archived || offline || busy} />
-        <Button label="Correct cost price" kind="secondary" onPress={onCorrectCost} disabled={archived || offline || busy} />
-        {archived ? <Text style={styles.caption}>Restore it to make changes.</Text>
-          : offline ? <Text style={styles.caption}>Changes need internet.</Text> : null}
-        <Text style={styles.caption}>Stock changes only through Restock and Adjust stock, so its history stays complete.</Text>
-        <View style={styles.divider} />
+      <Card>
+        <AppText variant="heading" accessibilityRole="header">More actions</AppText>
+        <View style={styles.actionRow}>
+          <Button label="Change price" kind="secondary" onPress={onChangePrice} disabled={archived || offline || busy} />
+          <Button label="Correct cost price" kind="secondary" onPress={onCorrectCost} disabled={archived || offline || busy} />
+        </View>
+        {archived ? <AppText variant="caption" tone="textSecondary">Restore it to make changes.</AppText>
+          : offline ? <AppText variant="caption" tone="textSecondary">Changes need internet.</AppText> : null}
+        <AppText variant="caption" tone="textSecondary">Stock changes only through Restock and Adjust stock, so its history stays complete.</AppText>
+        <Divider />
         {archived ? (
           <Button label="Restore product" kind="secondary" onPress={onToggleArchive} busy={busy} disabled={offline} />
         ) : (
-          <DangerButton label="Archive product" onPress={onToggleArchive} busy={busy} disabled={offline} />
+          <Button label="Archive product" kind="destructive" onPress={onToggleArchive} busy={busy} disabled={offline} />
         )}
       </Card>
     </View>
@@ -339,53 +337,45 @@ function DetailsBody({ data, costUnavailable, offline, busy, message, changedEls
 }
 
 /** One figure (spec 08 Stat): label (with an optional ⓘ), value, and a line or two beneath. */
-function Stat({ label, value, detail = null, note = null, figure = true, help, helpName, valueColour, detailColour, action }: {
+function Figure({ label, value, detail = null, note = null, figure = true, help, helpName, valueTone, detailTone, action }: {
   label: string; value: string; detail?: string | null; note?: string | null; figure?: boolean;
-  help?: string; helpName?: string; valueColour?: string; detailColour?: string; action?: ReactNode;
+  help?: string; helpName?: string; valueTone?: ColorRole; detailTone?: ColorRole; action?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Card style={styles.stat}>
       <View style={styles.statLabelRow}>
-        <Text style={styles.statLabel}>{label}</Text>
+        <AppText variant="caption" tone="textSecondary" style={styles.statLabel}>{label}</AppText>
         {help ? (
           <Pressable accessibilityRole="button" accessibilityLabel={`How ${helpName ?? label} is worked out`} accessibilityState={{ expanded: open }}
-            onPress={() => setOpen((o) => !o)} hitSlop={12} style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}>
-            <Text style={styles.infoButtonText}>i</Text>
+            onPress={() => setOpen((o) => !o)} hitSlop={14} style={({ pressed }) => [styles.infoButton, pressed && styles.pressed]}>
+            <InfoIcon colour={color.brand} size={18} />
           </Pressable>
         ) : null}
       </View>
       <View accessible accessibilityLabel={[label, value, detail, note].filter(Boolean).join('. ')}>
-        <Text style={[figure ? styles.statValue : styles.statWords, valueColour ? { color: valueColour } : null]}>{value}</Text>
-        {detail ? <Text style={[styles.statDetail, detailColour ? { color: detailColour } : null]}>{detail}</Text> : null}
-        {note ? <Text style={styles.statNote}>{note}</Text> : null}
+        <AppText variant={figure ? 'displaySmall' : 'label'} number={figure} tone={valueTone ?? 'textPrimary'}>{value}</AppText>
+        {detail ? <AppText variant="caption" tone={detailTone ?? 'textSecondary'} style={styles.detail}>{detail}</AppText> : null}
+        {note ? <AppText variant="caption" tone="textSecondary">{note}</AppText> : null}
       </View>
       {action}
-      {open && help ? <Text style={styles.help} accessibilityLiveRegion="polite">{help}</Text> : null}
+      {open && help ? <View style={styles.help} accessibilityLiveRegion="polite"><AppText variant="caption">{help}</AppText></View> : null}
     </Card>
   );
 }
 
-function InfoRow({ label, value, hint, valueColour, last = false }: { label: string; value: string; hint?: string; valueColour?: string; last?: boolean }) {
+function InfoRow({ label, value, hint, valueTone }: { label: string; value: string; hint?: string; valueTone?: ColorRole }) {
   return (
-    <View style={[styles.infoRow, !last && styles.infoRowBorder]} accessible accessibilityLabel={`${label}: ${value}`}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        {hint ? <Text style={styles.caption}>{hint}</Text> : null}
+    <View>
+      <Divider />
+      <View style={styles.infoRow} accessible accessibilityLabel={`${label}: ${value}`}>
+        <View style={styles.infoText}>
+          <AppText variant="body" tone="textSecondary">{label}</AppText>
+          {hint ? <AppText variant="caption" tone="textSecondary">{hint}</AppText> : null}
+        </View>
+        <AppText variant="label" tone={valueTone ?? 'textPrimary'} style={styles.infoValue}>{value}</AppText>
       </View>
-      <Text style={[styles.infoValue, valueColour ? { color: valueColour } : null]}>{value}</Text>
     </View>
-  );
-}
-
-/** The destructive action at the end of the page (spec 08 §9.2), confirmed before anything happens. */
-function DangerButton({ label, onPress, busy, disabled }: { label: string; onPress: () => void; busy: boolean; disabled: boolean }) {
-  const inactive = busy || disabled;
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: inactive, busy }}
-      onPress={inactive ? undefined : onPress} style={({ pressed }) => [styles.danger, pressed && !inactive && styles.pressed, inactive && styles.inactive]}>
-      <Text style={styles.dangerText}>{busy ? 'Working…' : label}</Text>
-    </Pressable>
   );
 }
 
@@ -407,7 +397,7 @@ function DetailsSkeleton() {
           </Card>
         ))}
       </View>
-      <Card style={styles.section}>
+      <Card>
         <Skeleton width="30%" height={18} />
         <Skeleton width="100%" height={14} />
         <Skeleton width="100%" height={14} />
@@ -418,46 +408,25 @@ function DetailsSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
-  scroll: { paddingBottom: space.xl },
-  body: { padding: space.md, gap: space.md },
+  root: { flex: 1, backgroundColor: color.bg },
+  scroll: { paddingBottom: space.xxl },
+  column: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: space.md },
   gap: { gap: space.md },
-  headerMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm, marginTop: space.xs },
-  archivedTag: { borderRadius: radius.pill, paddingHorizontal: space.sm + 2, paddingVertical: 4, backgroundColor: colours.warnBg },
-  archivedTagText: { fontSize: type.caption, fontWeight: '800', color: colours.warnText },
-  archivedBanner: { backgroundColor: colours.warnBg, borderRadius: radius.md, padding: space.md, borderLeftWidth: 4, borderLeftColor: colours.warnText, gap: space.xs },
-  archivedBannerTitle: { fontSize: type.body, fontWeight: '800', color: colours.warnText },
-  archivedBannerText: { fontSize: type.body, color: colours.ink },
-  staleBanner: { backgroundColor: colours.warnBg, borderRadius: radius.md, padding: space.md, borderLeftWidth: 4, borderLeftColor: colours.warnText, gap: space.xs },
-  staleTitle: { fontSize: type.body, fontWeight: '800', color: colours.warnText },
-  staleText: { fontSize: type.body, color: colours.ink },
-  hero: { padding: space.md + 4, gap: 2 },
-  heroLabel: { fontSize: type.caption, fontWeight: '700', color: colours.stone },
-  heroValue: { fontSize: type.keyFigure + 4, fontWeight: '800', color: colours.ink, fontVariant: ['tabular-nums'] },
-  heroUnit: { fontSize: type.body, color: colours.stone },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  pressed: { opacity: 0.6 },
+  headerMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs, marginTop: space.xxs },
+  hero: { gap: 2 },
+  overline: { fontWeight: '600', letterSpacing: 0.4 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   // Two per row on phones; one per row when large text makes them narrower than this
-  stat: { flexGrow: 1, flexBasis: '45%', minWidth: 150, padding: space.md, gap: space.xs },
-  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: 24 },
-  statLabel: { flexShrink: 1, fontSize: type.caption, fontWeight: '700', color: colours.stone },
-  statValue: { fontSize: type.section + 2, fontWeight: '800', color: colours.ink, fontVariant: ['tabular-nums'] },
-  statWords: { fontSize: type.body, fontWeight: '800', color: colours.ink },
-  statDetail: { fontSize: type.caption, fontWeight: '600', color: colours.stone, marginTop: 2 },
-  statNote: { fontSize: type.caption, color: colours.stone, marginTop: 2 },
-  infoButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: colours.shopGreen, alignItems: 'center', justifyContent: 'center' },
-  infoButtonText: { fontSize: type.caption, fontWeight: '800', color: colours.shopGreen, fontStyle: 'italic' },
-  help: { fontSize: type.caption, color: colours.ink, backgroundColor: colours.tint, borderRadius: radius.sm, padding: space.sm, lineHeight: 20 },
-  caption: { fontSize: type.caption, color: colours.stone },
-  section: { padding: space.md, gap: space.md },
-  sectionTitle: { fontSize: type.section, fontWeight: '800', color: colours.ink },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch.min, paddingBottom: space.sm },
-  infoRowBorder: { borderBottomWidth: 1, borderBottomColor: colours.sand },
-  infoLabel: { fontSize: type.body, color: colours.stone },
-  infoValue: { flexShrink: 1, fontSize: type.body, fontWeight: '700', color: colours.ink, textAlign: 'right' },
-  divider: { height: 1, backgroundColor: colours.sand },
-  danger: { minHeight: touch.primaryButton, borderRadius: 12, borderWidth: 2, borderColor: colours.danger, backgroundColor: colours.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.md },
-  dangerText: { color: colours.danger, fontSize: type.body + 1, fontWeight: '700' },
-  pressed: { opacity: 0.7 },
-  inactive: { opacity: 0.5 },
-  emptyAction: { alignSelf: 'stretch', marginTop: space.sm },
+  stat: { flexGrow: 1, flexBasis: '45%', minWidth: 150, gap: space.xxs },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, minHeight: 24 },
+  statLabel: { flexShrink: 1, fontWeight: '600' },
+  infoButton: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  detail: { fontWeight: '600', marginTop: 2 },
+  help: { backgroundColor: color.successBg, borderRadius: radius.sm, padding: space.xs },
+  cardHead: { paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.xs },
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space.md, rowGap: 2, minHeight: control.touchTarget + 8, paddingHorizontal: space.md, paddingVertical: space.xs },
+  infoText: { flexGrow: 1, flexShrink: 1, gap: 2 },
+  infoValue: { flexShrink: 1, textAlign: 'right' },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
 });

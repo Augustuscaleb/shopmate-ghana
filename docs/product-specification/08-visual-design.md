@@ -7,7 +7,7 @@
 - It supersedes the visual parts of [STAGE-1C-2-VISUAL-DESIGN.md](../stages/STAGE-1C-2-VISUAL-DESIGN.md).
 - [design-preview.html](design-preview.html) shows revision 1 and is kept for reference only.
 
-**Still required: Checkpoint C-1b,** the owner's physical review of the component gallery, icon set and contrast table on the Galaxy A06 and the iPhone after increment 1C-3.2. **No screen may be redesigned before C-1b is approved.** C-1b can lead to adjustments of this revision.
+**Checkpoint C-1b: APPROVED by the owner (26 Nov 2026)** after a physical review of the component gallery, icon set and contrast table on the Galaxy A06 and the iPhone 13 Pro Max. Screens are redesigned from Stage 1C-3.3 on.
 
 Evidence markers as in the rest of the specification: **[A]** a reasoned design decision, to be confirmed with pilot users; **[V]** validated by research.
 
@@ -386,4 +386,4 @@ Spec-level acceptance, checked from 1C-3.3 onward:
 | V-5 | Numbering | **Agreed:** spec 08 revision 2; specification set revision 5.2 (on C-1a approval) |
 | V-6 | Follow-up documentation | **Done with adoption (25 Nov 2026):** `03-screens.md` updated (S-30, S-31, S-37), `design-preview.html` marked as revision 1, `STAGE-1C-2-VISUAL-DESIGN.md` marked as superseded |
 | C-1a | Approval of this written specification | **APPROVED by the owner (25 Nov 2026)** |
-| C-1b | Physical review of the component gallery on the Galaxy A06 and the iPhone, after 1C-3.2 and before any screen redesign | **Pending (mandatory)** |
+| C-1b | Physical review of the component gallery on the Galaxy A06 and the iPhone, after 1C-3.2 and before any screen redesign | **APPROVED by the owner (26 Nov 2026)** |

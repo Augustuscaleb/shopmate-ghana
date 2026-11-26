@@ -5,8 +5,8 @@
  * area with a maximum width, centred on wider screens. Padding follows the width class; on a
  * short (sideways) screen the header tightens. Text is never capped: titles wrap.
  */
-import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import type { ReactElement, ReactNode } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
 import { TOP_INSET } from '../layout';
 import { AppText } from './AppText';
 import { BackIcon } from './icons';
@@ -44,33 +44,42 @@ export function ScreenHeader({ title, subtitle, onBack, action, children }: {
   );
 }
 
-export function ScreenScaffold({ header, banners, children, width = 'content', footer }: {
+export function ScreenScaffold({ header, banners, children, width = 'content', footer, keyboard = false, refreshControl }: {
   header: ReactNode;
   banners?: ReactNode;
   children: ReactNode;
   /** "form" for forms and sheets (at most 640 dp); "content" for other screens (720 dp). */
   width?: 'content' | 'form';
-  /** A bar under the content (e.g. Save on forms), kept above the keyboard by the screen. */
+  /** A bar under the content (e.g. Save on forms); with `keyboard` it stays above the keyboard. */
   footer?: ReactNode;
+  /** A screen with fields: on iPhone the content and footer move up with the keyboard. */
+  keyboard?: boolean;
+  refreshControl?: ReactElement<RefreshControlProps>;
 }) {
   const layout = useLayout();
   const pad = screenPadding[layout.width];
-  return (
-    <View style={styles.root}>
-      {header}
-      <ScrollView contentContainerStyle={[styles.scroll, { padding: pad }]} keyboardShouldPersistTaps="handled">
+  const body = (
+    <>
+      <ScrollView contentContainerStyle={[styles.scroll, { padding: pad }]} keyboardShouldPersistTaps="handled" refreshControl={refreshControl}>
         <View style={[styles.column, { maxWidth: maxWidth[width] }]}>
           {banners}
           {children}
         </View>
       </ScrollView>
-      {footer ? <View style={[styles.footer, { paddingHorizontal: pad }]}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { paddingHorizontal: pad }]}><View style={[styles.column, { maxWidth: maxWidth[width] }]}>{footer}</View></View> : null}
+    </>
+  );
+  return (
+    <View style={styles.root}>
+      {header}
+      {keyboard ? <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{body}</KeyboardAvoidingView> : body}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg },
+  flex: { flex: 1 },
   header: { backgroundColor: color.headerBg, gap: space.xxs, borderBottomWidth: control.hairline, borderBottomColor: color.divider },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: control.touchTarget },
   back: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, minHeight: control.touchTarget, paddingRight: space.sm, marginLeft: -space.xxs },

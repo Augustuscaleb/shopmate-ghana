@@ -105,7 +105,7 @@ export function Stat({ label, value, detail, tone = 'textPrimary', detailTone = 
  */
 export function ListRow({ title, subtitle, value, badge, onPress, action, accessibilityLabel }: {
   title: string; subtitle?: string; value?: string; badge?: ReactNode; onPress?: () => void;
-  action?: { label: string; onPress: () => void; accessibilityLabel?: string }; accessibilityLabel?: string;
+  action?: { label: string; onPress: () => void; accessibilityLabel?: string; disabled?: boolean }; accessibilityLabel?: string;
 }) {
   const { fontScale } = useWindowDimensions();
   const stack = fontScale >= 1.5;
@@ -129,7 +129,7 @@ export function ListRow({ title, subtitle, value, badge, onPress, action, access
       ) : main}
       {action ? (
         <View style={styles.rowAction}>
-          <TextAction label={action.label} onPress={action.onPress} accessibilityLabel={action.accessibilityLabel} />
+          <TextAction label={action.label} onPress={action.onPress} accessibilityLabel={action.accessibilityLabel} disabled={action.disabled} />
         </View>
       ) : null}
     </View>

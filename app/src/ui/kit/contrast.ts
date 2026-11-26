@@ -56,6 +56,8 @@ export const KIT_PAIRS: readonly ContrastPair[] = [
   { label: 'Info on card', fg: color.info, bg: color.surface, use: 'text' },
   { label: 'Info on its tint', fg: color.info, bg: color.infoBg, use: 'text' },
   { label: 'Text on Market Gold', fg: color.textPrimary, bg: color.accent, use: 'text' },
+  { label: 'Note text on info tint', fg: color.textPrimary, bg: color.infoBg, use: 'text' },
+  { label: 'Secondary text on neutral tint', fg: color.textSecondary, bg: color.neutralBg, use: 'text' },
   { label: 'White on toast (ink)', fg: color.onBrand, bg: color.textPrimary, use: 'text' },
   { label: 'Control outline on card', fg: color.controlBorder, bg: color.surface, use: 'control' },
   { label: 'Control outline on background', fg: color.controlBorder, bg: color.bg, use: 'control' },

@@ -11,5 +11,6 @@ export { Banner, Card, Chip, Divider, EmptyState, ListRow, SectionHeader, Stat, 
 export { Sheet, SkeletonRow, SkeletonStat, SkeletonText, useToast } from './feedback';
 export { BackButton, ScreenHeader, ScreenScaffold } from './ScreenScaffold';
 export { useLayout } from './useLayout';
+export { Brand, BrandMark, Column, Notice, SearchField, StockBadge, TabBar, confirmAction, stockTone, type TabItem } from './app';
 export * from './layoutClass';
 export * as icons from './icons';

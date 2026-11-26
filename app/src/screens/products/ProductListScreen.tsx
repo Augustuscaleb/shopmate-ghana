@@ -1,19 +1,21 @@
 /**
- * S-30 Products (online-only in 1C-2, D-3) with S-32 Quick price change.
- * Server-paginated (range + exact count); search, category filter (with "Manage categories", owner
- * decision), sort A–Z or "Lowest stock" (a sort by stock quantity, fewest first: NOT a low-stock filter;
- * owner-accepted as temporary, 25 Nov 2026; the true low-stock list is S-35),
- * and archived products. Stock colours per D-6, always with a word.
+ * S-30 Products (online-only in 1C-2, D-3) with S-32 Quick price change — redesigned on the v2 kit
+ * (Stage 1C-3.3). Server-paginated (range + exact count); search, category filter (with "Manage
+ * categories"), sort A–Z or "Lowest stock" (a sort by stock quantity, fewest first: NOT a low-stock
+ * filter; owner-accepted as temporary, 25 Nov 2026; the true low-stock list is S-35), and archived
+ * products. Stock state always as a word and a colour (D-6). Loading, refresh, paging and the
+ * spinner rules are unchanged from increment 2b; only the presentation changed.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Field, Notice } from '../../ui/components';
-import { Card, EmptyState, FilterChip, ListSkeleton, OfflineBar, ScreenHeader, SearchField, StockChip, SuccessFlash, UpdatedLine } from '../../ui/surfaces';
+import { ActivityIndicator, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useFreshness } from '../../ui/useFreshness';
 import { updatedLabel } from '../../lib/freshness';
-import { FadeIn, PressableScale } from '../../ui/animated';
-import { BoxIcon, SearchIcon, TagIcon } from '../../ui/icons';
-import { colours, radius, space, touch, type } from '../../ui/theme';
+import { FadeIn } from '../../ui/animated';
+import {
+  AppText, Banner, Button, Card, Chip, EmptyState, ListRow, Notice, ScreenHeader, SearchField, Sheet, SkeletonRow,
+  StockBadge, TextAction, TextField, UpdatedLine, color, space, useLayout, useToast,
+} from '../../ui/kit';
+import { BoxIcon, PlusIcon, SearchIcon, TagIcon } from '../../ui/kit/icons';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { formatCedis } from '../../services/dashboard';
 import { pesewasToInput } from '../../lib/money';
@@ -154,70 +156,75 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
   const subtitle = state.kind === 'ready'
     ? `${state.total.toLocaleString('en-GB')} ${archived ? 'archived ' : ''}product${state.total === 1 ? '' : 's'}${filtered ? ' found' : ''}`
     : archived ? 'Archived products' : 'Your shop catalogue';
+  const layout = useLayout();
+  const pad = layout.width === 'compact' ? space.md : space.lg;
+  const { show, toast } = useToast();
+  // A message from another screen of the tab ("… saved") is shown once as a toast
+  useEffect(() => { if (flash) { show(flash); setFlash(null); } }, [flash]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const header = (
+  const controls = (
     <View style={styles.controls}>
-      {online === 'offline' ? <OfflineBar onCheck={() => { products.checkConnection(businessId).then((ok) => { if (ok) refreshList(); }); }} /> : null}
-      <SuccessFlash message={flash} onDone={() => setFlash(null)} />
+      {online === 'offline' ? (
+        <Banner tone="offline" message="You're offline. Saving changes needs internet; your typing is kept."
+          action={{ label: 'Check again', onPress: () => { products.checkConnection(businessId).then((ok) => { if (ok) refreshList(); }); } }} />
+      ) : null}
       <SearchField value={search} onChangeText={setSearch} placeholder="Search products" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow} keyboardShouldPersistTaps="handled">
-        <FilterChip label="All" selected={category.kind === 'all'} onPress={() => setCategory({ kind: 'all' })} />
+        <Chip label="All" selected={category.kind === 'all'} onPress={() => setCategory({ kind: 'all' })} />
         {categories.map((c) => (
-          <FilterChip key={c.id} label={c.name} selected={category.kind === 'category' && category.id === c.id} onPress={() => setCategory({ kind: 'category', id: c.id })} />
+          <Chip key={c.id} label={c.name} selected={category.kind === 'category' && category.id === c.id} onPress={() => setCategory({ kind: 'category', id: c.id })} />
         ))}
-        <FilterChip label="No category" selected={category.kind === 'none'} onPress={() => setCategory({ kind: 'none' })} />
-        <FilterChip label="Manage categories" icon={TagIcon} selected={false} onPress={onManageCategories} />
+        <Chip label="No category" selected={category.kind === 'none'} onPress={() => setCategory({ kind: 'none' })} />
+        <Chip label="Manage categories" icon={TagIcon} selected={false} onPress={onManageCategories} />
       </ScrollView>
       <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>Sort</Text>
-        <FilterChip label="A–Z" selected={sort === 'name'} onPress={() => setSort('name')} />
-        <FilterChip label="Lowest stock" selected={sort === 'lowest_stock'} onPress={() => setSort('lowest_stock')} />
-        <View style={{ flex: 1 }} />
-        <FilterChip label={archived ? 'Showing archived' : 'Archived'} selected={archived} onPress={() => setArchived((a) => !a)} />
+        <AppText variant="caption" tone="textSecondary" style={styles.sortLabel}>Sort</AppText>
+        <Chip label="A–Z" selected={sort === 'name'} onPress={() => setSort('name')} />
+        <Chip label="Lowest stock" selected={sort === 'lowest_stock'} onPress={() => setSort('lowest_stock')} />
+        <View style={styles.flex} />
+        <Chip label={archived ? 'Showing archived' : 'Archived'} selected={archived} onPress={() => setArchived((a) => !a)} />
       </View>
     </View>
   );
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Products" subtitle={subtitle}>
+      <ScreenHeader title="Products" subtitle={subtitle}
+        action={<Button label="Add product" icon={PlusIcon} onPress={onAdd} disabled={online === 'offline'} />}>
         {state.kind === 'ready' ? (
-          <UpdatedLine label={updatedLabel(state.updatedAt, new Date(), state.refreshFailed)} failed={state.refreshFailed}
-            onRetry={() => refreshList({ spinner: true })} onGreen />
+          <UpdatedLine label={updatedLabel(state.updatedAt, new Date(), state.refreshFailed) ?? ''} failed={state.refreshFailed}
+            onRetry={() => refreshList({ spinner: true })} />
         ) : null}
-        <View style={styles.headerAction}>
-          <Button label="+ Add product" kind="secondary" onPress={onAdd} disabled={online === 'offline'} />
-        </View>
       </ScreenHeader>
       <FlatList
         data={state.kind === 'ready' ? state.rows : []}
         keyExtractor={(p) => p.id}
         ListHeaderComponent={
           <>
-            {header}
-            {state.kind === 'ready' && state.reloading ? <ActivityIndicator color={colours.shopGreen} style={{ marginBottom: space.sm }} /> : null}
+            {controls}
+            {state.kind === 'ready' && state.reloading ? <ActivityIndicator color={color.brand} style={styles.reloading} /> : null}
           </>
         }
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingHorizontal: pad }]}
         renderItem={({ item, index }) => (
           <ProductRow product={item} categoryName={categoryName(item.categoryId)} index={index}
             onOpen={() => onOpen(item.id)} onChangePrice={() => setPriceFor(item)} priceDisabled={online === 'offline' || !item.active} />
         )}
-        ItemSeparatorComponent={() => <View style={{ height: space.sm }} />}
+        ItemSeparatorComponent={Separator}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         initialNumToRender={12}
         windowSize={7}
         removeClippedSubviews={Platform.OS === 'android'}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refreshList({ spinner: true }); }} colors={[colours.shopGreen]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { refreshList({ spinner: true }); }} colors={[color.brand]} tintColor={color.brand} />}
         ListEmptyComponent={
-          state.kind === 'loading' ? <ListSkeleton /> :
+          state.kind === 'loading' ? <View style={styles.skeletons}>{[0, 1, 2, 3, 4, 5].map((k) => <SkeletonRow key={k} />)}</View> :
           state.kind === 'error' ? (
             <FadeIn>
               <View style={styles.footer}>
-                <Notice tone="error" text={state.message} />
-                <Button label="Try again" onPress={() => load()} />
+                <Banner tone="danger" message={state.message} />
+                <Button label="Try again" kind="secondary" onPress={() => load()} />
               </View>
             </FadeIn>
           ) : filtered ? (
@@ -226,15 +233,15 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
             <EmptyState icon={BoxIcon} title="No archived products" body="Products you archive appear here, and you can restore them." />
           ) : (
             <EmptyState icon={BoxIcon} title="No products yet" body="Add the items you sell, with their selling price, and optionally their cost and the stock you have now."
-              action={<View style={{ alignSelf: 'stretch', marginTop: space.sm }}><Button label="Add your first product" onPress={onAdd} disabled={online === 'offline'} /></View>} />
+              action={<Button label="Add your first product" icon={PlusIcon} onPress={onAdd} disabled={online === 'offline'} />} />
           )
         }
         ListFooterComponent={
           state.kind !== 'ready' ? undefined
-            : state.loadingMore ? <ActivityIndicator color={colours.shopGreen} style={{ margin: space.lg }} />
+            : state.loadingMore ? <ActivityIndicator color={color.brand} style={styles.more} />
             : state.moreError ? <View style={styles.footer}><Notice tone="error" text={state.moreError} /><Button label="Try again" kind="secondary" onPress={loadMore} /></View>
-            : state.rows.length > 0 && state.rows.length >= state.total ? <Text style={styles.endText}>{state.total === 1 ? 'That is your only product.' : `All ${state.total.toLocaleString('en-GB')} shown.`}</Text>
-            : <View style={{ height: space.lg }} />
+            : state.rows.length > 0 && state.rows.length >= state.total ? <AppText variant="caption" tone="textSecondary" align="center" style={styles.endText}>{state.total === 1 ? 'That is your only product.' : `All ${state.total.toLocaleString('en-GB')} shown.`}</AppText>
+            : <View style={styles.footerSpace} />
         }
       />
       <QuickPriceSheet product={priceFor} businessId={businessId} products={products} onClose={() => setPriceFor(null)}
@@ -244,34 +251,30 @@ export function ProductListScreen({ businessId, products, onAdd, onOpen, onManag
           setFlash(`${p.name}: price is now ${formatCedis(price)}`);
         }}
         onRefreshed={(p) => setState((s) => s.kind === 'ready' ? { ...s, rows: s.rows.map((r) => r.id === p.id ? p : r) } : s)} />
+      {toast}
     </View>
   );
 }
 
+function Separator() {
+  return <View style={styles.separator} />;
+}
+
+/** S-30 row (spec 08 §9.1): the whole row opens Details; "Change price" is a quiet text action. */
 function ProductRow({ product, categoryName, index, onOpen, onChangePrice, priceDisabled }: {
   product: Product; categoryName: string | null; index: number; onOpen: () => void; onChangePrice: () => void; priceDisabled: boolean;
 }) {
   const meta = [categoryName, product.unit ? `per ${product.unit}` : null].filter(Boolean).join(' · ');
   return (
     <FadeIn delay={Math.min(index, 8) * 30}>
-      <Card style={styles.row}>
-        <PressableScale accessibilityRole="button" accessibilityLabel={`${product.name}, ${formatCedis(product.sellingPrice)}. Opens the product.`}
-          onPress={onOpen} style={styles.rowMain}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.rowName} numberOfLines={2}>{product.name}</Text>
-            {meta ? <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text> : null}
-            <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
-          </View>
-          <Text style={styles.rowPrice}>{formatCedis(product.sellingPrice)}</Text>
-        </PressableScale>
-        {product.active ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Change price of ${product.name}`} accessibilityState={{ disabled: priceDisabled }}
-            onPress={priceDisabled ? undefined : onChangePrice} style={({ pressed }) => [styles.rowAction, pressed && !priceDisabled && styles.pressed, priceDisabled && styles.disabled]}>
-            <Text style={styles.rowActionText}>Change price</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.rowAction}><Text style={styles.archivedText}>Archived</Text></View>
-        )}
+      <Card padded={false} style={styles.rowCard}>
+        <ListRow title={product.name} subtitle={meta || undefined} value={formatCedis(product.sellingPrice)}
+          badge={<StockBadge qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />}
+          onPress={onOpen} accessibilityLabel={`${product.name}, ${formatCedis(product.sellingPrice)}. Opens the product.`}
+          action={product.active
+            ? { label: 'Change price', onPress: onChangePrice, disabled: priceDisabled, accessibilityLabel: `Change price of ${product.name}` }
+            : undefined} />
+        {!product.active ? <View style={styles.archivedRow}><AppText variant="caption" tone="neutral" style={styles.bold}>Archived</AppText></View> : null}
       </Card>
     </FadeIn>
   );
@@ -279,7 +282,8 @@ function ProductRow({ product, categoryName, index, onOpen, onChangePrice, price
 
 /**
  * S-32 Quick price change: new selling price only (cost corrections are a separate, audited action, D-5).
- * Opened from the list and from Product Details (Stage 1C-3.1).
+ * Opened from the list and from Product Details (Stage 1C-3.1). Built on the kit Sheet, which is
+ * height-limited and scrolls, so the iPhone keyboard can't push it out of view (QPS-D1 – D6).
  */
 export function QuickPriceSheet({ product, businessId, products, onClose, onSaved, onRefreshed }: {
   product: Product | null; businessId: string; products: ProductsService; onClose: () => void; onSaved: (p: Product, price: number) => void;
@@ -316,57 +320,37 @@ export function QuickPriceSheet({ product, businessId, products, onClose, onSave
   // No autoFocus on the price field: on iPhone, focusing while the sheet is still appearing opened
   // the number pad on its own and the sheet was displaced out of view. The owner taps the field.
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}>
-        <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close" onPress={onClose} />
-        {/*
-          iPhone fix: the sheet can never be taller than the space left above the keyboard; if the
-          keyboard and large text leave less room, its contents scroll instead of being pushed out
-          of view. Taps on the buttons work while the keyboard is open.
-        */}
-        <FadeIn style={styles.sheet}>
-          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" bounces={false}>
-            <Text style={styles.sheetTitle} accessibilityRole="header">Change price</Text>
-            <Text style={styles.sheetSubtitle} numberOfLines={2}>{base.name} · now {formatCedis(base.sellingPrice)}</Text>
-            <Field label="New selling price (GH₵)" value={text} onChangeText={(t) => { setText(t); setError(undefined); }} keyboardType="decimal-pad"
-              error={error} hint="The change is recorded in the shop's history." selectTextOnFocus />
-            {outcome ? <Notice tone="info" text={outcome} /> : null}
-            {online === 'offline' ? <Notice tone="error" text="This needs internet. Your data is safe — try again when you're connected." /> : null}
-            <Button label="Save price" onPress={save} busy={busy} disabled={online === 'offline'} />
-            {unconfirmed ? (
-              <Button label="I've checked — save this price" kind="secondary" onPress={async () => { await products.discardUnconfirmed('update_product', base.id); setUnconfirmed(false); save(); }} />
-            ) : null}
-            <Button label="Cancel" kind="link" onPress={onClose} />
-          </ScrollView>
-        </FadeIn>
-      </KeyboardAvoidingView>
-    </Modal>
+    <Sheet visible title="Change price" subtitle={`${base.name} · now ${formatCedis(base.sellingPrice)}`} onClose={onClose}>
+      <TextField label="New selling price" prefix="GH₵" value={text} onChangeText={(t) => { setText(t); setError(undefined); }} keyboardType="decimal-pad"
+        error={error} hint="The change is recorded in the shop's history." selectTextOnFocus />
+      {outcome ? <Notice text={outcome} /> : null}
+      {online === 'offline' ? <Notice tone="error" text="This needs internet. Your data is safe — try again when you're connected." /> : null}
+      <Button label="Save price" size="large" fullWidth onPress={save} busy={busy} disabled={online === 'offline'} />
+      {unconfirmed ? (
+        <Button label="I've checked — save this price" kind="secondary" fullWidth onPress={async () => { await products.discardUnconfirmed('update_product', base.id); setUnconfirmed(false); save(); }} />
+      ) : null}
+      <View style={styles.center}><TextAction label="Cancel" onPress={onClose} /></View>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
-  pressed: { opacity: 0.7 },
-  disabled: { opacity: 0.45 },
-  headerAction: { marginTop: space.sm },
-  list: { padding: space.md, paddingBottom: space.xl },
-  controls: { gap: space.sm, marginBottom: space.md },
-  chipRow: { gap: space.sm, paddingVertical: 2 },
-  sortRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
-  sortLabel: { fontSize: type.caption, color: colours.stone, fontWeight: '700' },
-  row: { overflow: 'hidden' },
-  rowMain: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, padding: space.md, minHeight: touch.min + 24 },
-  rowName: { fontSize: type.body + 1, fontWeight: '800', color: colours.ink },
-  rowMeta: { fontSize: type.caption, color: colours.stone },
-  rowPrice: { fontSize: type.section, fontWeight: '800', color: colours.ink, fontVariant: ['tabular-nums'] },
-  rowAction: { minHeight: touch.min, borderTopWidth: 1, borderTopColor: colours.sand, alignItems: 'center', justifyContent: 'center' },
-  rowActionText: { fontSize: type.body, fontWeight: '800', color: colours.shopGreen },
-  archivedText: { fontSize: type.caption, fontWeight: '700', color: colours.stone },
-  footer: { gap: space.sm, marginTop: space.md },
-  endText: { textAlign: 'center', color: colours.stone, fontSize: type.caption, marginVertical: space.lg },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(28,27,25,0.45)' },
-  sheet: { backgroundColor: colours.surface, borderTopLeftRadius: radius.lg + 4, borderTopRightRadius: radius.lg + 4, maxHeight: '100%', overflow: 'hidden' },
-  sheetContent: { padding: space.lg, paddingBottom: space.xl + space.lg, gap: space.md },
-  sheetTitle: { fontSize: type.title, fontWeight: '800', color: colours.ink },
-  sheetSubtitle: { fontSize: type.body, color: colours.stone },
+  root: { flex: 1, backgroundColor: color.bg },
+  flex: { flex: 1 },
+  bold: { fontWeight: '700' },
+  center: { alignItems: 'center' },
+  list: { paddingTop: space.md, paddingBottom: space.xl },
+  controls: { gap: space.xs, marginBottom: space.md },
+  chipRow: { gap: space.xs, paddingVertical: 2 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs },
+  sortLabel: { fontWeight: '600' },
+  reloading: { marginBottom: space.xs },
+  separator: { height: space.xs },
+  rowCard: { overflow: 'hidden' },
+  archivedRow: { paddingHorizontal: space.md, paddingBottom: space.sm },
+  skeletons: { gap: space.xs },
+  footer: { gap: space.xs, marginTop: space.md },
+  more: { margin: space.lg },
+  endText: { marginVertical: space.lg },
+  footerSpace: { height: space.lg },
 });

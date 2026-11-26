@@ -3,16 +3,20 @@
  * cost. A reason is required; the change is recorded as a value correction in the stock history and
  * in the audit log. The preview is only an estimate (stock × new cost); the figures shown after
  * saving are the server's.
+ * Stage 1C-3.3: redesigned on the v2 kit. A cost correction changes the recorded stock value, so it
+ * is confirmed first (owner principle: confirm financially consequential actions), with the new
+ * figures in words; the save itself is unchanged.
  */
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Field, Notice } from '../../ui/components';
-import { Card, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
+import { StyleSheet, View } from 'react-native';
 import { useFreshness } from '../../ui/useFreshness';
 import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
-import { colours, space, type } from '../../ui/theme';
+import {
+  AppText, Banner, Button, Card, Notice, ScreenHeader, ScreenScaffold, SectionHeader, SkeletonText, StockBadge, TextField, UpdatedLine,
+  confirmAction, space,
+} from '../../ui/kit';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { formatCedis } from '../../services/dashboard';
 import { parseCedis } from '../../lib/money';
@@ -95,77 +99,89 @@ export function CostCorrectionScreen({ productId, businessId, products, onBack, 
     setUnconfirmed(res.kind === 'unconfirmed');
     setMessage({ tone: outcomeTone(res.kind), text: res.message });
   };
-
   const parsed = parseCedis(cost);
   const preview = product && product.stockQty > 0 && parsed.ok ? product.stockQty * parsed.value : null;
   const noStock = product !== null && product.stockQty <= 0;
 
+  /** Confirm the correction in words first (it changes the recorded stock value), then save. */
+  const confirmAndSubmit = () => {
+    if (!product) return;
+    const c = checkCostCorrection(cost, reason);
+    if (!c.ok) { setErrors(c.errors); return; }
+    const newValue = product.stockQty * c.value.cost;
+    confirmAction({
+      title: 'Correct the cost price?',
+      message: `Every unit in stock will be valued at ${formatCedis(c.value.cost)}. Stock value goes from ${product.costKnown ? formatCedis(product.stockValue) : 'not set'} to about ${formatCedis(newValue)}. This is recorded in the stock history with your reason.`,
+      confirmLabel: 'Correct cost', onConfirm: () => { submit(); },
+    });
+  };
+
+  const footer = product && !result && !loadError ? (
+    <View style={styles.footer}>
+      {message ? <Notice tone={message.tone} text={message.text} /> : null}
+      <Button label="Save correction" size="large" fullWidth onPress={confirmAndSubmit} busy={busy} disabled={offline || noStock}
+        disabledReason={offline ? 'Needs internet. Your typing is kept.' : noStock ? 'There is no stock to value.' : undefined} />
+      {unconfirmed ? (
+        <Button label="I've checked — save as a new correction" kind="secondary" fullWidth onPress={async () => {
+          await products.discardUnconfirmed('set_cost', product.id); setUnconfirmed(false); submit();
+        }} />
+      ) : null}
+    </View>
+  ) : undefined;
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="Correct cost price" subtitle={product?.name} onBack={onBack} />
-        <View style={styles.body}>
-          {offline ? <OfflineBar onCheck={() => { products.checkConnection(businessId); }} /> : null}
-          {loadError ? (
-            <View style={styles.gap}><Notice tone="error" text={loadError} /><Button label="Try again" onPress={load} /></View>
-          ) : !product ? <Text style={styles.muted}>Loading…</Text> : result ? (
-            <FadeIn>
-              <Card style={styles.section}>
-                <Text style={styles.sectionTitle}>{result.changed ? 'Cost price corrected' : 'Nothing to change'}</Text>
-                <Text style={styles.body16}>
-                  {result.changed
-                    ? `Stock value is now ${formatCedis(result.stockValue)} (${result.valueChange >= 0 ? 'up' : 'down'} ${formatCedis(Math.abs(result.valueChange))}). The correction and your reason are saved in the stock history.`
-                    : `The stock value is already ${formatCedis(result.stockValue)}, so nothing was recorded.`}
-                </Text>
-                <Button label="Done" onPress={() => onSaved(result.changed ? 'Cost price corrected' : 'No changes to save')} />
-              </Card>
-            </FadeIn>
-          ) : (
-            <FadeIn>
-              <View style={styles.gap}>
-                {stockChangedElsewhere ? <Notice text="The stock was changed on another device. The latest figures are shown." /> : null}
-                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
-                <Card style={styles.section}>
-                  <Text style={styles.sectionTitle}>Now</Text>
-                  <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
-                  <Text style={styles.body16}>Stock value: {product.costKnown ? formatCedis(product.stockValue) : 'cost not set'}</Text>
-                </Card>
-                {noStock ? (
-                  <Notice text={product.stockQty === 0
-                    ? 'There is no stock to value. Record a restock first; its cost becomes the average.'
-                    : 'Stock is below zero. Record the missing restock or correct the count first.'} />
-                ) : null}
-                <Card style={styles.section}>
-                  <Text style={styles.sectionTitle}>Correction</Text>
-                  <Field label="Correct cost per unit (GH₵)" value={cost} keyboardType="decimal-pad" placeholder="0.00" error={errors.cost}
-                    onChangeText={(t) => { setCost(t); setErrors((e) => ({ ...e, cost: undefined })); setMessage(null); }}
-                    hint={preview !== null ? `Stock value will be about ${formatCedis(preview)} (${product.stockQty} × this cost).` : 'Every unit in stock is valued at this cost.'} />
-                  <Field label="Reason" value={reason} placeholder="e.g. Typed the wrong cost when adding" error={errors.reason} maxLength={300}
-                    onChangeText={(t) => { setReason(t); setErrors((e) => ({ ...e, reason: undefined })); setMessage(null); }}
-                    hint="Saved with the correction so you can see later why it changed." />
-                </Card>
-                {message ? <Notice tone={message.tone} text={message.text} /> : null}
-                <Button label="Save correction" onPress={submit} busy={busy} disabled={offline || noStock} />
-                {unconfirmed ? (
-                  <Button label="I've checked — save as a new correction" kind="secondary" onPress={async () => {
-                    await products.discardUnconfirmed('set_cost', product.id); setUnconfirmed(false); submit();
-                  }} />
-                ) : null}
-              </View>
-            </FadeIn>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <ScreenScaffold keyboard width="form" footer={footer}
+      header={<ScreenHeader title="Correct cost price" subtitle={product?.name} onBack={onBack} />}
+      banners={offline ? (
+        <Banner tone="offline" message="You're offline. Saving changes needs internet; your typing is kept."
+          action={{ label: 'Check again', onPress: () => { products.checkConnection(businessId); } }} />
+      ) : null}>
+      {loadError ? (
+        <View style={styles.gap}><Banner tone="danger" message={loadError} /><Button label="Try again" kind="secondary" onPress={load} /></View>
+      ) : !product ? <Card><SkeletonText lines={3} /></Card> : result ? (
+        <FadeIn>
+          <Card>
+            <SectionHeader title={result.changed ? 'Cost price corrected' : 'Nothing to change'} />
+            <AppText variant="body">
+              {result.changed
+                ? `Stock value is now ${formatCedis(result.stockValue)} (${result.valueChange >= 0 ? 'up' : 'down'} ${formatCedis(Math.abs(result.valueChange))}). The correction and your reason are saved in the stock history.`
+                : `The stock value is already ${formatCedis(result.stockValue)}, so nothing was recorded.`}
+            </AppText>
+            <Button label="Done" onPress={() => onSaved(result.changed ? 'Cost price corrected' : 'No changes to save')} />
+          </Card>
+        </FadeIn>
+      ) : (
+        <FadeIn>
+          <View style={styles.gap}>
+            {stockChangedElsewhere ? <Banner tone="info" message="The stock was changed on another device. The latest figures are shown." /> : null}
+            {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true) ?? ''} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
+            <Card>
+              <SectionHeader title="Now" />
+              <StockBadge qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
+              <AppText variant="body">Stock value: <AppText variant="label" number>{product.costKnown ? formatCedis(product.stockValue) : 'cost not set'}</AppText></AppText>
+            </Card>
+            {noStock ? (
+              <Banner tone="warning" message={product.stockQty === 0
+                ? 'There is no stock to value. Record a restock first; its cost becomes the average.'
+                : 'Stock is below zero. Record the missing restock or correct the count first.'} />
+            ) : null}
+            <Card>
+              <SectionHeader title="Correction" />
+              <TextField label="Correct cost per unit" prefix="GH₵" value={cost} keyboardType="decimal-pad" placeholder="0.00" error={errors.cost}
+                onChangeText={(t) => { setCost(t); setErrors((e) => ({ ...e, cost: undefined })); setMessage(null); }}
+                hint={preview !== null ? `Stock value will be about ${formatCedis(preview)} (${product.stockQty} × this cost).` : 'Every unit in stock is valued at this cost.'} />
+              <TextField label="Reason" value={reason} placeholder="e.g. Typed the wrong cost when adding" error={errors.reason} maxLength={300}
+                onChangeText={(t) => { setReason(t); setErrors((e) => ({ ...e, reason: undefined })); setMessage(null); }}
+                hint="Saved with the correction so you can see later why it changed." />
+            </Card>
+          </View>
+        </FadeIn>
+      )}
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
-  body: { padding: space.md },
   gap: { gap: space.md },
-  section: { padding: space.md, gap: space.md },
-  sectionTitle: { fontSize: type.section, fontWeight: '800', color: colours.ink },
-  body16: { fontSize: type.body, color: colours.ink },
-  muted: { fontSize: type.caption, color: colours.stone },
+  footer: { gap: space.xs },
 });

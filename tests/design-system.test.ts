@@ -56,9 +56,27 @@ describe('Design system v2 and gallery (Stage 1C-3.2)', () => {
     expect(kitFiles.find((f) => f.name === 'TextField.tsx')!.src).toContain("'autoFocus'");
   });
 
-  it('DS-06: no existing screen is redesigned: only the gallery imports the new kit', () => {
-    const screens = walk(join(app, 'src/screens')).filter((p) => p.endsWith('.tsx') && !p.includes(`${join('src', 'screens', 'dev')}`));
-    for (const p of screens) expect(read(p), p).not.toMatch(/ui\/kit/);
+  it('DS-06 (1C-3.3): only the approved screens are redesigned; sign-in and onboarding (1C-3.4) still use the v1 kit', () => {
+    const later = ['WelcomeScreen', 'LogInScreen', 'SignUpScreen', 'CheckEmailScreen', 'SetNewPasswordScreen', 'ShopSetupScreen', 'ConfigErrorScreen'];
+    for (const name of later) expect(read(join(app, 'src/screens', `${name}.tsx`)), name).not.toMatch(/ui\/kit/);
+  });
+
+  it('DS-11 (1C-3.3): the redesigned screens use only the kit and v2 tokens: no hard-coded colours or font sizes, no v1 styling', () => {
+    const redesigned = [join(app, 'src/screens/HomeScreen.tsx'), ...walk(join(app, 'src/screens/products')).filter((p) => p.endsWith('.tsx'))];
+    for (const p of redesigned) {
+      const src = code(read(p));
+      expect(src.match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], p).toEqual([]);
+      expect(src, p).not.toMatch(/fontSize\s*:/);
+      expect(src, p).not.toMatch(/ui\/theme'|ui\/components'|ui\/surfaces'|ui\/icons'/);
+      expect(src, p).toMatch(/ui\/kit/);
+    }
+  });
+
+  it('DS-12 (1C-3.3): no text-scaling cap or disabled text scaling remains anywhere in the app', () => {
+    for (const p of walk(join(app, 'src')).filter((x) => /\.tsx?$/.test(x))) {
+      const src = code(read(p));
+      expect(src, p).not.toMatch(/maxFontSizeMultiplier\s*=|allowFontScaling\s*=\s*\{\s*false\s*\}|allowFontScaling\s*[>/]/);
+    }
   });
 
   it('DS-07: the gallery is reachable only in development (__DEV__), from the More tab, and Android Back closes it', () => {

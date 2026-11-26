@@ -1,6 +1,6 @@
 # Stage 1C-3 plan: Product Experience & Visual Redesign
 
-**Status (26 Nov 2026, revision 10): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; its gallery checks GAL-01 – GAL-13 NOT TESTED. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md); C-1b pending (mandatory, after 1C-3.2, before any screen redesign). 1C-3.3 and later NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+**Status (26 Nov 2026, revision 11): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; CI #69 passed (after a re-run; the first attempt failed on a CI runner port clash). **C-1b APPROVED by the owner (26 Nov 2026)** after a physical review of the gallery on both phones. **1C-3.3 APPROVED to start (26 Nov 2026), with Today, the tab bar and More brought forward from 1C-3.4 (decision B-5); committed in the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit"; device checks RD-01 – RD-14 NOT TESTED.** Sign-in and onboarding remain in 1C-3.4. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md). 1C-3.4 (sign-in, onboarding), 1C-3.5 and 1C-3.6 NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
 
 **Revision 9 correction (failure handling, to match spec 08 revision 2, which governs):** after a failed refresh, the confirmed values read earlier stay on screen, marked as stale, but the average cost becomes state 4 ("no figure, not even an old one", spec 08 §9.3), so margin and Stock value (about) are hidden too. Revision 8 said only "the data is kept", which conflicted with spec 08; §5.1 and DET-06 are corrected below.
 
@@ -34,6 +34,8 @@ An unreliable figure is never shown as the current cost |
 | W-1 | **Scheduling decision: milestone PW-1 comes AFTER Stage 1C-3** | D11 (Stage 1C migrations in the cloud) must be addressed before any cross-network testing, including browser testing (§11) |
 | B-3 | **Product Details Edit: a compact header pencil, not a large button** (owner design feedback, 25 Nov 2026, after the first device run of 1C-3.1). The oversized green "Edit product" bottom-bar button is removed | A pencil icon top-right in the Details header opens the same edit flow; spoken label "Edit product"; 48 dp touch target; disabled when archived, with the reason. Done in 1C-3.1 as a correction after its first device run. Amends spec 08 §5.2, §7 and §9.2 for this action only |
 | B-4 | **A restrained control hierarchy; no oversized buttons** (owner, 25 Nov 2026) | A requirement for the **1C-3.2** component gallery (below). It does not change other screens before C-1b |
+| B-5 | **1C-3.3 scope: Today, main navigation and Products together** (owner, 26 Nov 2026, with the C-1b approval) | 1C-3.3 redesigns the Products area AND Today, the tab bar (with every text-scaling cap removed), the More tab and the preview tabs, brought forward from 1C-3.4. Sign-in and onboarding stay in 1C-3.4 |
+| B-6 | **Confirm only consequential actions** (owner, 26 Nov 2026) | Confirmation dialogs for destructive, irreversible or financially consequential actions (archive; a cost correction, which changes the recorded stock value; later voids and deletions). No prompt for navigation, viewing, opening forms or harmless reversible actions: **Restore** (product or category) now runs at once with a short message |
 
 ## 2. Device-testing status and pre-work
 
@@ -418,9 +420,11 @@ Each increment is implemented only after approval, and reported for review. It i
 - **C-1a: written specification approval. APPROVED by the owner (25 Nov 2026).** Spec 08 revision 2 is adopted as [08-visual-design.md](../product-specification/08-visual-design.md), specification set revision 5.2.
 - **C-1b: physical review after 1C-3.2.** The owner reviews the component gallery, the icon set and the contrast table on the **Galaxy A06 and the iPhone**, including the largest text size.
 
-**No screen is redesigned until C-1a and C-1b are both approved.** Changes requested at C-1b go back into 1C-3.2.
+**No screen is redesigned until C-1a and C-1b are both approved.** Changes requested at C-1b go back into 1C-3.2. **C-1b: APPROVED by the owner (26 Nov 2026)** after a physical review on the Galaxy A06 and the iPhone 13 Pro Max.
 
 ### 1C-3.3 Redesign: Products area
+**Status (26 Nov 2026): committed in the commit "Stage 1C-3.3: redesign Today, navigation and Products on the v2 kit". Scope per decision B-5: the Products area (list, rows, search and chips, quick price sheet, Details, Add and Edit forms, Categories, Cost correction) plus Today, the tab bar, the More tab, the account panel and the Sell and Customers previews. Confirmations per B-6. Business logic, data loading, freshness and services unchanged. Device checks RD-01 – RD-14 (§8.1) NOT TESTED.**
+
 **Delivers:** the list, rows, Details, Add and Edit forms, quick price sheet, Categories and Cost correction on the v2 kit and approved tokens, with the empty, loading and error states (§5.3). Behaviour and wording unchanged, apart from approved changes.
 
 **Acceptance:**
@@ -430,6 +434,8 @@ Each increment is implemented only after approval, and reported for review. It i
 - **A06 performance:** with 35 or more seeded products, scrolling, opening Details and opening the sheet are smooth, with no visible stutter (owner observation), and there is no slower first load than at `75f8aa6`.
 
 ### 1C-3.4 Redesign: Today, tab bar, More and account, auth and onboarding
+**Scope note (decision B-5, 26 Nov 2026):** Today, the tab bar, More and the account panel, and the text-scaling cap removals (tab bar, brand text, avatar, the logo and alert-icon exceptions) were delivered early in 1C-3.3. 1C-3.4 is now **sign-in and onboarding** (Welcome, Log in, Sign up, Check email, Set new password, Shop setup, Config error), plus its re-checks.
+
 **Delivers:** those screens on the v2 kit. Today moves to the shared card (which resolves the spec 08 difference); the new tab bar. Auth validation, messages and flows unchanged.
 - **Removes every existing text-scaling cap:** the tab-bar labels (`maxFontSizeMultiplier` 1.3), the "ShopMate Ghana" brand text and the avatar initials (1.2 each), all in `HomeScreen.tsx`.
 - The tab-bar labels wrap to two lines and the bar grows at large sizes; the avatar circle grows with its initials.
@@ -545,6 +551,25 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | GAL-12 | Galaxy A06: scroll the whole gallery quickly, up and down; tap the section chips | Scrolling stays smooth with no visible stutter; jumping to a section is immediate |
 | GAL-13 | Record the size shown in "This screen" on each phone (plan §6.5 item 5) | A06 and iPhone widths and heights in dp are recorded, to confirm the provisional breakpoints |
 
+**RD: redesigned screens (1C-3.3).** Devices: Galaxy A06 and iPhone 13 Pro Max, local development stack, fictitious data. The D2, MD, DET and QPS checks for these screens are also repeated (plan acceptance).
+
+| ID | Steps | Expected result |
+|---|---|---|
+| RD-01 | Open the app and look at Today | Light header with the ShopMate mark, the greeting, the shop name and the date, reference and Pilot tags; Today's revenue card with the gold edge; three figure tiles; quick actions as calm cards; recent activity. No large green blocks |
+| RD-02 | On Today: pull down to refresh; tap the Products tile; tap each quick action | Refresh shows the spinner and "Updated hh:mm"; Products opens the list; Add a product opens the form; Record a sale and View reports open their previews |
+| RD-03 | Use the bottom tab bar: every tab, then the system Back (A06) | The selected tab is green with a tinted pill and a word; Back steps back as before (Products screens, then Today, then leave) |
+| RD-04 | More tab, then the avatar on Today | Shop details, the Later list and Log out on light cards; the avatar opens Shop and account with Back; the gallery row shows only in development mode |
+| RD-05 | Products list: search, category chips, Sort, Archived, scroll, pull to refresh | Search with Clear; chips show a tick when selected; rows show name, category and unit, price and a stock badge with a word; "Change price" is a small text action; behaviour as before |
+| RD-06 | Tap "Change price" on a row; tap the field; save a new price; also close with Cancel, Close and the backdrop | The sheet has the GH₵ prefix, does not open the keyboard by itself, stays in view with the keyboard (iPhone fix), and saves as before |
+| RD-07 | Open a product (Details); tap the ⓘ; tap the pencil; Back | Light header with the pencil top-right; price card; figure cards with the four cost states; Details card; actions; Edit opens the form and Back returns |
+| RD-08 | Archive a product from Details, then Restore it | Archive asks for confirmation first; Restore happens at once, without a prompt, with a short message |
+| RD-09 | Add a product, then edit one; type a wrong price | GH₵ prefix on money fields; the Save button sits in a bar above the keyboard and stays reachable; errors show in red with an icon; typing is kept; after Add the new product's Details opens |
+| RD-10 | Correct cost price from Details: enter a cost and a reason; Save correction | A confirmation states the new cost per unit and the stock value before and after; Cancel sends nothing; confirming saves as before and shows the result |
+| RD-11 | Categories: add, rename, archive and restore | Archive asks first; restore runs at once; behaviour and messages as before |
+| RD-12 | Set the text size to about 130 %, then the largest; visit Today, the tab bar, the list, Details, the form and the sheet | Nothing is cut off; tab labels wrap and the bar grows; figure tiles stack; buttons and rows grow |
+| RD-13 | Turn on Remove animations (A06) / Reduce Motion (iPhone) | Nothing fades, scales or pulses; toasts simply appear and disappear |
+| RD-14 | Galaxy A06 with 35 or more seeded products: scroll the list, open Details, open the sheet | Smooth, with no visible stutter; the first list load is not slower than before |
+
 **ORI: phones in portrait and landscape (1C-3.5).** Devices: Galaxy A06 (new development build) and iPhone 13 Pro Max (Expo Go, early; final on an iOS build, §6.5 item 4).
 
 | ID | Steps | Expected result |
@@ -628,7 +653,7 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | IG-1 | **Which gate is the iOS release gate:** G2, or the pilot gate if iPhones take part in the pilot. Not decided; there's no evidence yet on pilot iPhone participation (also in the roadmap's §9) | Owner decides once pilot device plans are known |
 | ~~V-1 – V-6~~ | ~~Spec 08 revision decisions~~ | **Approved with C-1a (25 Nov 2026):** Stock value (about) only in cost state 1; light headers; the three colour corrections in 1C-3.2; C-1 split into C-1a and C-1b; spec 08 revision 2 and specification set 5.2; follow-up documentation after C-1a approval |
 | ~~C-1a~~ | ~~Written spec 08 revision 2 approval~~ | **APPROVED (25 Nov 2026):** adopted as [08-visual-design.md](../product-specification/08-visual-design.md); specification set 5.2 |
-| C-1b | Physical gallery review on the A06 and the iPhone after 1C-3.2 | **Pending, mandatory:** after 1C-3.2 and before any screen redesign (1C-3.3) |
+| ~~C-1b~~ | ~~Physical gallery review on the A06 and the iPhone after 1C-3.2~~ | **APPROVED (26 Nov 2026)** by the owner after reviewing the gallery on both phones |
 | ~~G-1~~ | ~~Approval to start 1C-3.1~~ | **APPROVED (25 Nov 2026)** for 1C-3.1 only; implemented in the working tree (not committed) |
 
 ## 11. Future milestone PW-1: PC and browser support (Windows and macOS)

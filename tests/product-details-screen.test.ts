@@ -1,7 +1,8 @@
 /**
  * Stage 1C-3.1 Product Details: static guards on the screen sources. The app has no React Native
  * renderer in its tests, so what the screens look like and how taps behave need the device
- * checklist (DET-01 – DET-14); these stop known regressions in the wiring from coming back.
+ * checklist (DET-01 – DET-15); these stop known regressions in the wiring from coming back.
+ * Updated for the 1C-3.3 redesign: the same rules, checked against the v2 kit markup.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,7 +19,7 @@ describe('Product Details wiring (Stage 1C-3.1)', () => {
   });
 
   it('PDS-02: Edit is a compact pencil top-right in the header, spoken as "Edit product", opening the existing form (owner decision, 25 Nov 2026)', () => {
-    expect(details).toMatch(/action=\{product \? \(\s*<HeaderIconButton icon=\{PencilIcon\} label="Edit product" onPress=\{\(\) => onEdit\(product\.id\)\}\s*disabled=\{archived\}/);
+    expect(details).toMatch(/action=\{product \? \(\s*<IconButton icon=\{EditIcon\} label="Edit product" tone="header" onPress=\{\(\) => onEdit\(product\.id\)\}\s*disabled=\{archived\}/);
     expect(area).toContain("onEdit={(id) => go({ name: 'edit', productId: id })}");
     // The oversized bottom-bar button is gone
     expect(details).not.toContain('<Button label="Edit product"');
@@ -26,10 +27,12 @@ describe('Product Details wiring (Stage 1C-3.1)', () => {
   });
 
   it('PDS-02b: the header icon control keeps a 48 dp touch target, has a spoken label and announces when disabled', () => {
-    const surfaces = readFileSync(join(__dirname, '../app/src/ui/surfaces.tsx'), 'utf8');
-    expect(surfaces).toMatch(/iconButton: \{ width: touch\.min, height: touch\.min,/);
-    expect(surfaces).toContain('accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}');
-    expect(surfaces).toContain('accessibilityHint={disabled ? disabledReason : undefined}');
+    const controls = readFileSync(join(__dirname, '../app/src/ui/kit/controls.tsx'), 'utf8');
+    const tokens = readFileSync(join(__dirname, '../app/src/ui/kit/tokens.ts'), 'utf8');
+    expect(controls).toMatch(/iconTarget: \{ width: control\.touchTarget, height: control\.touchTarget,/);
+    expect(tokens).toMatch(/touchTarget: 48,/);
+    expect(controls).toContain('<PressableScale accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}');
+    expect(controls).toContain('accessibilityHint={disabled ? disabledReason : undefined}');
   });
 
   it('PDS-03: the form returns to Details after a save, and a new product opens its Details (A-1)', () => {
@@ -57,18 +60,33 @@ describe('Product Details wiring (Stage 1C-3.1)', () => {
 
   it('PDS-07: the "changed on another device" note on Details is held back for this device\'s own unconfirmed changes', () => {
     expect(details).toContain("products.hasUnconfirmed('update_product', now.id), products.hasUnconfirmed('set_cost', now.id)");
-    expect(details).toContain('This product was changed on another device. The latest details are shown.');
+    expect(details).toContain('<Banner tone="info" message="This product was changed on another device. The latest details are shown." />');
   });
 
   it('PDS-08: after a failed refresh the cost is state 4 (spec 08 rev 2 §9.3), with a stale-data banner', () => {
     expect(details).toContain('costUnavailable={refreshFailed}');
     expect(details).toContain('const cost = shownCost(product, history, costUnavailable);');
     expect(details).not.toMatch(/const cost = costInfo\(/);
-    expect(details).toContain("<Text style={styles.staleTitle}>Couldn't refresh</Text>");
+    expect(details).toMatch(/\{costUnavailable \? \(\s*<Banner tone="warning" title="Couldn't refresh"/);
   });
 
   it('PDS-09: a failed first load shows an error with Try again, never the figures', () => {
     expect(details).toContain("else setState({ kind: 'error', message: e instanceof ReadError ? e.message : \"We couldn't load this product. Please try again.\" });");
-    expect(details).toMatch(/state\.kind === 'error' \? \([\s\S]*?<Notice tone="error" text=\{state\.message\} \/>[\s\S]*?<Button label="Try again"/);
+    expect(details).toMatch(/state\.kind === 'error' \? \([\s\S]*?<Banner tone="danger" message=\{state\.message\} \/>[\s\S]*?<Button label="Try again"/);
+  });
+
+  it('PDS-10 (1C-3.3): Archive asks first; Restore, being harmless and reversible, runs without a prompt', () => {
+    for (const src of [details, read('ProductFormScreen.tsx')]) {
+      expect(src).toMatch(/confirmAction\(\{\s*title: `Archive \$\{product\.name\}\?`[\s\S]*?destructive: true/);
+      expect(src).not.toContain('`Restore ${product.name}?`');
+    }
+  });
+
+  it('PDS-11 (1C-3.3): a cost correction is confirmed in words before it is saved (financially consequential)', () => {
+    const cost = read('CostCorrectionScreen.tsx');
+    expect(cost).toContain("title: 'Correct the cost price?'");
+    expect(cost).toContain('<Button label="Save correction" size="large" fullWidth onPress={confirmAndSubmit}');
+    // The save itself is unchanged
+    expect(cost).toContain('const res = await products.setCost(businessId, product.id, c.value.cost, c.value.reason, product);');
   });
 });

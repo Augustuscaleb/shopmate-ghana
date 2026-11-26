@@ -3,16 +3,19 @@
  * (set_product_archived, D4), and the entry to "Correct cost price" (set_cost, D-5). Cost and opening
  * stock are set only when a product is created; stock changes later only through stock movements.
  * Typed input is never cleared by an error (E-03). Online-only (D-3).
+ * Stage 1C-3.3: redesigned on the v2 kit; money fields show a GH₵ prefix (spec 08 §5.3); the save
+ * button sits in a bar that stays above the keyboard (§5.2). Archive asks first; Restore runs at once.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Field, Notice } from '../../ui/components';
-import { Card, FilterChip, OfflineBar, ScreenHeader, StockChip, UpdatedLine } from '../../ui/surfaces';
+import { StyleSheet, View } from 'react-native';
 import { useFreshness } from '../../ui/useFreshness';
 import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
-import { colours, space, type } from '../../ui/theme';
+import {
+  AppText, Banner, Button, Card, Chip, Divider, Notice, ScreenHeader, ScreenScaffold, SectionHeader, StockBadge, TextAction, TextField,
+  SkeletonText, UpdatedLine, confirmAction, space,
+} from '../../ui/kit';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { formatCedis } from '../../services/dashboard';
 import { UNIT_SUGGESTIONS, checkNewProduct, checkProductEdit, outcomeTone, rebaseValues, valuesFrom, type FormErrors, type Outcome, type ProductFormValues } from '../../services/productForm';
@@ -156,108 +159,118 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
       setMessage({ tone: outcomeTone(res.kind), text: res.message });
     }
   };
-
+  /** Archive asks first (destructive); Restore is harmless and reversible, so it runs at once. */
+  const runArchive = async (archiving: boolean) => {
+    if (!product) return;
+    setBusy(true);
+    const res = await products.setArchived(businessId, product.id, archiving);
+    setBusy(false);
+    if (res.ok) onSaved(archiving ? `${product.name} archived` : `${product.name} restored`, product.id);
+    else setMessage({ tone: outcomeTone(res.kind), text: res.message });
+  };
   const toggleArchive = () => {
     if (!product) return;
-    const archiving = product.active;
-    Alert.alert(
-      archiving ? `Archive ${product.name}?` : `Restore ${product.name}?`,
-      archiving
-        ? 'It will be hidden from your product list. Nothing is deleted, its history is kept, and you can restore it at any time.'
-        : 'It will appear in your product list again.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: archiving ? 'Archive' : 'Restore',
-          style: archiving ? 'destructive' : 'default',
-          onPress: async () => {
-            setBusy(true);
-            const res = await products.setArchived(businessId, product.id, archiving);
-            setBusy(false);
-            if (res.ok) onSaved(archiving ? `${product.name} archived` : `${product.name} restored`, product.id);
-            else setMessage({ tone: outcomeTone(res.kind), text: res.message });
-          },
-        },
-      ],
-    );
+    if (!product.active) { runArchive(false); return; }
+    confirmAction({
+      title: `Archive ${product.name}?`,
+      message: 'It will be hidden from your product list. Nothing is deleted, its history is kept, and you can restore it at any time.',
+      confirmLabel: 'Archive', destructive: true, onConfirm: () => { runArchive(true); },
+    });
   };
 
   const title = mode === 'add' ? 'Add product' : 'Edit product';
+  const ready = !loading && !loadError;
+  const footer = ready ? (
+    <View style={styles.footer}>
+      {message ? <Notice tone={message.tone} text={message.text} /> : null}
+      <Button label={mode === 'add' ? 'Save product' : 'Save changes'} size="large" fullWidth onPress={submit} busy={busy}
+        disabled={offline || (mode === 'edit' && !product?.active)}
+        disabledReason={offline ? 'Needs internet. Your typing is kept.' : mode === 'edit' && product && !product.active ? "Archived products can't be edited. Restore it first." : undefined} />
+      {unconfirmed ? (
+        <Button label="I've checked — save as a new change" kind="secondary" fullWidth onPress={async () => {
+          await products.discardUnconfirmed(mode === 'add' ? 'create_product' : 'update_product', mode === 'add' ? businessId : product!.id);
+          setUnconfirmed(false); submit();
+        }} />
+      ) : null}
+    </View>
+  ) : undefined;
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title={title} subtitle={mode === 'edit' && product ? product.name : 'Fill in what you know; you can change it later.'} onBack={onBack} />
-        <View style={styles.body}>
-          {offline ? <OfflineBar onCheck={() => { products.checkConnection(businessId); }} /> : null}
-          {loading ? <Text style={styles.muted}>Loading…</Text> : loadError ? (
-            <FadeIn><View style={styles.gap}><Notice tone="error" text={loadError} /><Button label="Try again" onPress={() => { setLoading(true); load(); }} /></View></FadeIn>
-          ) : (
-            <FadeIn>
-              <View style={styles.gap}>
-                {changedElsewhere ? <Notice text="This product was changed on another device. The latest details are shown." /> : null}
-                {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
-                {mode === 'edit' && product ? <StockCard product={product} onCorrectCost={() => onCorrectCost(product.id)} disabled={offline} /> : null}
+    <ScreenScaffold keyboard width="form" footer={footer}
+      header={<ScreenHeader title={title} subtitle={mode === 'edit' && product ? product.name : 'Fill in what you know; you can change it later.'} onBack={onBack} />}
+      banners={offline ? (
+        <Banner tone="offline" message="You're offline. Saving changes needs internet; your typing is kept."
+          action={{ label: 'Check again', onPress: () => { products.checkConnection(businessId); } }} />
+      ) : null}>
+      {loading ? <Card><SkeletonText lines={4} /></Card> : loadError ? (
+        <FadeIn>
+          <View style={styles.gap}>
+            <Banner tone="danger" message={loadError} />
+            <Button label="Try again" kind="secondary" onPress={() => { setLoading(true); load(); }} />
+          </View>
+        </FadeIn>
+      ) : (
+        <FadeIn>
+          <View style={styles.gap}>
+            {changedElsewhere ? <Banner tone="info" message="This product was changed on another device. The latest details are shown." /> : null}
+            {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true) ?? ''} failed onRetry={() => { refreshSilently({ retry: true }); }} /> : null}
+            {mode === 'edit' && product ? <StockCard product={product} onCorrectCost={() => onCorrectCost(product.id)} disabled={offline} /> : null}
 
-                <Card style={styles.section}>
-                  <Text style={styles.sectionTitle}>Product</Text>
-                  <Field label="Name" value={values.name} onChangeText={set('name')} error={errors.name} placeholder="e.g. Milo sachet" maxLength={100} />
-                  <View style={{ gap: space.xs }}>
-                    <Text style={styles.label}>Category</Text>
-                    <View style={styles.chips}>
-                      <FilterChip label="None" selected={values.categoryId === null} onPress={() => setValues((x) => ({ ...x, categoryId: null }))} />
-                      {categories.filter((c) => !c.archived || c.id === values.categoryId).map((c) => (
-                        <FilterChip key={c.id} label={c.archived ? `${c.name} (archived)` : c.name} selected={values.categoryId === c.id}
-                          onPress={() => setValues((x) => ({ ...x, categoryId: c.id }))} />
-                      ))}
-                    </View>
-                    <Button label="Manage categories" kind="link" onPress={onManageCategories} />
-                  </View>
-                  <View style={{ gap: space.xs }}>
-                    <Field label="Unit (optional)" value={values.unit} onChangeText={set('unit')} error={errors.unit} placeholder="e.g. sachet" maxLength={30} autoCapitalize="none" />
-                    <View style={styles.chips}>
-                      {UNIT_SUGGESTIONS.map((u) => <FilterChip key={u} label={u} selected={values.unit.trim() === u} onPress={() => set('unit')(u)} />)}
-                    </View>
-                  </View>
-                </Card>
-
-                <Card style={styles.section}>
-                  <Text style={styles.sectionTitle}>Price</Text>
-                  <Field label="Selling price (GH₵)" value={values.sellingPrice} onChangeText={set('sellingPrice')} error={errors.sellingPrice}
-                    keyboardType="decimal-pad" placeholder="0.00" hint={mode === 'edit' ? 'Price changes are recorded in the shop history.' : undefined} />
-                  {mode === 'add' ? (
-                    <Field label="Cost price per unit (GH₵, optional)" value={values.costPrice} onChangeText={set('costPrice')} error={errors.costPrice}
-                      keyboardType="decimal-pad" placeholder="0.00" hint="What one unit cost you. It sets the average cost of your opening stock. Leave empty if you don't know it yet." />
-                  ) : null}
-                </Card>
-
-                <Card style={styles.section}>
-                  <Text style={styles.sectionTitle}>Stock</Text>
-                  {mode === 'add' ? (
-                    <Field label="Stock you have now (optional)" value={values.openingStock} onChangeText={set('openingStock')} error={errors.openingStock}
-                      keyboardType="number-pad" placeholder="0" hint="Counted in units. Later changes go through Restock and Adjust stock." />
-                  ) : null}
-                  <Field label="Low-stock level" value={values.lowStockLevel} onChangeText={set('lowStockLevel')} error={errors.lowStockLevel}
-                    keyboardType="number-pad" hint="When stock is at or below this, the product shows as Low." />
-                </Card>
-
-                {message ? <Notice tone={message.tone} text={message.text} /> : null}
-                <Button label={mode === 'add' ? 'Save product' : 'Save changes'} onPress={submit} busy={busy} disabled={offline || (mode === 'edit' && !product?.active)} />
-                {unconfirmed ? (
-                  <Button label="I've checked — save as a new change" kind="secondary" onPress={async () => {
-                    await products.discardUnconfirmed(mode === 'add' ? 'create_product' : 'update_product', mode === 'add' ? businessId : product!.id);
-                    setUnconfirmed(false); submit();
-                  }} />
-                ) : null}
-                {mode === 'edit' && product ? (
-                  <Button label={product.active ? 'Archive product' : 'Restore product'} kind="secondary" onPress={toggleArchive} disabled={offline || busy} />
-                ) : null}
-                {mode === 'edit' && product && !product.active ? <Text style={styles.muted}>Archived products can't be edited. Restore it first.</Text> : null}
+            <Card>
+              <SectionHeader title="Product" />
+              <TextField label="Name" value={values.name} onChangeText={set('name')} error={errors.name} placeholder="e.g. Milo sachet" maxLength={100} />
+              <View style={styles.fieldGroup}>
+                <AppText variant="label">Category</AppText>
+                <View style={styles.chips}>
+                  <Chip label="None" selected={values.categoryId === null} onPress={() => setValues((x) => ({ ...x, categoryId: null }))} />
+                  {categories.filter((c) => !c.archived || c.id === values.categoryId).map((c) => (
+                    <Chip key={c.id} label={c.archived ? `${c.name} (archived)` : c.name} selected={values.categoryId === c.id}
+                      onPress={() => setValues((x) => ({ ...x, categoryId: c.id }))} />
+                  ))}
+                </View>
+                <TextAction label="Manage categories" onPress={onManageCategories} />
               </View>
-            </FadeIn>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <View style={styles.fieldGroup}>
+                <TextField label="Unit (optional)" value={values.unit} onChangeText={set('unit')} error={errors.unit} placeholder="e.g. sachet" maxLength={30} autoCapitalize="none" />
+                <View style={styles.chips}>
+                  {UNIT_SUGGESTIONS.map((u) => <Chip key={u} label={u} selected={values.unit.trim() === u} onPress={() => set('unit')(u)} />)}
+                </View>
+              </View>
+            </Card>
+
+            <Card>
+              <SectionHeader title="Price" />
+              <TextField label="Selling price" prefix="GH₵" value={values.sellingPrice} onChangeText={set('sellingPrice')} error={errors.sellingPrice}
+                keyboardType="decimal-pad" placeholder="0.00" hint={mode === 'edit' ? 'Price changes are recorded in the shop history.' : undefined} />
+              {mode === 'add' ? (
+                <TextField label="Cost price per unit (optional)" prefix="GH₵" value={values.costPrice} onChangeText={set('costPrice')} error={errors.costPrice}
+                  keyboardType="decimal-pad" placeholder="0.00" hint="What one unit cost you. It sets the average cost of your opening stock. Leave empty if you don't know it yet." />
+              ) : null}
+            </Card>
+
+            <Card>
+              <SectionHeader title="Stock" />
+              {mode === 'add' ? (
+                <TextField label="Stock you have now (optional)" value={values.openingStock} onChangeText={set('openingStock')} error={errors.openingStock}
+                  keyboardType="number-pad" placeholder="0" hint="Counted in units. Later changes go through Restock and Adjust stock." />
+              ) : null}
+              <TextField label="Low-stock level" value={values.lowStockLevel} onChangeText={set('lowStockLevel')} error={errors.lowStockLevel}
+                keyboardType="number-pad" hint="When stock is at or below this, the product shows as Low." />
+            </Card>
+
+            {mode === 'edit' && product ? (
+              <Card>
+                <SectionHeader title={product.active ? 'Archive' : 'Archived'} />
+                <AppText variant="caption" tone="textSecondary">
+                  {product.active ? 'Hide this product from your list. Nothing is deleted, and you can restore it at any time.' : "Archived products can't be edited. Restore it first."}
+                </AppText>
+                <Button label={product.active ? 'Archive product' : 'Restore product'} kind={product.active ? 'destructive' : 'secondary'} onPress={toggleArchive} disabled={offline || busy} />
+              </Card>
+            ) : null}
+          </View>
+        </FadeIn>
+      )}
+    </ScreenScaffold>
   );
 }
 
@@ -265,35 +278,31 @@ export function ProductFormScreen({ mode, productId, businessId, products, refre
 function StockCard({ product, onCorrectCost, disabled }: { product: Product; onCorrectCost: () => void; disabled: boolean }) {
   const average = product.costKnown && product.stockQty > 0 && product.stockValue >= 0 ? Math.round(product.stockValue / product.stockQty) : null;
   return (
-    <Card style={styles.section}>
-      <Text style={styles.sectionTitle}>Stock now</Text>
-      <StockChip qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
+    <Card>
+      <SectionHeader title="Stock now" />
+      <StockBadge qty={product.stockQty} lowStockLevel={product.lowStockLevel} unit={product.unit} />
       <View style={styles.statRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.statLabel}>Stock value</Text>
-          <Text style={styles.statValue}>{product.costKnown ? formatCedis(product.stockValue) : 'Cost not set'}</Text>
+        <View style={styles.stat}>
+          <AppText variant="caption" tone="textSecondary">Stock value</AppText>
+          <AppText variant="heading" number>{product.costKnown ? formatCedis(product.stockValue) : 'Cost not set'}</AppText>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.statLabel}>Average cost (about)</Text>
-          <Text style={styles.statValue}>{average !== null ? formatCedis(average) : '—'}</Text>
+        <View style={styles.stat}>
+          <AppText variant="caption" tone="textSecondary">Average cost (about)</AppText>
+          <AppText variant="heading" number>{average !== null ? formatCedis(average) : '—'}</AppText>
         </View>
       </View>
-      <Text style={styles.muted}>Stock changes only through Restock and Adjust stock, so its history stays complete.</Text>
+      <AppText variant="caption" tone="textSecondary">Stock changes only through Restock and Adjust stock, so its history stays complete.</AppText>
+      <Divider />
       <Button label="Correct cost price" kind="secondary" onPress={onCorrectCost} disabled={disabled} />
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
-  body: { padding: space.md },
   gap: { gap: space.md },
-  section: { padding: space.md, gap: space.md },
-  sectionTitle: { fontSize: type.section, fontWeight: '800', color: colours.ink },
-  label: { fontSize: type.body, fontWeight: '600', color: colours.ink },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  muted: { fontSize: type.caption, color: colours.stone },
-  statRow: { flexDirection: 'row', gap: space.md },
-  statLabel: { fontSize: type.caption, color: colours.stone, fontWeight: '600' },
-  statValue: { fontSize: type.section, fontWeight: '800', color: colours.ink, fontVariant: ['tabular-nums'] },
+  fieldGroup: { gap: space.xs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  stat: { flexGrow: 1, flexBasis: '40%', minWidth: 140, gap: 2 },
+  footer: { gap: space.xs },
 });

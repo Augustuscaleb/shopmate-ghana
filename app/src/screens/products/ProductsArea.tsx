@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { colours } from '../../ui/theme';
+import { color } from '../../ui/kit';
 import { afterFormSaved, current, pop, push, showsNotice, type ProductsStack } from '../../navigation/productsStack';
 import type { ProductsService } from '../../services/products';
 import { ProductListScreen } from './ProductListScreen';
@@ -82,6 +82,6 @@ export function ProductsArea({ businessId, products, stack, onStackChange, visib
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
+  root: { flex: 1, backgroundColor: color.bg },
   hidden: { display: 'none' },
 });

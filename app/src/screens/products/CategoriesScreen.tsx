@@ -2,18 +2,20 @@
  * Category management, opened from the S-30 category filter ("Manage categories") and the product
  * form. Add, rename, archive and restore. Categories are written directly under RLS (Stage 1A
  * grants); a duplicate name is refused by the unique index, and a category still used by an active
- * product can't be archived (D5). Nothing is deleted.
+ * product can't be archived (D5). Nothing is deleted. Archiving asks first; restoring runs at once.
+ * Stage 1C-3.3: redesigned on the v2 kit; behaviour and wording unchanged.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Field, Notice } from '../../ui/components';
-import { Card, EmptyState, ListSkeleton, OfflineBar, ScreenHeader, UpdatedLine } from '../../ui/surfaces';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useFreshness } from '../../ui/useFreshness';
 import { useLatestRequest } from '../../ui/useLatestRequest';
 import { updatedLabel } from '../../lib/freshness';
 import { FadeIn } from '../../ui/animated';
-import { TagIcon } from '../../ui/icons';
-import { colours, space, type } from '../../ui/theme';
+import {
+  AppText, Banner, Button, Card, Divider, EmptyState, Notice, ScreenHeader, ScreenScaffold, SectionHeader, SkeletonRow, StatusBadge,
+  TextAction, TextField, UpdatedLine, space,
+} from '../../ui/kit';
+import { TagIcon } from '../../ui/kit/icons';
 import { useConnectivity } from '../../ui/useConnectivity';
 import { checkCategoryName, outcomeTone } from '../../services/productForm';
 import { ReadError, type Category, type ProductsService } from '../../services/products';
@@ -133,89 +135,94 @@ export function CategoriesScreen({ businessId, products, onBack, onChanged, visi
       { text: 'Archive', style: 'destructive', onPress: run },
     ]);
   };
-
   const active = (categories ?? []).filter((c) => !c.archived);
   const archived = (categories ?? []).filter((c) => c.archived);
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="Categories" subtitle="Group your products so they're quicker to find." onBack={onBack} />
-        <View style={styles.body}>
-          {offline ? <OfflineBar onCheck={() => { products.checkConnection(businessId).then((ok) => { if (ok) load(); }); }} /> : null}
+    <ScreenScaffold keyboard width="form"
+      header={<ScreenHeader title="Categories" subtitle="Group your products so they're quicker to find." onBack={onBack} />}
+      banners={offline ? (
+        <Banner tone="offline" message="You're offline. Saving changes needs internet; your typing is kept."
+          action={{ label: 'Check again', onPress: () => { products.checkConnection(businessId).then((ok) => { if (ok) load(); }); } }} />
+      ) : null}>
+      <Card>
+        <TextField label="New category" value={newName} placeholder="e.g. Drinks" maxLength={60} error={newError}
+          onChangeText={(t) => { setNewName(t); setNewError(undefined); setMessage(null); }} />
+        <Button label="Add category" onPress={add} busy={busy === 'new'} disabled={offline || busy !== null} />
+      </Card>
 
-          <Card style={styles.section}>
-            <Field label="New category" value={newName} placeholder="e.g. Drinks" maxLength={60} error={newError}
-              onChangeText={(t) => { setNewName(t); setNewError(undefined); setMessage(null); }} />
-            <Button label="Add category" onPress={add} busy={busy === 'new'} disabled={offline || busy !== null} />
-          </Card>
+      {message ? <Notice tone={message.tone} text={message.text} /> : null}
+      {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true) ?? ''} failed onRetry={() => { load(); }} /> : null}
 
-          {message ? <Notice tone={message.tone} text={message.text} /> : null}
-
-          {refreshFailed ? <UpdatedLine label={updatedLabel(loadedAt, new Date(), true)} failed onRetry={() => { load(); }} /> : null}
-
-          {loadError ? (
-            <View style={styles.gap}><Notice tone="error" text={loadError} /><Button label="Try again" onPress={load} /></View>
-          ) : categories === null ? <ListSkeleton rows={3} /> : active.length === 0 && archived.length === 0 ? (
-            <EmptyState icon={TagIcon} title="No categories yet" body="Add one above, for example Drinks, Provisions or Toiletries. Products don't need a category." />
-          ) : (
-            <FadeIn>
-              <View style={styles.gap}>
-                <Text style={styles.sectionTitle}>In use ({active.length})</Text>
-                {active.length === 0 ? <Text style={styles.muted}>No active categories.</Text> : null}
-                {active.map((c) => (
-                  <Card key={c.id} style={styles.row}>
+      {loadError ? (
+        <View style={styles.gap}><Banner tone="danger" message={loadError} /><Button label="Try again" kind="secondary" onPress={load} /></View>
+      ) : categories === null ? <View style={styles.gapSm}>{[0, 1, 2].map((k) => <SkeletonRow key={k} />)}</View> : active.length === 0 && archived.length === 0 ? (
+        <EmptyState icon={TagIcon} title="No categories yet" body="Add one above, for example Drinks, Provisions or Toiletries. Products don't need a category." />
+      ) : (
+        <FadeIn>
+          <View style={styles.gap}>
+            <SectionHeader title={`In use (${active.length})`} />
+            {active.length === 0 ? <AppText variant="caption" tone="textSecondary">No active categories.</AppText> : null}
+            {active.length > 0 ? (
+              <Card padded={false}>
+                {active.map((c, i) => (
+                  <View key={c.id}>
+                    {i > 0 ? <Divider /> : null}
                     {editing?.id === c.id ? (
-                      <View style={styles.gap}>
-                        <Field label="Category name" value={editing.name} maxLength={60} error={editing.error}
+                      <View style={styles.editing}>
+                        <TextField label="Category name" value={editing.name} maxLength={60} error={editing.error}
                           onChangeText={(t) => setEditing({ ...editing, name: t, error: undefined })} />
-                        {editing.note ? <Text style={styles.muted}>{editing.note}</Text> : null}
+                        {editing.note ? <AppText variant="caption" tone="textSecondary">{editing.note}</AppText> : null}
                         <View style={styles.actions}>
-                          <View style={{ flex: 1 }}><Button label="Save" onPress={rename} busy={busy === c.id} disabled={offline} /></View>
-                          <View style={{ flex: 1 }}><Button label="Cancel" kind="secondary" onPress={() => setEditing(null)} /></View>
+                          <Button label="Save" onPress={rename} busy={busy === c.id} disabled={offline} />
+                          <Button label="Cancel" kind="quiet" onPress={() => setEditing(null)} />
                         </View>
                       </View>
                     ) : (
-                      <View style={styles.rowInner}>
-                        <Text style={styles.name} numberOfLines={2}>{c.name}</Text>
+                      <View style={styles.row}>
+                        <AppText variant="label" style={styles.name}>{c.name}</AppText>
                         <View style={styles.rowButtons}>
-                          <Button label="Rename" kind="link" onPress={() => { setMessage(null); setEditing({ id: c.id, name: c.name, seenName: c.name }); }} disabled={offline || busy !== null} />
-                          <Button label="Archive" kind="link" onPress={() => setArchived(c, true)} disabled={offline || busy !== null} />
+                          <TextAction label="Rename" accessibilityLabel={`Rename ${c.name}`} onPress={() => { setMessage(null); setEditing({ id: c.id, name: c.name, seenName: c.name }); }} disabled={offline || busy !== null} />
+                          <TextAction label="Archive" tone="danger" accessibilityLabel={`Archive ${c.name}`} onPress={() => setArchived(c, true)} disabled={offline || busy !== null} />
                         </View>
                       </View>
                     )}
-                  </Card>
+                  </View>
                 ))}
-                {archived.length > 0 ? (
-                  <Button label={showArchived ? `Hide archived (${archived.length})` : `Show archived (${archived.length})`} kind="link" onPress={() => setShowArchived((v) => !v)} />
-                ) : null}
-                {showArchived ? archived.map((c) => (
-                  <Card key={c.id} style={styles.row}>
-                    <View style={styles.rowInner}>
-                      <Text style={[styles.name, { color: colours.stone }]} numberOfLines={2}>{c.name} · Archived</Text>
-                      <Button label="Restore" kind="link" onPress={() => setArchived(c, false)} disabled={offline || busy !== null} />
+              </Card>
+            ) : null}
+            {archived.length > 0 ? (
+              <TextAction label={showArchived ? `Hide archived (${archived.length})` : `Show archived (${archived.length})`} onPress={() => setShowArchived((v) => !v)} />
+            ) : null}
+            {showArchived && archived.length > 0 ? (
+              <Card padded={false}>
+                {archived.map((c, i) => (
+                  <View key={c.id}>
+                    {i > 0 ? <Divider /> : null}
+                    <View style={styles.row}>
+                      <View style={styles.name}>
+                        <AppText variant="label" tone="textSecondary">{c.name}</AppText>
+                        <StatusBadge label="Archived" tone="neutral" />
+                      </View>
+                      <TextAction label="Restore" accessibilityLabel={`Restore ${c.name}`} onPress={() => setArchived(c, false)} disabled={offline || busy !== null} />
                     </View>
-                  </Card>
-                )) : null}
-              </View>
-            </FadeIn>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+                  </View>
+                ))}
+              </Card>
+            ) : null}
+          </View>
+        </FadeIn>
+      )}
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colours.warmWhite },
-  body: { padding: space.md, gap: space.md },
   gap: { gap: space.md },
-  section: { padding: space.md, gap: space.md },
-  sectionTitle: { fontSize: type.section, fontWeight: '800', color: colours.ink },
-  muted: { fontSize: type.caption, color: colours.stone },
-  row: { paddingHorizontal: space.md, paddingVertical: space.sm },
-  rowInner: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm },
+  gapSm: { gap: space.xs },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: space.sm, paddingHorizontal: space.md, paddingVertical: space.xxs, minHeight: 56 },
+  name: { flexGrow: 1, flexShrink: 1, gap: 2, paddingVertical: space.xs },
   rowButtons: { flexDirection: 'row', gap: space.sm },
-  name: { flex: 1, minWidth: 120, fontSize: type.body, fontWeight: '700', color: colours.ink },
-  actions: { flexDirection: 'row', gap: space.sm },
+  editing: { padding: space.md, gap: space.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
 });
