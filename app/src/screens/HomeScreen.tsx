@@ -20,6 +20,7 @@ import { appConnectivity, type Connectivity } from '../lib/connectivity';
 import { PRODUCTS_HOME, pop as popProducts, type ProductsStack } from '../navigation/productsStack';
 import type { ProductsService } from '../services/products';
 import { ProductsArea } from './products/ProductsArea';
+import { ComponentGallery } from './dev/ComponentGallery';
 import { UpdatedLine } from '../ui/surfaces';
 import { useFreshness } from '../ui/useFreshness';
 import { classifyRpcError, looksLikeNetworkFailure } from '../services/rpcErrors';
@@ -84,6 +85,8 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
   const [online, setOnline] = useState<Connectivity>(connectivity.state);
   useEffect(() => connectivity.subscribe(setOnline), [connectivity]);
   const [accountOpen, setAccountOpen] = useState(false);
+  /** Stage 1C-3.2: the component gallery, development builds only (__DEV__); never in a release build. */
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [load, setLoad] = useState<DashboardLoad>({ kind: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
 
@@ -140,6 +143,7 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
   // to the dashboard, then leave the app.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (galleryOpen) { setGalleryOpen(false); return true; }
       if (!accountOpen && tab === 'products') {
         const previous = popProducts(productsStack);
         if (previous) { setProductsStack(previous); return true; }
@@ -151,9 +155,11 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
       return true;
     });
     return () => sub.remove();
-  }, [accountOpen, tab, productsStack, setTab]);
+  }, [accountOpen, galleryOpen, tab, productsStack, setTab]);
 
   const ownerName = load.kind === 'ready' ? load.data.ownerName : null;
+
+  if (__DEV__ && galleryOpen) return <ComponentGallery onClose={() => setGalleryOpen(false)} />;
 
   if (accountOpen) {
     return (
@@ -194,7 +200,8 @@ export function HomeScreen({ business, device, onSignOut, dashboard, products }:
               onAddProduct={() => openProducts([...PRODUCTS_HOME, { name: 'add' }])}
             />
           ) : tab === 'more' ? (
-            <AccountPanel business={business} device={device} ownerName={ownerName} onSignOut={onSignOut} />
+            <AccountPanel business={business} device={device} ownerName={ownerName} onSignOut={onSignOut}
+              onOpenGallery={__DEV__ ? () => setGalleryOpen(true) : undefined} />
           ) : (
             <ComingSoon tab={tab} onBack={() => setTab(HOME_TAB)} />
           )}
@@ -493,8 +500,10 @@ const LATER_MENU = ['Expenses', 'Reports', 'Close the day', 'Export data', 'Sett
  * Shop and account details with Log out. Opened from the avatar (with Back), and shown as the
  * More tab (S-70; D-8: More keeps Log out), where it also lists the items still to come.
  */
-function AccountPanel({ business, device, ownerName, onClose, onSignOut }: {
+function AccountPanel({ business, device, ownerName, onClose, onSignOut, onOpenGallery }: {
   business: Business; device: Device; ownerName: string | null; onClose?: () => void; onSignOut: () => void;
+  /** Development builds only (Stage 1C-3.2): opens the component gallery for the owner's review (C-1b). */
+  onOpenGallery?: () => void;
 }) {
   const asTab = !onClose;
   const body = (
@@ -527,6 +536,13 @@ function AccountPanel({ business, device, ownerName, onClose, onSignOut }: {
               </View>
             ))}
           </View>
+        ) : null}
+        {__DEV__ && onOpenGallery ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Component gallery. Development only: design review" onPress={onOpenGallery}
+            style={({ pressed }) => [styles.card, styles.infoRow, pressed && styles.pressed]}>
+            <Text style={styles.infoValue}>Component gallery</Text>
+            <Text style={styles.laterTag}>Development only</Text>
+          </Pressable>
         ) : null}
         <Button label="Log out" kind="secondary" onPress={onSignOut} />
       </View>

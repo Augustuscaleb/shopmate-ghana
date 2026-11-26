@@ -1,6 +1,6 @@
 # Stage 1C-3 plan: Product Experience & Visual Redesign
 
-**Status (25 Nov 2026, revision 9): G-1 APPROVED by the owner (25 Nov 2026) for Stage 1C-3.1 only. 1C-3.1 IMPLEMENTED in the working tree, NOT committed, NOT pushed, no CI run; all device checks NOT TESTED. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md); C-1b pending (mandatory, after 1C-3.2). 1C-3.2 and later NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
+**Status (26 Nov 2026, revision 10): G-1 APPROVED by the owner (25 Nov 2026) for 1C-3.1; 1C-3.1 committed in `7064d4d`, with the Edit-pencil correction (B-3) in `225044d` (CI passed); its device checks are partly done (DET-01, DET-11, DET-15 PASS on both phones). 1C-3.2 APPROVED to start by the owner (26 Nov 2026) and committed in the commit "Stage 1C-3.2: design system v2 and component gallery"; its gallery checks GAL-01 – GAL-13 NOT TESTED. Spec 08 revision 2 APPROVED at C-1a (specification set 5.2) and adopted as [08-visual-design.md](../product-specification/08-visual-design.md); C-1b pending (mandatory, after 1C-3.2, before any screen redesign). 1C-3.3 and later NOT started.** No migration, configuration, dependency or native change has been made for Stage 1C-3. Baseline: commit `75f8aa6` (Stage 1C-2 increment 2b; CI #57 passed).
 
 **Revision 9 correction (failure handling, to match spec 08 revision 2, which governs):** after a failed refresh, the confirmed values read earlier stay on screen, marked as stale, but the average cost becomes state 4 ("no figure, not even an old one", spec 08 §9.3), so margin and Stock value (about) are hidden too. Revision 8 said only "the data is kept", which conflicted with spec 08; §5.1 and DET-06 are corrected below.
 
@@ -340,7 +340,7 @@ The orientation unlock itself is one configuration line, applied at the start of
 Each increment is implemented only after approval, and reported for review. It is committed and pushed only with approval, and must pass CI. There is no database change and no new package, unless a §10 decision approves one.
 
 ### 1C-3.1 Product Details (functional) and the Review-2 fixes
-**Status (revision 9): IMPLEMENTED in the working tree; NOT committed, NOT pushed, no CI run. Automated tests pass locally (see [IMPLEMENTATION-STATUS](../IMPLEMENTATION-STATUS.md)). DET-01 – DET-14: NOT TESTED.**
+**Status (revision 10): committed in `7064d4d` (CI #58 passed); Edit-pencil correction (B-3) in `225044d` (CI #59 passed). Device checks: DET-01, DET-11 and DET-15 PASS on both phones; the rest NOT TESTED ([device log](../testing/DEVICE-TEST-LOG.md)).**
 
 **Delivers:**
 - the `detail` route and the §5.2 flows;
@@ -381,6 +381,8 @@ Each increment is implemented only after approval, and reported for review. It i
 - **Devices** (A06, iPhone): DET-01 – DET-14 (§8.1), plus D2-11/12/13 and MD-09/10 again.
 
 ### 1C-3.2 Design system v2 and component gallery (no screen redesign yet)
+**Status (26 Nov 2026): committed in the commit "Stage 1C-3.2: design system v2 and component gallery". GAL-01 – GAL-13 NOT TESTED; Checkpoint C-1b NOT yet approved.** Code: `app/src/ui/kit/` and `app/src/screens/dev/ComponentGallery.tsx`, reached from a development-only row in the More tab. No existing screen uses the kit yet; no package, native or configuration change.
+
 **Delivers:**
 - tokens v2 (meaning-based, with tonal scales and contrast pairs), with the old token names kept as aliases so nothing changes visually;
 - `AppText` (system font, P-4);
@@ -498,7 +500,7 @@ Each increment is implemented only after approval, and reported for review. It i
   - the iOS swipe-back gesture (record what happens).
 - **Cross-device (iPhone and A06, or two Android phones):** MD checks on Details, for example MD-04 with Details open on the second phone, and MD-09 with the form open.
 - **Orientation (all devices):** the §6.5 plan, ORI-01 – ORI-10 on phones and TAB-01 – TAB-12 on tablets.
-- **Device checklists:** DET, ORI and TAB are written out in full in §8.1. They're copied into the device-test log when each increment is approved; the log itself is unchanged now. The gallery checks for C-1b are defined with 1C-3.2.
+- **Device checklists:** DET, GAL, ORI and TAB are written out in full in §8.1 and copied into the device-test log for each increment. The gallery checks for C-1b (GAL-01 – GAL-13) were defined with 1C-3.2.
 - **Evidence:** owner-reported PASS, PARTIAL, NOT TESTED or BLOCKED per check, always separate from CI. No cloud verification until D11.
 
 ### 8.1 Device checklists (written out; all NOT TESTED)
@@ -524,6 +526,24 @@ Each check has a status of PASS, PARTIAL, NOT TESTED or BLOCKED (owner-reported)
 | DET-13 | Two devices: Details open on B; A changes the price; B returns to the app or the screen | B shows the new price without a restart; "This product was changed on another device" appears only for the other device's change |
 | DET-14 | Add a product and save (A-1) | The new product's read-only Details opens |
 | DET-15 | On Details, look top-right in the header; tap the pencil. With TalkBack or VoiceOver on, move to it. Then archive the product and look again (owner decision B-3) | A compact pencil, no large green Edit button anywhere on the page; one tap (an easy target) opens the edit form, and Back returns to Details; the screen reader says "Edit product, button"; when archived it is dimmed, does nothing, and is announced as disabled with "Archived. Restore it to make changes." |
+
+**GAL: component gallery, Checkpoint C-1b (1C-3.2).** Devices: Galaxy A06 and iPhone 13 Pro Max, the app run in development mode (Expo Go or the development build connected to the development server). C-1b is the owner's decision after these checks; requested changes go back into 1C-3.2.
+
+| ID | Steps | Expected result |
+|---|---|---|
+| GAL-01 | Open the More tab; tap "Component gallery (Development only)"; then Back at the top, and separately (A06) the Android system Back | The gallery opens with a light header; both Backs return to More. The row doesn't appear in a release build |
+| GAL-02 | Look at "This screen" at the top | Shows the screen size in dp, the layout class (compact on both phones upright), the text size in % and Reduce Motion |
+| GAL-03 | "Control hierarchy (B-4)": compare the four levels | Icon action, text action, medium button and large primary are visibly lighter to heavier; nothing looks oversized or heavy; the purpose of each is clear |
+| GAL-04 | "Buttons": press and hold each kind; tap "Save price"; read the disabled one; tap "Archive product" | Pressed state shows; "Save price" shows a spinner, then a toast; the disabled button shows its reason; Archive asks for confirmation first |
+| GAL-05 | "Icon actions" and "Screen header": tap the pencils; with TalkBack or VoiceOver on, move to them | Easy to tap (48 dp target); read as "Edit product, button" or the shown label; the disabled one is announced as disabled with its reason; the light header reads clearly |
+| GAL-06 | "Text fields": tap a field; type 1.234 in Selling price | The keyboard opens only when tapped; GH₵ prefix shown; the outline turns green when focused; a red error with an icon appears; the typed text stays |
+| GAL-07 | "Bottom sheet": open it; tap the price field; with the keyboard open, scroll the sheet; close it with Close, Cancel and the backdrop | The keyboard doesn't open by itself; the field and "Save price" stay reachable above the keyboard; each way closes the sheet |
+| GAL-08 | "Chips", "Cards", "Rows", "Banners", "Feedback", "Loading": tap chips, rows and "Show a toast"; switch the loading example | Selected chips show a tick; badges always have a word; the long product name wraps; the toast appears and fades; skeletons look like the content; the empty state has one action |
+| GAL-09 | "Typography", "Colour", "Contrast", "Icons", "Spacing" | Text is legible in daylight; every kit pair in the contrast table says Pass; the icons look like one family and are recognisable |
+| GAL-10 | Set the phone's text size to about 130 %, then the largest; scroll the whole gallery | Nothing is cut off or overlapping; labels wrap; buttons and rows grow; figures stack ("Cards" says 1 per row); the header and section bar still work |
+| GAL-11 | Turn on Remove animations (A06) / Reduce Motion (iPhone); press buttons, show a toast, open the sheet, look at "Loading" and "Motion" | Nothing fades, scales or pulses; content appears at once; "Motion" says Reduce Motion is on |
+| GAL-12 | Galaxy A06: scroll the whole gallery quickly, up and down; tap the section chips | Scrolling stays smooth with no visible stutter; jumping to a section is immediate |
+| GAL-13 | Record the size shown in "This screen" on each phone (plan §6.5 item 5) | A06 and iPhone widths and heights in dp are recorded, to confirm the provisional breakpoints |
 
 **ORI: phones in portrait and landscape (1C-3.5).** Devices: Galaxy A06 (new development build) and iPhone 13 Pro Max (Expo Go, early; final on an iOS build, §6.5 item 4).
 
